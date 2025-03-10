@@ -11,6 +11,7 @@ from typing import Dict, Any, Optional
 from backend.ai.companion.core.models import ClassifiedRequest, ComplexityLevel
 from backend.ai.companion.core.processor_framework import Processor
 from backend.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
+from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class Tier2Processor(Processor):
     def __init__(self):
         """Initialize the Tier 2 processor."""
         self.ollama_client = OllamaClient()
+        self.prompt_engineering = PromptEngineering()
         logger.debug("Initialized Tier2Processor")
     
     async def process(self, request: ClassifiedRequest) -> str:
@@ -44,6 +46,9 @@ class Tier2Processor(Processor):
         try:
             # Select the appropriate model based on complexity
             model = self._select_model(request.complexity)
+            
+            # Create a prompt using the prompt engineering module
+            prompt = self.prompt_engineering.create_prompt(request)
             
             # Generate a response using the Ollama client
             response = await self.ollama_client.generate(

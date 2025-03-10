@@ -70,7 +70,8 @@ class OllamaClient:
         request: CompanionRequest,
         model: Optional[str] = None,
         temperature: float = 0.7,
-        max_tokens: int = 500
+        max_tokens: int = 500,
+        prompt: Optional[str] = None
     ) -> str:
         """
         Generate a response from Ollama.
@@ -80,6 +81,7 @@ class OllamaClient:
             model: Model to use (defaults to self.default_model)
             temperature: Sampling temperature (0.0 to 1.0)
             max_tokens: Maximum number of tokens to generate
+            prompt: Optional custom prompt (if not provided, one will be created)
             
         Returns:
             The generated response
@@ -99,8 +101,9 @@ class OllamaClient:
                 logger.debug(f"Cache hit for request {request.request_id}")
                 return cached_response
         
-        # Create the prompt
-        prompt = self._create_prompt(request)
+        # Use the provided prompt or create one
+        if prompt is None:
+            prompt = self._create_prompt(request)
         
         try:
             # Call the Ollama API
