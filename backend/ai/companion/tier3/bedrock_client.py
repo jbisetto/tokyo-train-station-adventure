@@ -10,6 +10,7 @@ import logging
 import asyncio
 import aiohttp
 import boto3
+import time
 from typing import Dict, List, Any, Optional, Union
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
@@ -17,6 +18,12 @@ from botocore.credentials import Credentials
 
 from backend.ai.companion.core.models import CompanionRequest
 from backend.ai.companion.tier3.prompt_optimizer import create_optimized_prompt
+from backend.ai.companion.tier3.usage_tracker import (
+    track_request,
+    check_quota,
+    UsageTracker,
+    default_tracker
+)
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +106,8 @@ class BedrockClient:
         self,
         region_name: str = "us-east-1",
         model_id: str = "amazon.nova-micro-v1:0",
-        max_tokens: int = 1000
+        max_tokens: int = 1000,
+        usage_tracker: Optional[UsageTracker] = None
     ):
         """
         Initialize the Bedrock client.
@@ -108,11 +116,13 @@ class BedrockClient:
             region_name: The AWS region to use
             model_id: The model ID to use
             max_tokens: The maximum number of tokens to generate
+            usage_tracker: The usage tracker to use (defaults to the global instance)
         """
         self.region_name = region_name
         self.model_id = model_id
         self.max_tokens = max_tokens
         self.logger = logging.getLogger(__name__)
+        self.usage_tracker = usage_tracker or default_tracker
         
         # Log initialization
         self.logger.info(f"Initialized BedrockClient with model {model_id} in region {region_name}")
@@ -155,7 +165,28 @@ class BedrockClient:
             prompt = create_optimized_prompt(request, max_tokens=max(200, max_tokens // 5))
             self.logger.debug(f"Created optimized prompt with {len(prompt)} characters")
             
+        # Estimate the number of tokens in the prompt
+        estimated_input_tokens = len(prompt) // 4  # Simple estimation
+        estimated_output_tokens = max_tokens
+        
+        # Check if the request would exceed the quota
+        allowed, reason = await check_quota(
+            model_id=model_id,
+            estimated_tokens=estimated_input_tokens + estimated_output_tokens,
+            tracker=self.usage_tracker
+        )
+        
+        if not allowed:
+            self.logger.warning(f"Quota exceeded for request {request.request_id}: {reason}")
+            raise BedrockError(
+                f"Quota exceeded: {reason}",
+                error_type=BedrockError.QUOTA_ERROR
+            )
+            
         try:
+            # Record the start time
+            start_time = time.time()
+            
             # Call the API
             self.logger.info(f"Generating response for request {request.request_id} with model {model_id}")
             response = await self._call_bedrock_api(
@@ -164,6 +195,9 @@ class BedrockClient:
                 temperature=temperature,
                 max_tokens=max_tokens
             )
+            
+            # Calculate the duration
+            duration_ms = int((time.time() - start_time) * 1000)
             
             # Extract the completion from the response
             model_provider = model_id.split('.')[0]
@@ -185,23 +219,63 @@ class BedrockClient:
                     str(response)
                 )
                 
+            # Get token usage from the response
+            input_tokens = response.get("usage", {}).get("input_tokens", estimated_input_tokens)
+            output_tokens = response.get("usage", {}).get("output_tokens", len(completion) // 4)
+            
+            # Track the usage
+            await track_request(
+                request_id=request.request_id,
+                model_id=model_id,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                duration_ms=duration_ms,
+                success=True,
+                tracker=self.usage_tracker
+            )
+                
             # Log token usage if available
             if "usage" in response:
                 self.logger.info(
                     f"Token usage for request {request.request_id}: "
-                    f"Input={response['usage'].get('input_tokens', 'N/A')}, "
-                    f"Output={response['usage'].get('output_tokens', 'N/A')}"
+                    f"Input={input_tokens}, "
+                    f"Output={output_tokens}"
                 )
                 
             self.logger.info(f"Generated {len(completion)} characters for request {request.request_id}")
             return completion
             
-        except BedrockError:
+        except BedrockError as e:
+            # Track the failed request
+            await track_request(
+                request_id=request.request_id,
+                model_id=model_id,
+                input_tokens=estimated_input_tokens,
+                output_tokens=0,
+                duration_ms=0,
+                success=False,
+                error_type=e.error_type,
+                tracker=self.usage_tracker
+            )
+            
             # Re-raise BedrockError
             raise
         except Exception as e:
             # Handle unexpected errors
             self.logger.error(f"Unexpected error generating response: {str(e)}")
+            
+            # Track the failed request
+            await track_request(
+                request_id=request.request_id,
+                model_id=model_id,
+                input_tokens=estimated_input_tokens,
+                output_tokens=0,
+                duration_ms=0,
+                success=False,
+                error_type=BedrockError.UNKNOWN_ERROR,
+                tracker=self.usage_tracker
+            )
+            
             raise BedrockError(
                 f"Unexpected error generating response: {str(e)}",
                 error_type=BedrockError.UNKNOWN_ERROR

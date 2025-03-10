@@ -1,0 +1,42 @@
+[
+  {
+    "timestamp": "2025-03-10T18:53:54.505903",
+    "request_id": "test-123",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 42,
+    "output_tokens": 128,
+    "duration_ms": 0,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-10T18:53:54.544510",
+    "request_id": "test-123",
+    "model_id": "amazon.titan-text-express-v1",
+    "input_tokens": 42,
+    "output_tokens": 128,
+    "duration_ms": 0,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-10T18:53:54.568616",
+    "request_id": "test-123",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 71,
+    "output_tokens": 0,
+    "duration_ms": 0,
+    "success": false,
+    "error_type": "model_error"
+  },
+  {
+    "timestamp": "2025-03-10T18:53:54.796125",
+    "request_id": "test-123",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 71,
+    "output_tokens": 0,
+    "duration_ms": 0,
+    "success": false,
+    "error_type": "unknown_error"
+  }
+]
