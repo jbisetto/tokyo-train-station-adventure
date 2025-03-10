@@ -8,6 +8,7 @@ to interact with local language models.
 import pytest
 import json
 from unittest.mock import patch, MagicMock, AsyncMock
+import time
 
 from backend.ai.companion.core.models import (
     CompanionRequest,
@@ -257,6 +258,204 @@ class TestOllamaClient:
             # Check that the cache was updated
             assert response == sample_ollama_response["response"]
             mock_save_cache.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_memory_cache(self, sample_request, sample_ollama_response):
+        """Test that the memory cache is used before disk cache."""
+        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        
+        client = OllamaClient(cache_enabled=True)
+        
+        # Mock the API call and cache methods
+        with patch.object(client, '_call_ollama_api') as mock_api_call, \
+             patch.object(client, '_check_cache', return_value=None), \
+             patch.object(client, '_save_to_cache'):
+            
+            mock_api_call.return_value = sample_ollama_response["response"]
+            
+            # First call should hit the API
+            response1 = await client.generate(sample_request)
+            assert response1 == sample_ollama_response["response"]
+            mock_api_call.assert_called_once()
+            
+            # Reset the mock to verify it's not called again
+            mock_api_call.reset_mock()
+            
+            # Add to memory cache directly
+            cache_key = client._hash_request(sample_request, client.default_model)
+            client._memory_cache[cache_key] = {
+                "response": sample_ollama_response["response"],
+                "timestamp": time.time()
+            }
+            
+            # Patch _check_cache to return from memory cache
+            with patch.object(client, '_check_cache', return_value=sample_ollama_response["response"]):
+                # Second call with the same request should use memory cache
+                response2 = await client.generate(sample_request)
+                assert response2 == sample_ollama_response["response"]
+                mock_api_call.assert_not_called()
+
+    def test_cache_ttl(self, sample_request, sample_cache_entry):
+        """Test that cache entries expire based on TTL."""
+        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        import time
+        
+        # Create client with a very short TTL for testing
+        client = OllamaClient(cache_enabled=True, cache_ttl=1)  # 1 second TTL
+        
+        # Mock the cache methods
+        with patch.object(client, '_save_to_cache') as mock_save, \
+             patch.object(client, '_get_from_cache', return_value=None):
+            
+            # Add an entry to the memory cache directly
+            request_hash = client._hash_request(sample_request, client.default_model)
+            client._memory_cache[request_hash] = {
+                "response": sample_cache_entry["response"],
+                "timestamp": time.time()
+            }
+            
+            # Verify it's in the cache
+            assert request_hash in client._memory_cache
+            
+            # Wait for TTL to expire
+            time.sleep(1.1)
+            
+            # The entry should be considered expired
+            assert client._is_cache_entry_expired(client._memory_cache[request_hash])
+
+    def test_cache_stats(self, sample_request, sample_ollama_response):
+        """Test that cache statistics are tracked correctly."""
+        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        
+        client = OllamaClient(cache_enabled=True)
+        
+        # Reset cache stats
+        client.cache_stats = {
+            "hits": 0,
+            "misses": 0,
+            "memory_hits": 0,
+            "disk_hits": 0,
+            "api_calls": 0,
+            "cache_size": 0,
+            "entries": 0
+        }
+        
+        # Check initial stats
+        assert client.cache_stats["hits"] == 0
+        assert client.cache_stats["misses"] == 0
+        
+        # Mock a cache hit
+        with patch.object(client, '_get_from_cache') as mock_get_cache:
+            mock_get_cache.return_value = sample_ollama_response["response"]
+            
+            # This should be a hit
+            result = client._check_cache(client._hash_request(sample_request, client.default_model))
+            assert result == sample_ollama_response["response"]
+            assert client.cache_stats["hits"] == 1
+            
+        # Reset stats
+        client.cache_stats["hits"] = 0
+        client.cache_stats["misses"] = 0
+        
+        # Mock a cache miss by patching both memory cache and disk cache
+        client._memory_cache = {}  # Empty memory cache
+        with patch.object(client, '_get_from_cache', return_value=None):  # No disk cache hit
+            # This should be a miss
+            result = client._check_cache(client._hash_request(sample_request, client.default_model))
+            assert result is None
+            assert client.cache_stats["misses"] == 1
+
+    def test_clear_cache(self):
+        """Test clearing the cache."""
+        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        import os
+        
+        # Create a client with a test cache directory
+        test_cache_dir = "test_cache_dir"
+        client = OllamaClient(cache_enabled=True, cache_dir=test_cache_dir)
+        
+        # Mock the cache directory operations
+        with patch('os.path.exists', return_value=True), \
+             patch('os.listdir', return_value=["cache1.json", "cache2.json"]), \
+             patch('os.remove') as mock_remove, \
+             patch.dict(client._memory_cache, {"key1": "value1", "key2": "value2"}):
+            
+            # Clear the cache
+            client.clear_cache()
+            
+            # Check that files were removed
+            assert mock_remove.call_count == 2
+            
+            # Check that memory cache was cleared
+            assert len(client._memory_cache) == 0
+            
+            # Check that stats were reset
+            assert client.cache_stats["hits"] == 0
+            assert client.cache_stats["misses"] == 0
+
+    def test_prune_cache(self):
+        """Test pruning old cache entries."""
+        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        import time
+        
+        # Create client with cache enabled
+        client = OllamaClient(cache_enabled=True)
+        
+        # Create some test cache entries with different timestamps
+        now = time.time()
+        old_time = now - 86400 * 2  # 2 days old
+        
+        # Add entries to memory cache
+        client._memory_cache = {
+            "recent1": {"response": "response1", "timestamp": now},
+            "recent2": {"response": "response2", "timestamp": now - 3600},  # 1 hour old
+            "old1": {"response": "response3", "timestamp": old_time},
+            "old2": {"response": "response4", "timestamp": old_time - 3600}
+        }
+        
+        # Mock the disk cache operations
+        with patch('os.path.exists', return_value=True), \
+             patch('os.listdir', return_value=["recent1.json", "recent2.json", "old1.json", "old2.json"]), \
+             patch('os.path.getmtime', side_effect=lambda f: old_time if "old" in f else now), \
+             patch('os.remove') as mock_remove:
+            
+            # Prune the cache
+            client.prune_cache(max_age=86400)  # 1 day max age
+            
+            # Check that old files were removed
+            assert mock_remove.call_count == 2
+            
+            # Check that old entries were removed from memory cache
+            assert "recent1" in client._memory_cache
+            assert "recent2" in client._memory_cache
+            assert "old1" not in client._memory_cache
+            assert "old2" not in client._memory_cache
+
+    @pytest.mark.asyncio
+    async def test_cache_size_limit(self, sample_request, sample_ollama_response):
+        """Test that the cache respects size limits."""
+        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        
+        # Create client with a small cache size limit
+        client = OllamaClient(cache_enabled=True, max_cache_entries=2)
+        
+        # Mock the API call and cache operations
+        with patch.object(client, '_call_ollama_api', return_value=sample_ollama_response["response"]), \
+             patch.object(client, '_save_to_cache') as mock_save, \
+             patch.object(client, '_get_from_cache', return_value=None), \
+             patch.object(client, '_prune_cache_if_needed') as mock_prune:
+            
+            # Generate responses for different requests
+            for i in range(3):
+                modified_request = CompanionRequest(
+                    request_id=f"test-{i}",
+                    player_input=f"Request {i}",
+                    request_type="translation"
+                )
+                await client.generate(modified_request)
+            
+            # Check that prune was called when limit was reached
+            assert mock_prune.call_count > 0
 
     def test_create_prompt(self, sample_request):
         """Test creating a prompt for Ollama."""
