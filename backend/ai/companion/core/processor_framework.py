@@ -322,7 +322,9 @@ class ProcessorFactory:
         if tier == ProcessingTier.TIER_1:
             processor = Tier1Processor()
         elif tier == ProcessingTier.TIER_2:
-            processor = Tier2Processor()
+            # Import here to avoid circular imports
+            from backend.ai.companion.tier2.tier2_processor import Tier2Processor as RealTier2Processor
+            processor = RealTier2Processor()
         elif tier == ProcessingTier.TIER_3:
             processor = Tier3Processor()
         else:

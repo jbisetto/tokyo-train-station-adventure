@@ -198,7 +198,8 @@ class TestProcessorFactory:
     
     def test_get_processor_tier2(self):
         """Test that the factory returns a Tier 2 processor for TIER_2."""
-        from backend.ai.companion.core.processor_framework import ProcessorFactory, Tier2Processor
+        from backend.ai.companion.core.processor_framework import ProcessorFactory
+        from backend.ai.companion.tier2.tier2_processor import Tier2Processor
         
         factory = ProcessorFactory()
         
