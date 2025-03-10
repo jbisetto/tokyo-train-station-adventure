@@ -28,18 +28,18 @@ def sample_request():
 def sample_bedrock_response():
     """Create a sample response from the Bedrock API."""
     return {
-        "inputTextTokenCount": 42,
-        "results": [{
-            "tokenCount": 128,
-            "outputText": "「東京に行きたいです」(Tōkyō ni ikitai desu) is how you say 'I want to go to Tokyo' in Japanese.",
-            "completionReason": "FINISH"
-        }],
         "amazon-bedrock-invocationMetrics": {
+            "firstByteLatency": 567,
             "inputTokenCount": 42,
-            "outputTokenCount": 128,
             "invocationLatency": 1234,
-            "firstByteLatency": 567
-        }
+            "outputTokenCount": 128
+        },
+        "results": [
+            {
+                "outputText": "「東京に行きたいです」(Tōkyō ni ikitai desu) is how you say 'I want to go to Tokyo' in Japanese.",
+                "tokenCount": 128
+            }
+        ]
     }
 
 
@@ -47,78 +47,98 @@ class TestBedrockClient:
     """Tests for the BedrockClient class."""
     
     def test_initialization(self):
-        """Test that the BedrockClient can be initialized."""
+        """Test initialization of the BedrockClient."""
         client = BedrockClient()
         
-        assert client.region_name == "us-east-1"  # Default region
-        assert client.model_id == "anthropic.claude-3-sonnet-20240229-v1:0"  # Default model
-        assert client.max_tokens == 1000  # Default max tokens
+        # Check that the client has the correct default values
+        assert client.region_name == "us-east-1"
+        assert client.model_id == "amazon.nova-micro-v1:0"
+        assert client.max_tokens == 1000
         
-        # Test with custom parameters
-        client = BedrockClient(
+        # Test with custom values
+        custom_client = BedrockClient(
             region_name="us-west-2",
-            model_id="anthropic.claude-3-haiku-20240307-v1:0",
+            model_id="amazon.titan-text-express-v1",
             max_tokens=500
         )
         
-        assert client.region_name == "us-west-2"
-        assert client.model_id == "anthropic.claude-3-haiku-20240307-v1:0"
-        assert client.max_tokens == 500
+        assert custom_client.region_name == "us-west-2"
+        assert custom_client.model_id == "amazon.titan-text-express-v1"
+        assert custom_client.max_tokens == 500
     
     @pytest.mark.asyncio
     async def test_generate(self, sample_request, sample_bedrock_response):
         """Test generating a response from Bedrock."""
         client = BedrockClient()
         
+        # Create the expected response format after processing
+        processed_response = {
+            "completion": sample_bedrock_response["results"][0]["outputText"],
+            "stop_reason": "",
+            "usage": {
+                "input_tokens": sample_bedrock_response["amazon-bedrock-invocationMetrics"]["inputTokenCount"],
+                "output_tokens": sample_bedrock_response["results"][0]["tokenCount"]
+            }
+        }
+        
         # Mock the _call_bedrock_api method
         with patch.object(client, '_call_bedrock_api', new_callable=AsyncMock) as mock_call_api:
-            mock_call_api.return_value = sample_bedrock_response
+            mock_call_api.return_value = processed_response
             
             # Generate a response
             response = await client.generate(sample_request)
             
             # Check that the response is correct
-            assert response == sample_bedrock_response["results"][0]["outputText"]
+            assert response == processed_response["completion"]
             
             # Check that _call_bedrock_api was called with the correct parameters
             mock_call_api.assert_called_once()
             args, kwargs = mock_call_api.call_args
             
-            # Check that the prompt was created correctly
-            assert "How do I say 'I want to go to Tokyo' in Japanese?" in kwargs["prompt"]
-            assert kwargs["model_id"] == client.model_id
-            assert kwargs["max_tokens"] == client.max_tokens
+            assert kwargs["model_id"] == "amazon.nova-micro-v1:0"
+            assert kwargs["temperature"] == 0.7
+            assert kwargs["max_tokens"] == 1000
+            assert sample_request.player_input in kwargs["prompt"]
     
     @pytest.mark.asyncio
     async def test_generate_with_custom_parameters(self, sample_request, sample_bedrock_response):
         """Test generating a response with custom parameters."""
         client = BedrockClient()
         
+        # Create the expected response format after processing
+        processed_response = {
+            "completion": sample_bedrock_response["results"][0]["outputText"],
+            "stop_reason": "",
+            "usage": {
+                "input_tokens": sample_bedrock_response["amazon-bedrock-invocationMetrics"]["inputTokenCount"],
+                "output_tokens": sample_bedrock_response["results"][0]["tokenCount"]
+            }
+        }
+        
         # Mock the _call_bedrock_api method
         with patch.object(client, '_call_bedrock_api', new_callable=AsyncMock) as mock_call_api:
-            mock_call_api.return_value = sample_bedrock_response
+            mock_call_api.return_value = processed_response
             
             # Generate a response with custom parameters
             response = await client.generate(
                 sample_request,
-                model_id="anthropic.claude-3-haiku-20240307-v1:0",
+                model_id="amazon.titan-text-express-v1",
                 temperature=0.5,
                 max_tokens=300,
                 prompt="Custom prompt"
             )
             
             # Check that the response is correct
-            assert response == sample_bedrock_response["results"][0]["outputText"]
+            assert response == processed_response["completion"]
             
             # Check that _call_bedrock_api was called with the correct parameters
             mock_call_api.assert_called_once()
             args, kwargs = mock_call_api.call_args
             
-            # Check that the custom parameters were used
-            assert kwargs["prompt"] == "Custom prompt"
-            assert kwargs["model_id"] == "anthropic.claude-3-haiku-20240307-v1:0"
-            assert kwargs["max_tokens"] == 300
+            assert kwargs["model_id"] == "amazon.titan-text-express-v1"
             assert kwargs["temperature"] == 0.5
+            assert kwargs["max_tokens"] == 300
+            assert kwargs["prompt"] == "Custom prompt"
     
     @pytest.mark.asyncio
     async def test_generate_with_error(self, sample_request):
@@ -146,6 +166,16 @@ class TestBedrockClient:
         mock_response.read = AsyncMock(return_value=json.dumps(sample_bedrock_response).encode('utf-8'))
         mock_response.headers = {"Content-Type": "application/json"}
         
+        # Expected processed response
+        expected_processed_response = {
+            "completion": sample_bedrock_response["results"][0]["outputText"],
+            "stop_reason": "",
+            "usage": {
+                "input_tokens": sample_bedrock_response["amazon-bedrock-invocationMetrics"]["inputTokenCount"],
+                "output_tokens": sample_bedrock_response["results"][0]["tokenCount"]
+            }
+        }
+        
         # Mock the aiohttp.ClientSession.post method
         with patch('aiohttp.ClientSession.post') as mock_post:
             mock_post.return_value.__aenter__.return_value = mock_response
@@ -153,13 +183,16 @@ class TestBedrockClient:
             # Call the API
             response = await client._call_bedrock_api(
                 prompt="Test prompt",
-                model_id="anthropic.claude-3-sonnet-20240229-v1:0",
+                model_id="amazon.nova-micro-v1:0",
                 temperature=0.7,
                 max_tokens=1000
             )
             
-            # Check that the response is correct
-            assert response == sample_bedrock_response
+            # Check that the response is correctly processed
+            assert response["completion"] == expected_processed_response["completion"]
+            assert "usage" in response
+            assert "input_tokens" in response["usage"]
+            assert "output_tokens" in response["usage"]
             
             # Check that post was called with the correct parameters
             mock_post.assert_called_once()
@@ -174,10 +207,10 @@ class TestBedrockClient:
             
             # Check the payload
             payload = json.loads(kwargs["data"])
-            assert payload["anthropic_version"] == "bedrock-2023-05-31"
-            assert payload["max_tokens"] == 1000
-            assert payload["temperature"] == 0.7
-            assert "messages" in payload
+            assert "inputText" in payload
+            assert "textGenerationConfig" in payload
+            assert payload["textGenerationConfig"]["maxTokenCount"] == 1000
+            assert payload["textGenerationConfig"]["temperature"] == 0.7
     
     @pytest.mark.asyncio
     async def test_call_bedrock_api_with_error(self):
@@ -288,6 +321,8 @@ class TestBedrockClient:
         # Check that the prompt contains the player input
         assert "How do I say 'I want to go to Tokyo' in Japanese?" in prompt
         
-        # Check that the prompt is formatted for Claude
-        assert "Human:" in prompt
-        assert "Assistant:" in prompt 
+        # Check that the prompt contains the role description
+        assert "helpful bilingual dog companion" in prompt
+        
+        # Check that the prompt contains instructions
+        assert "assist the player with language help" in prompt 

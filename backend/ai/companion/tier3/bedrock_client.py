@@ -97,26 +97,28 @@ class BedrockClient:
     def __init__(
         self,
         region_name: str = "us-east-1",
-        model_id: str = "anthropic.claude-3-sonnet-20240229-v1:0",
+        model_id: str = "amazon.nova-micro-v1:0",
         max_tokens: int = 1000
     ):
         """
-        Initialize the BedrockClient.
+        Initialize the Bedrock client.
         
         Args:
             region_name: The AWS region to use
-            model_id: The default model ID to use
-            max_tokens: The default maximum number of tokens to generate
+            model_id: The model ID to use
+            max_tokens: The maximum number of tokens to generate
         """
         self.region_name = region_name
         self.model_id = model_id
         self.max_tokens = max_tokens
+        self.logger = logging.getLogger(__name__)
+        
+        # Log initialization
+        self.logger.info(f"Initialized BedrockClient with model {model_id} in region {region_name}")
         
         # Get AWS credentials
         self.session = boto3.Session(region_name=region_name)
         self.credentials = self.session.get_credentials()
-        
-        logger.debug(f"Initialized BedrockClient with region={region_name}, model={model_id}")
     
     async def generate(
         self,
@@ -127,14 +129,14 @@ class BedrockClient:
         prompt: Optional[str] = None
     ) -> str:
         """
-        Generate a response using Amazon Bedrock.
+        Generate a response to the request.
         
         Args:
             request: The request to process
             model_id: The model ID to use (defaults to self.model_id)
             temperature: The temperature to use for generation
             max_tokens: The maximum number of tokens to generate (defaults to self.max_tokens)
-            prompt: The prompt to use (if None, one will be created from the request)
+            prompt: A custom prompt to use (if None, one will be created from the request)
             
         Returns:
             The generated response
@@ -142,8 +144,6 @@ class BedrockClient:
         Raises:
             BedrockError: If there is an error generating the response
         """
-        logger.info(f"Generating response for request {request.request_id} using Bedrock")
-        
         # Use default values if not provided
         model_id = model_id or self.model_id
         max_tokens = max_tokens or self.max_tokens
@@ -151,9 +151,10 @@ class BedrockClient:
         # Create a prompt if one wasn't provided
         if prompt is None:
             prompt = self._create_prompt(request)
-        
+            
         try:
-            # Call the Bedrock API
+            # Call the API
+            self.logger.info(f"Generating response for request {request.request_id} with model {model_id}")
             response = await self._call_bedrock_api(
                 prompt=prompt,
                 model_id=model_id,
@@ -161,21 +162,39 @@ class BedrockClient:
                 max_tokens=max_tokens
             )
             
-            # Extract the response text
-            if "results" in response and len(response["results"]) > 0:
-                return response["results"][0]["outputText"]
-            else:
-                raise BedrockError("No results in response")
-                
-        except BedrockError as e:
-            # Re-raise BedrockError
-            logger.error(f"Error generating response: {e}")
-            raise
+            # Extract the completion from the response
+            model_provider = model_id.split('.')[0]
             
+            if model_provider == "anthropic":
+                # For Anthropic models, the completion is in the 'completion' field
+                completion = response.get("completion", "")
+            elif model_provider == "amazon":
+                # For Amazon models, the completion is already extracted in _call_bedrock_api
+                completion = response.get("completion", "")
+            else:
+                # For other models, try to extract the completion from common fields
+                completion = (
+                    response.get("completion", "") or
+                    response.get("content", "") or
+                    response.get("text", "") or
+                    response.get("generated_text", "") or
+                    response.get("output", "") or
+                    str(response)
+                )
+                
+            self.logger.info(f"Generated {len(completion)} characters for request {request.request_id}")
+            return completion
+            
+        except BedrockError:
+            # Re-raise BedrockError
+            raise
         except Exception as e:
-            # Wrap other exceptions in BedrockError
-            logger.error(f"Unexpected error: {e}")
-            raise BedrockError(str(e))
+            # Handle unexpected errors
+            self.logger.error(f"Unexpected error generating response: {str(e)}")
+            raise BedrockError(
+                f"Unexpected error generating response: {str(e)}",
+                error_type=BedrockError.UNKNOWN_ERROR
+            )
     
     async def get_available_models(self) -> List[Dict[str, Any]]:
         """
@@ -218,13 +237,13 @@ class BedrockClient:
         Call the Amazon Bedrock API.
         
         Args:
-            prompt: The prompt to send to the model
+            prompt: The prompt to send to the API
             model_id: The model ID to use
-            temperature: The temperature to use for generation
+            temperature: The temperature to use
             max_tokens: The maximum number of tokens to generate
             
         Returns:
-            The response from the API
+            The API response
             
         Raises:
             BedrockError: If there is an error calling the API
@@ -252,52 +271,79 @@ class BedrockClient:
                 }
             }
         else:
-            # Default to a generic payload
-            payload = {
-                "prompt": prompt,
-                "max_tokens": max_tokens,
-                "temperature": temperature
-            }
+            raise BedrockError(f"Unsupported model provider: {model_provider}")
         
-        # Create the URL for the API call
+        # Convert the payload to JSON
+        payload_json = json.dumps(payload)
+        
+        # Create the URL
         url = f"https://bedrock-runtime.{self.region_name}.amazonaws.com/model/{model_id}/invoke"
         
-        # Create the headers with AWS SigV4 authentication
-        headers = self._get_auth_headers(url, json.dumps(payload))
+        # Get the authentication headers
+        headers = self._get_auth_headers(url, payload_json)
         
         try:
             # Make the API call
+            self.logger.debug(f"Calling Bedrock API with model {model_id}")
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, headers=headers, data=json.dumps(payload)) as response:
+                async with session.post(
+                    url,
+                    headers=headers,
+                    data=payload_json,
+                    timeout=30
+                ) as response:
                     # Check for errors
                     if response.status != 200:
                         error_text = await response.text()
-                        raise BedrockError(f"API error ({response.status}): {error_text}")
+                        self.logger.error(f"Bedrock API error: {response.status} - {error_text}")
+                        raise BedrockError(
+                            f"Bedrock API error: {response.status} - {error_text}",
+                            error_type=BedrockError.MODEL_ERROR
+                        )
                     
                     # Parse the response
-                    response_bytes = await response.read()
-                    response_data = json.loads(response_bytes.decode('utf-8'))
+                    response_data = json.loads(await response.read())
+                    
+                    # Extract the completion based on the model provider
+                    if model_provider == "anthropic":
+                        return response_data
+                    elif model_provider == "amazon":
+                        # For Amazon models, the response is in a different format
+                        return {
+                            "completion": response_data.get("results", [{}])[0].get("outputText", ""),
+                            "stop_reason": response_data.get("results", [{}])[0].get("completionReason", ""),
+                            "usage": {
+                                "input_tokens": response_data.get("inputTextTokenCount", 0),
+                                "output_tokens": response_data.get("results", [{}])[0].get("tokenCount", 0)
+                            }
+                        }
+                    
                     return response_data
                     
         except aiohttp.ClientError as e:
-            # Handle connection errors
-            raise BedrockError(f"Connection error: {e}", BedrockError.CONNECTION_ERROR)
-            
-        except asyncio.TimeoutError as e:
-            # Handle timeout errors
-            raise BedrockError(f"Request timed out: {e}", BedrockError.TIMEOUT_ERROR)
-            
+            self.logger.error(f"Connection error calling Bedrock API: {str(e)}")
+            raise BedrockError(
+                f"Connection error calling Bedrock API: {str(e)}",
+                error_type=BedrockError.CONNECTION_ERROR
+            )
+        except asyncio.TimeoutError:
+            self.logger.error("Timeout calling Bedrock API")
+            raise BedrockError(
+                "Timeout calling Bedrock API",
+                error_type=BedrockError.TIMEOUT_ERROR
+            )
         except json.JSONDecodeError as e:
-            # Handle JSON parsing errors
-            raise BedrockError(f"Error parsing response: {e}")
-            
-        except BedrockError:
-            # Re-raise BedrockError
-            raise
-            
+            self.logger.error(f"Error parsing Bedrock API response: {str(e)}")
+            raise BedrockError(
+                f"Error parsing Bedrock API response: {str(e)}",
+                error_type=BedrockError.CONTENT_ERROR
+            )
         except Exception as e:
-            # Handle other errors
-            raise BedrockError(f"Unexpected error: {e}")
+            self.logger.error(f"Unexpected error calling Bedrock API: {str(e)}")
+            raise BedrockError(
+                f"Unexpected error calling Bedrock API: {str(e)}",
+                error_type=BedrockError.UNKNOWN_ERROR
+            )
     
     def _get_auth_headers(self, url: str, body: str) -> Dict[str, str]:
         """
@@ -336,9 +382,10 @@ class BedrockClient:
         Returns:
             A prompt string
         """
-        # Create a prompt in the Claude format
-        return "Human: You are a helpful bilingual dog companion in a Japanese train station.\n" + \
-               f'The player has asked: "{request.player_input}"\n\n' + \
-               "Your role is to assist the player with language help, directions, and cultural information.\n" + \
-               "Provide a helpful, concise response in English.\n\n" + \
-               "Assistant:"
+        # Create a simple prompt format that works well with Amazon models
+        return (
+            "You are a helpful bilingual dog companion in a Japanese train station. "
+            f"The player has asked: \"{request.player_input}\" "
+            "Your role is to assist the player with language help, directions, and cultural information. "
+            "Provide a helpful, concise response in English."
+        )
