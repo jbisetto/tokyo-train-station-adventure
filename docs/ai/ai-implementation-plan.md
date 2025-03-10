@@ -88,11 +88,17 @@ For the MVP phase, we propose leveraging Ollama running DeepSeek 7B locally to s
 
 ```mermaid
 flowchart LR
-    Frontend["Game Frontend\n(Phaser.js)"] <--> GameLogic["Game Logic\n(Python)"]
-    GameLogic <--> LocalOllama["Local Ollama\nDeepSeek 7B"]
-    Frontend <--> UI["User Interface\nComponents"]
-    GameLogic <--> RuleBased["Rule-Based\nFallbacks"]
-    RuleBased --> ModelOpt["Model Context\nOptimization"]
+    Frontend["Game Frontend
+    (Phaser.js)"] <--> GameLogic["Game Logic
+    (Python)"]
+    GameLogic <--> LocalOllama["Local Ollama
+    DeepSeek 7B"]
+    Frontend <--> UI["User Interface
+    Components"]
+    GameLogic <--> RuleBased["Rule-Based
+    Fallbacks"]
+    RuleBased --> ModelOpt["Model Context
+    Optimization"]
     LocalOllama <--> ModelOpt
 ```
 
@@ -102,11 +108,17 @@ As the product matures and user base grows, we'll transition to a hybrid archite
 
 ```mermaid
 flowchart LR
-    Frontend["Game Frontend\n(Phaser.js)"] <--> GameLogic["Game Logic\n(Python)"]
-    GameLogic <--> AIServices["AI Services\n(Bedrock API)"]
-    Frontend <--> UI["User Interface\nComponents"]
-    GameLogic <--> LocalModels["Local Models\n& Rule Systems"]
-    LocalModels --> TokenOpt["Token Usage\nOptimization"]
+    Frontend["Game Frontend
+    (Phaser.js)"] <--> GameLogic["Game Logic
+    (Python)"]
+    GameLogic <--> AIServices["AI Services
+    (Bedrock API)"]
+    Frontend <--> UI["User Interface
+    Components"]
+    GameLogic <--> LocalModels["Local Models
+    & Rule Systems"]
+    LocalModels --> TokenOpt["Token Usage
+    Optimization"]
     AIServices <--> TokenOpt
 ```
 
@@ -214,39 +226,3 @@ bar
 | Cohere Embed | 10-15 calls per play session | Embedding dimensions, frequency | Batch processing, local storage |
 | AI21 Jurassic-2 | 2-3 calls per play session | Token count | Template hybridization |
 | Stable Diffusion XL | Limited to key moments | Generation complexity | Pre-generate common expressions |
-
-### Monthly Projection (1,000 Active Users)
-- **MVP with Ollama**: $0-50/month (server costs only)
-- **Hybrid Approach**: $100-200/month (reduced Bedrock usage)
-- **Full Cloud Approach**: $250-400/month
-- **Potential savings from local-first strategy**: 60-75%
-
-## Conclusion
-
-This implementation plan balances sophisticated AI capabilities with highly cost-effective approaches. By leveraging a local-first strategy with Ollama and DeepSeek 7B for the MVP, we can deliver an engaging language learning experience with virtually zero AI API costs during the critical initial development and testing phases.
-
-As the product matures, the hybrid approach gives us flexibility to selectively incorporate Amazon Bedrock services where they add significant value, while maintaining the efficiency of local processing for routine interactions.
-
-This strategy provides several key advantages:
-- **Cost Control**: Predictable, minimal costs during development and early adoption
-- **Technical Flexibility**: Ability to fine-tune models for our specific Japanese language learning domain
-- **Risk Mitigation**: We can validate core game mechanics before committing to cloud AI services
-- **Performance Tuning**: Direct control over inference parameters and optimization
-- **Scalability**: Clear path to incorporate more powerful cloud models as user base grows
-
-## Next Steps
-
-1. Set up Ollama environment with DeepSeek 7B for development
-2. Create benchmarking suite to compare DeepSeek 7B performance against Bedrock models
-3. Develop proof-of-concept for key AI interactions using local model
-4. Design adapter layer to make switching between local and cloud models seamless
-5. Establish performance metrics to determine which interactions require cloud models
-6. Create cost/performance dashboard for hybrid deployment monitoring
-
-### DeepSeek 7B Integration Specifics
-
-- **Model Deployment**: Configure Ollama with appropriate context window and parameters
-- **Prompt Engineering**: Develop specialized prompts optimized for DeepSeek 7B capabilities
-- **Japanese Language Support**: Test and benchmark DeepSeek's multilingual capabilities for Japanese
-- **Fine-tuning Strategy**: Prepare dataset of expected interactions for potential fine-tuning
-- **Fallback Mechanisms**: Develop robust error handling for cases where local model underperforms
