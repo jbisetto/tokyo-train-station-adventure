@@ -13,6 +13,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
 
+from backend.ai.companion.config import get_config
+
 # Set up logging
 logger = logging.getLogger(__name__)
 
@@ -21,11 +23,11 @@ class UsageQuota:
     
     def __init__(
         self,
-        daily_token_limit: int = 100000,
-        hourly_request_limit: int = 100,
-        monthly_cost_limit: float = 50.0,
-        cost_per_1k_input_tokens: Dict[str, float] = None,
-        cost_per_1k_output_tokens: Dict[str, float] = None
+        daily_token_limit: Optional[int] = None,
+        hourly_request_limit: Optional[int] = None,
+        monthly_cost_limit: Optional[float] = None,
+        cost_per_1k_input_tokens: Optional[Dict[str, float]] = None,
+        cost_per_1k_output_tokens: Optional[Dict[str, float]] = None
     ):
         """
         Initialize usage quota configuration.
@@ -37,27 +39,33 @@ class UsageQuota:
             cost_per_1k_input_tokens: Cost per 1000 input tokens by model
             cost_per_1k_output_tokens: Cost per 1000 output tokens by model
         """
-        self.daily_token_limit = daily_token_limit
-        self.hourly_request_limit = hourly_request_limit
-        self.monthly_cost_limit = monthly_cost_limit
+        # Load values from configuration, with fallbacks to parameters or defaults
+        self.daily_token_limit = daily_token_limit or get_config("tier3.usage_tracker.daily_token_limit", 100000)
+        self.hourly_request_limit = hourly_request_limit or get_config("tier3.usage_tracker.hourly_request_limit", 100)
+        self.monthly_cost_limit = monthly_cost_limit or get_config("tier3.usage_tracker.monthly_cost_limit", 50.0)
         
-        # Default pricing for Amazon Bedrock models (as of 2023)
-        # These are approximate and should be updated with actual pricing
-        self.cost_per_1k_input_tokens = cost_per_1k_input_tokens or {
-            "amazon.nova-micro-v1:0": 0.0003,
-            "amazon.titan-text-express-v1": 0.0008,
-            "anthropic.claude-3-sonnet-20240229-v1:0": 0.003,
-            "anthropic.claude-3-haiku-20240307-v1:0": 0.00025,
-            "default": 0.001  # Default fallback price
-        }
+        # Load pricing information from configuration
+        self.cost_per_1k_input_tokens = cost_per_1k_input_tokens or get_config(
+            "tier3.usage_tracker.cost_per_1k_input_tokens",
+            {
+                "amazon.nova-micro-v1:0": 0.0003,
+                "amazon.titan-text-express-v1": 0.0008,
+                "anthropic.claude-3-sonnet-20240229-v1:0": 0.003,
+                "anthropic.claude-3-haiku-20240307-v1:0": 0.00025,
+                "default": 0.001  # Default fallback price
+            }
+        )
         
-        self.cost_per_1k_output_tokens = cost_per_1k_output_tokens or {
-            "amazon.nova-micro-v1:0": 0.0006,
-            "amazon.titan-text-express-v1": 0.0016,
-            "anthropic.claude-3-sonnet-20240229-v1:0": 0.015,
-            "anthropic.claude-3-haiku-20240307-v1:0": 0.00125,
-            "default": 0.002  # Default fallback price
-        }
+        self.cost_per_1k_output_tokens = cost_per_1k_output_tokens or get_config(
+            "tier3.usage_tracker.cost_per_1k_output_tokens",
+            {
+                "amazon.nova-micro-v1:0": 0.0006,
+                "amazon.titan-text-express-v1": 0.0016,
+                "anthropic.claude-3-sonnet-20240229-v1:0": 0.015,
+                "anthropic.claude-3-haiku-20240307-v1:0": 0.00125,
+                "default": 0.002  # Default fallback price
+            }
+        )
 
 
 class UsageRecord:
@@ -131,7 +139,7 @@ class UsageTracker:
         self,
         quota: UsageQuota = None,
         storage_path: Optional[str] = None,
-        auto_save: bool = True
+        auto_save: Optional[bool] = None
     ):
         """
         Initialize the usage tracker.
@@ -142,13 +150,13 @@ class UsageTracker:
             auto_save: Whether to automatically save usage data
         """
         self.quota = quota or UsageQuota()
-        self.storage_path = storage_path
-        self.auto_save = auto_save
+        self.storage_path = storage_path or get_config("tier3.usage_tracker.storage_path", "data/usage/bedrock_usage.json")
+        self.auto_save = auto_save if auto_save is not None else get_config("tier3.usage_tracker.auto_save", True)
         self.records: List[UsageRecord] = []
         self.lock = asyncio.Lock()
         
         # Load existing records if storage path is provided
-        if storage_path:
+        if self.storage_path:
             self._load_records()
     
     async def track_usage(
@@ -475,8 +483,8 @@ class UsageTracker:
 
 # Create a global instance for convenience
 default_tracker = UsageTracker(
-    storage_path="data/usage/bedrock_usage.json",
-    auto_save=True
+    storage_path=get_config("tier3.usage_tracker.storage_path", "data/usage/bedrock_usage.json"),
+    auto_save=get_config("tier3.usage_tracker.auto_save", True)
 )
 
 
