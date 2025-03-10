@@ -14,6 +14,7 @@ from backend.ai.companion.core.processor_framework import Processor, ProcessorFa
 from backend.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
 from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
 from backend.ai.companion.tier2.response_parser import ResponseParser
+from backend.ai.companion.utils.monitoring import ProcessorMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class Tier2Processor(Processor):
         self.ollama_client = OllamaClient()
         self.prompt_engineering = PromptEngineering()
         self.response_parser = ResponseParser()
+        self.monitor = ProcessorMonitor()
         logger.debug("Initialized Tier2Processor")
     
     async def process(self, request: ClassifiedRequest) -> str:
@@ -51,35 +53,55 @@ class Tier2Processor(Processor):
             The generated response
         """
         logger.info(f"Processing request {request.request_id} with Tier 2 processor")
+        self.monitor.track_request("tier2", request.request_id)
         
-        # Select the appropriate model based on complexity
-        model = self._select_model(request.complexity)
+        start_time = time.time()
+        success = False
         
-        # Create a prompt using the prompt engineering module
-        prompt = self.prompt_engineering.create_prompt(request)
-        
-        # Try to generate a response with retries for transient errors
-        response, error = await self._generate_with_retries(request, model, prompt)
-        
-        # If we got a response, return it
-        if response:
-            return response
-        
-        # If we got a model-related error, try with a simpler model
-        if error and error.is_model_related() and model != "llama3":
-            logger.warning(f"Model-related error with {model}, falling back to simpler model")
-            fallback_model = "llama3"
-            response, error = await self._generate_with_retries(request, fallback_model, prompt)
+        try:
+            # Select the appropriate model based on complexity
+            model = self._select_model(request.complexity)
             
-            # If we got a response with the fallback model, return it
+            # Create a prompt using the prompt engineering module
+            prompt = self.prompt_engineering.create_prompt(request)
+            
+            # Try to generate a response with retries for transient errors
+            response, error = await self._generate_with_retries(request, model, prompt)
+            
+            # If we got a response, return it
             if response:
+                success = True
                 return response
-        
-        # If we still don't have a response, return a fallback response
-        if error:
-            return self._generate_fallback_response(request, error)
-        else:
-            return self._generate_fallback_response(request, "Unknown error")
+            
+            # If we got a model-related error, try with a simpler model
+            if error and error.is_model_related() and model != "llama3":
+                logger.warning(f"Model-related error with {model}, falling back to simpler model")
+                self.monitor.track_fallback("tier2", "simpler_model")
+                
+                fallback_model = "llama3"
+                response, error = await self._generate_with_retries(request, fallback_model, prompt)
+                
+                # If we got a response with the fallback model, return it
+                if response:
+                    success = True
+                    return response
+            
+            # If we still don't have a response, return a fallback response
+            if error:
+                return self._generate_fallback_response(request, error)
+            else:
+                return self._generate_fallback_response(request, "Unknown error")
+        finally:
+            # Track response time and success
+            end_time = time.time()
+            response_time_ms = (end_time - start_time) * 1000
+            self.monitor.track_response_time("tier2", response_time_ms)
+            self.monitor.track_success("tier2", success)
+            
+            # Log metrics summary periodically (every 100 requests)
+            if self.monitor.get_metrics()['requests'].get('tier2', 0) % 100 == 0:
+                self.monitor.log_metrics_summary()
+                self.monitor.save_metrics()
     
     async def _generate_with_retries(
         self, 
@@ -131,11 +153,19 @@ class Tier2Processor(Processor):
                 logger.error(f"Error generating response: {e}")
                 last_error = e
                 
+                # Track the error
+                error_type = e.error_type if hasattr(e, 'error_type') else "unknown_error"
+                self.monitor.track_error("tier2", error_type, str(e))
+                
                 # If the error is transient and we haven't exceeded the maximum retries,
                 # wait and try again
                 if e.is_transient() and retries < self.MAX_RETRIES:
                     retry_delay = self.RETRY_DELAYS[retries]
                     logger.info(f"Transient error, retrying in {retry_delay} seconds")
+                    
+                    # Track the retry
+                    self.monitor.track_retry("tier2", retries + 1)
+                    
                     time.sleep(retry_delay)
                     retries += 1
                 else:
@@ -145,6 +175,10 @@ class Tier2Processor(Processor):
             except Exception as e:
                 logger.error(f"Unexpected error: {e}")
                 last_error = OllamaError(str(e))
+                
+                # Track the error
+                self.monitor.track_error("tier2", "unexpected_error", str(e))
+                
                 break
         
         return None, last_error
@@ -183,6 +217,7 @@ class Tier2Processor(Processor):
         # If we should fall back to Tier 1, use the Tier 1 processor
         if should_fallback_to_tier1:
             logger.info(f"Falling back to Tier 1 processor for request {request.request_id}")
+            self.monitor.track_fallback("tier2", "tier1")
             
             # Create a modified request with Tier 1 as the processing tier
             tier1_request = ClassifiedRequest(
@@ -200,12 +235,32 @@ class Tier2Processor(Processor):
             # Get the Tier 1 processor and process the request
             tier1_processor = self._get_tier1_processor()
             try:
-                return tier1_processor.process(tier1_request)
+                # Track the request to Tier 1
+                self.monitor.track_request("tier1", request.request_id)
+                
+                start_time = time.time()
+                response = tier1_processor.process(tier1_request)
+                
+                # Track response time and success for Tier 1
+                end_time = time.time()
+                response_time_ms = (end_time - start_time) * 1000
+                self.monitor.track_response_time("tier1", response_time_ms)
+                self.monitor.track_success("tier1", True)
+                
+                return response
             except Exception as e:
                 logger.error(f"Error in Tier 1 fallback: {str(e)}")
+                
+                # Track the error and failure for Tier 1
+                self.monitor.track_error("tier1", "fallback_error", str(e))
+                self.monitor.track_success("tier1", False)
+                
                 # If Tier 1 also fails, continue to the default fallback responses
         
         # If we shouldn't fall back to Tier 1 or Tier 1 failed, use the default fallback responses
+        # Track the fallback to default response
+        self.monitor.track_fallback("tier2", "default_response")
+        
         # If the error is an OllamaError, use its error type to generate a more specific response
         if isinstance(error, OllamaError):
             if error.error_type == OllamaError.CONNECTION_ERROR:
