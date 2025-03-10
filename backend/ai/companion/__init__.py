@@ -11,6 +11,7 @@ __version__ = "0.1.0"
 # These imports will be uncommented as we implement each component
 from backend.ai.companion.core.request_handler import RequestHandler
 from backend.ai.companion.core.intent_classifier import IntentClassifier
+from backend.ai.companion.core.processor_framework import ProcessorFactory
 # from backend.ai.companion.core.response_formatter import ResponseFormatter
 
 # Main entry point function
