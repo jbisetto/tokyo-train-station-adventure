@@ -16,6 +16,7 @@ from botocore.awsrequest import AWSRequest
 from botocore.credentials import Credentials
 
 from backend.ai.companion.core.models import CompanionRequest
+from backend.ai.companion.tier3.prompt_optimizer import create_optimized_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,9 @@ class BedrockClient:
         
         # Create a prompt if one wasn't provided
         if prompt is None:
-            prompt = self._create_prompt(request)
+            # Use the prompt optimizer to create a cost-effective prompt
+            prompt = create_optimized_prompt(request, max_tokens=max(200, max_tokens // 5))
+            self.logger.debug(f"Created optimized prompt with {len(prompt)} characters")
             
         try:
             # Call the API
@@ -180,6 +183,14 @@ class BedrockClient:
                     response.get("generated_text", "") or
                     response.get("output", "") or
                     str(response)
+                )
+                
+            # Log token usage if available
+            if "usage" in response:
+                self.logger.info(
+                    f"Token usage for request {request.request_id}: "
+                    f"Input={response['usage'].get('input_tokens', 'N/A')}, "
+                    f"Output={response['usage'].get('output_tokens', 'N/A')}"
                 )
                 
             self.logger.info(f"Generated {len(completion)} characters for request {request.request_id}")
