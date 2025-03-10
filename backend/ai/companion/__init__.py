@@ -12,19 +12,24 @@ __version__ = "0.1.0"
 from backend.ai.companion.core.request_handler import RequestHandler
 from backend.ai.companion.core.intent_classifier import IntentClassifier
 from backend.ai.companion.core.processor_framework import ProcessorFactory
-# from backend.ai.companion.core.response_formatter import ResponseFormatter
+from backend.ai.companion.core.response_formatter import ResponseFormatter
 
-# Main entry point function
+# Main function to process companion requests
 def process_companion_request(request_data, game_context=None):
     """
     Process a request to the companion AI.
     
     Args:
-        request_data (dict): The request data from the player
-        game_context (dict, optional): The current game context
+        request_data: Dictionary containing the request data
+        game_context: Optional game context information
         
     Returns:
-        dict: The companion's response
+        Dictionary containing the companion's response
     """
-    # This function will be implemented as we build the components
-    pass 
+    # Create a request handler
+    handler = RequestHandler()
+    
+    # Process the request
+    response = handler.process_request(request_data, game_context)
+    
+    return response 
