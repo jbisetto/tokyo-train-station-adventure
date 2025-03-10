@@ -9,8 +9,8 @@ import logging
 import time
 from typing import Dict, Any, Optional, List, Tuple
 
-from backend.ai.companion.core.models import ClassifiedRequest, ComplexityLevel
-from backend.ai.companion.core.processor_framework import Processor
+from backend.ai.companion.core.models import ClassifiedRequest, ComplexityLevel, ProcessingTier
+from backend.ai.companion.core.processor_framework import Processor, ProcessorFactory
 from backend.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
 from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
 from backend.ai.companion.tier2.response_parser import ResponseParser
@@ -177,6 +177,35 @@ class Tier2Processor(Processor):
         """
         logger.debug(f"Generating fallback response for request {request.request_id}")
         
+        # Determine if we should fall back to Tier 1
+        should_fallback_to_tier1 = self._should_fallback_to_tier1(error)
+        
+        # If we should fall back to Tier 1, use the Tier 1 processor
+        if should_fallback_to_tier1:
+            logger.info(f"Falling back to Tier 1 processor for request {request.request_id}")
+            
+            # Create a modified request with Tier 1 as the processing tier
+            tier1_request = ClassifiedRequest(
+                request_id=request.request_id,
+                player_input=request.player_input,
+                request_type=request.request_type,
+                timestamp=request.timestamp,
+                intent=request.intent,
+                complexity=ComplexityLevel.SIMPLE,  # Force simple complexity for Tier 1
+                processing_tier=ProcessingTier.TIER_1,
+                confidence=request.confidence,
+                extracted_entities=request.extracted_entities
+            )
+            
+            # Get the Tier 1 processor and process the request
+            tier1_processor = self._get_tier1_processor()
+            try:
+                return tier1_processor.process(tier1_request)
+            except Exception as e:
+                logger.error(f"Error in Tier 1 fallback: {str(e)}")
+                # If Tier 1 also fails, continue to the default fallback responses
+        
+        # If we shouldn't fall back to Tier 1 or Tier 1 failed, use the default fallback responses
         # If the error is an OllamaError, use its error type to generate a more specific response
         if isinstance(error, OllamaError):
             if error.error_type == OllamaError.CONNECTION_ERROR:
@@ -209,4 +238,49 @@ class Tier2Processor(Processor):
         return (
             "I'm sorry, I'm having trouble processing your request at the moment. "
             "Could you try rephrasing your question or asking something else?"
-        ) 
+        )
+    
+    def _should_fallback_to_tier1(self, error: Any) -> bool:
+        """
+        Determine if we should fall back to Tier 1 based on the error.
+        
+        Args:
+            error: The error that occurred
+            
+        Returns:
+            True if we should fall back to Tier 1, False otherwise
+        """
+        # Fall back to Tier 1 for certain error types
+        if isinstance(error, OllamaError):
+            # For connection, timeout, or memory errors, Tier 1 is a good fallback
+            # since these are issues with the LLM service, not the request itself
+            if error.error_type in [
+                OllamaError.CONNECTION_ERROR,
+                OllamaError.TIMEOUT_ERROR,
+                OllamaError.MEMORY_ERROR
+            ]:
+                return True
+                
+            # For model errors, we might want to fall back to Tier 1 if we've already
+            # tried a simpler model and it still failed
+            if error.error_type == OllamaError.MODEL_ERROR:
+                return True
+                
+            # For content errors, we probably don't want to fall back to Tier 1
+            # since the request itself might be problematic
+            if error.error_type == OllamaError.CONTENT_ERROR:
+                return False
+        
+        # For unknown errors, fall back to Tier 1 as a safe option
+        return True
+    
+    def _get_tier1_processor(self):
+        """
+        Get the Tier 1 processor.
+        
+        Returns:
+            The Tier 1 processor
+        """
+        # Use the processor factory to get the Tier 1 processor
+        processor_factory = ProcessorFactory()
+        return processor_factory.get_processor(ProcessingTier.TIER_1) 
