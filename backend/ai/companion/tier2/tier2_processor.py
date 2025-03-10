@@ -15,6 +15,7 @@ from backend.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
 from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
 from backend.ai.companion.tier2.response_parser import ResponseParser
 from backend.ai.companion.utils.monitoring import ProcessorMonitor
+from backend.ai.companion.utils.retry import RetryConfig, retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -28,18 +29,28 @@ class Tier2Processor(Processor):
     of the request and handles errors gracefully.
     """
     
-    # Maximum number of retries for transient errors
-    MAX_RETRIES = 3
+    # Default retry configuration
+    DEFAULT_RETRY_CONFIG = RetryConfig(
+        max_retries=3,
+        base_delay=1.0,
+        max_delay=10.0,
+        backoff_factor=3.0,
+        jitter=True,
+        jitter_factor=0.2
+    )
     
-    # Delay between retries in seconds (exponential backoff)
-    RETRY_DELAYS = [1, 3, 9]
-    
-    def __init__(self):
-        """Initialize the Tier 2 processor."""
+    def __init__(self, retry_config: Optional[RetryConfig] = None):
+        """
+        Initialize the Tier 2 processor.
+        
+        Args:
+            retry_config: Configuration for retry behavior (optional)
+        """
         self.ollama_client = OllamaClient()
         self.prompt_engineering = PromptEngineering()
         self.response_parser = ResponseParser()
         self.monitor = ProcessorMonitor()
+        self.retry_config = retry_config or self.DEFAULT_RETRY_CONFIG
         logger.debug("Initialized Tier2Processor")
     
     async def process(self, request: ClassifiedRequest) -> str:
@@ -122,11 +133,20 @@ class Tier2Processor(Processor):
             (or None if generation failed) and error is the last error encountered
             (or None if generation succeeded)
         """
-        retries = 0
-        last_error = None
+        # Create a retry configuration that only retries on transient errors
+        retry_config = RetryConfig(
+            max_retries=self.retry_config.max_retries,
+            base_delay=self.retry_config.base_delay,
+            max_delay=self.retry_config.max_delay,
+            backoff_factor=self.retry_config.backoff_factor,
+            jitter=self.retry_config.jitter,
+            jitter_factor=self.retry_config.jitter_factor,
+            retry_on=lambda e: isinstance(e, OllamaError) and e.is_transient()
+        )
         
-        while retries <= self.MAX_RETRIES:
-            try:
+        try:
+            # Use the retry_async utility to handle retries
+            async def generate_and_parse():
                 # Generate a response using the Ollama client
                 raw_response = await self.ollama_client.generate(
                     request=request,
@@ -146,42 +166,39 @@ class Tier2Processor(Processor):
                     add_learning_cues=True
                 )
                 
-                logger.debug(f"Generated response for request {request.request_id}")
-                return parsed_response, None
-                
-            except OllamaError as e:
-                logger.error(f"Error generating response: {e}")
-                last_error = e
-                
-                # Track the error
-                error_type = e.error_type if hasattr(e, 'error_type') else "unknown_error"
-                self.monitor.track_error("tier2", error_type, str(e))
-                
-                # If the error is transient and we haven't exceeded the maximum retries,
-                # wait and try again
-                if e.is_transient() and retries < self.MAX_RETRIES:
-                    retry_delay = self.RETRY_DELAYS[retries]
-                    logger.info(f"Transient error, retrying in {retry_delay} seconds")
-                    
-                    # Track the retry
-                    self.monitor.track_retry("tier2", retries + 1)
-                    
-                    time.sleep(retry_delay)
-                    retries += 1
-                else:
-                    # Non-transient error or maximum retries exceeded
-                    break
-                    
-            except Exception as e:
-                logger.error(f"Unexpected error: {e}")
-                last_error = OllamaError(str(e))
-                
-                # Track the error
-                self.monitor.track_error("tier2", "unexpected_error", str(e))
-                
-                break
-        
-        return None, last_error
+                return parsed_response
+            
+            # Attempt to generate a response with retries
+            response = await retry_async(
+                generate_and_parse,
+                config=retry_config
+            )
+            
+            # Track successful retries
+            logger.debug(f"Generated response for request {request.request_id}")
+            return response, None
+            
+        except OllamaError as e:
+            # Track the error
+            error_type = e.error_type if hasattr(e, 'error_type') else "unknown_error"
+            self.monitor.track_error("tier2", error_type, str(e))
+            
+            # Log the error
+            logger.error(f"Error generating response after retries: {e}")
+            
+            # Return the error
+            return None, e
+            
+        except Exception as e:
+            # Track unexpected errors
+            self.monitor.track_error("tier2", "unexpected_error", str(e))
+            
+            # Log the error
+            logger.error(f"Unexpected error: {e}")
+            
+            # Convert to OllamaError and return
+            error = OllamaError(str(e))
+            return None, error
     
     def _select_model(self, complexity: ComplexityLevel) -> str:
         """

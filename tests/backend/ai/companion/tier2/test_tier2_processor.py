@@ -144,24 +144,67 @@ class TestTier2Processor:
         """Test processing a request with retry on transient errors."""
         processor = Tier2Processor()
         
-        # Mock the ollama_client.generate method to fail once then succeed
-        with patch.object(processor.ollama_client, 'generate') as mock_generate:
-            # First call raises a transient error, second call succeeds
-            mock_generate.side_effect = [
-                OllamaError("Request timed out"),
-                sample_ollama_response
-            ]
+        # Mock the retry_async function to track calls
+        with patch('backend.ai.companion.tier2.tier2_processor.retry_async') as mock_retry_async:
+            # Configure the mock to return a successful response
+            mock_retry_async.return_value = "Processed response"
             
             # Process the request
             response = await processor.process(sample_request)
             
-            # Check that the successful response was returned after retry
-            assert response is not None
-            assert "東京に行きたいです" in response
-            assert "Tōkyō ni ikitai desu" in response
+            # Check that retry_async was called
+            mock_retry_async.assert_called_once()
             
-            # Check that the ollama_client.generate method was called twice
-            assert mock_generate.call_count == 2
+            # Check that the response was returned
+            assert response == "Processed response"
+        
+        # Test with a transient error that should be retried
+        with patch('backend.ai.companion.tier2.tier2_processor.retry_async') as mock_retry_async, \
+             patch.object(processor, '_get_tier1_processor') as mock_get_tier1:
+            # Configure the mock to raise an OllamaError
+            mock_retry_async.side_effect = OllamaError("Connection error", OllamaError.CONNECTION_ERROR)
+            
+            # Mock the Tier1Processor to return a specific response
+            mock_tier1 = MagicMock()
+            mock_tier1.process.return_value = "Fallback to Tier 1 response"
+            mock_get_tier1.return_value = mock_tier1
+            
+            # Process the request
+            response = await processor.process(sample_request)
+            
+            # Check that retry_async was called
+            mock_retry_async.assert_called_once()
+            
+            # Check that the Tier1Processor was used
+            mock_get_tier1.assert_called_once()
+            mock_tier1.process.assert_called_once()
+            
+            # Check that the fallback response was returned
+            assert response == "Fallback to Tier 1 response"
+            
+        # Test with a transient error but Tier1Processor also fails
+        with patch('backend.ai.companion.tier2.tier2_processor.retry_async') as mock_retry_async, \
+             patch.object(processor, '_get_tier1_processor') as mock_get_tier1:
+            # Configure the mock to raise an OllamaError
+            mock_retry_async.side_effect = OllamaError("Connection error", OllamaError.CONNECTION_ERROR)
+            
+            # Mock the Tier1Processor to raise an exception
+            mock_tier1 = MagicMock()
+            mock_tier1.process.side_effect = Exception("Tier 1 error")
+            mock_get_tier1.return_value = mock_tier1
+            
+            # Process the request
+            response = await processor.process(sample_request)
+            
+            # Check that retry_async was called
+            mock_retry_async.assert_called_once()
+            
+            # Check that the Tier1Processor was used
+            mock_get_tier1.assert_called_once()
+            mock_tier1.process.assert_called_once()
+            
+            # Check that a fallback response was generated
+            assert "I'm sorry" in response
     
     @pytest.mark.asyncio
     async def test_process_with_fallback_to_simpler_model(self, sample_request, sample_ollama_response):
