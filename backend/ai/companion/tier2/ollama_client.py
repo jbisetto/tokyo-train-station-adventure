@@ -23,7 +23,80 @@ logger = logging.getLogger(__name__)
 
 class OllamaError(Exception):
     """Exception raised for errors in the Ollama API."""
-    pass
+    
+    # Error type constants
+    CONNECTION_ERROR = "connection_error"
+    MODEL_ERROR = "model_error"
+    TIMEOUT_ERROR = "timeout_error"
+    CONTENT_ERROR = "content_error"
+    MEMORY_ERROR = "memory_error"
+    UNKNOWN_ERROR = "unknown_error"
+    
+    def __init__(self, message: str, error_type: str = None):
+        """
+        Initialize the OllamaError.
+        
+        Args:
+            message: The error message
+            error_type: The type of error (one of the constants defined above)
+        """
+        super().__init__(message)
+        self.message = message
+        
+        # Determine error type from message if not provided
+        if error_type is None:
+            self.error_type = self._determine_error_type(message)
+        else:
+            self.error_type = error_type
+    
+    def _determine_error_type(self, message: str) -> str:
+        """
+        Determine the error type from the message.
+        
+        Args:
+            message: The error message
+            
+        Returns:
+            The error type
+        """
+        message_lower = message.lower()
+        
+        if any(term in message_lower for term in ["connect", "connection", "network", "unreachable", "refused"]):
+            return self.CONNECTION_ERROR
+        elif any(term in message_lower for term in ["model", "not found", "doesn't exist"]):
+            return self.MODEL_ERROR
+        elif any(term in message_lower for term in ["timeout", "timed out", "too long"]):
+            return self.TIMEOUT_ERROR
+        elif any(term in message_lower for term in ["content", "filter", "safety", "inappropriate"]):
+            return self.CONTENT_ERROR
+        elif any(term in message_lower for term in ["memory", "resources", "capacity"]):
+            return self.MEMORY_ERROR
+        else:
+            return self.UNKNOWN_ERROR
+    
+    def is_transient(self) -> bool:
+        """
+        Check if this error is likely transient and can be retried.
+        
+        Returns:
+            True if the error is transient, False otherwise
+        """
+        return self.error_type in [
+            self.CONNECTION_ERROR,
+            self.TIMEOUT_ERROR
+        ]
+    
+    def is_model_related(self) -> bool:
+        """
+        Check if this error is related to the model.
+        
+        Returns:
+            True if the error is model-related, False otherwise
+        """
+        return self.error_type in [
+            self.MODEL_ERROR,
+            self.MEMORY_ERROR
+        ]
 
 
 class OllamaClient:
@@ -174,6 +247,12 @@ class OllamaClient:
                     data = await response.json()
                     return [model["name"] for model in data.get("models", [])]
                     
+        except aiohttp.ClientConnectorError as e:
+            logger.error(f"Error connecting to Ollama: {e}")
+            raise OllamaError(f"Failed to connect to Ollama: {str(e)}", OllamaError.CONNECTION_ERROR)
+        except aiohttp.ClientTimeoutError as e:
+            logger.error(f"Timeout connecting to Ollama: {e}")
+            raise OllamaError(f"Request to Ollama timed out: {str(e)}", OllamaError.TIMEOUT_ERROR)
         except Exception as e:
             logger.error(f"Error getting available models from Ollama: {e}")
             raise OllamaError(f"Failed to get available models: {str(e)}")
@@ -214,14 +293,28 @@ class OllamaClient:
                     if response.status != 200:
                         error_data = await response.json()
                         error_msg = error_data.get("error", "Unknown error")
-                        raise OllamaError(f"Failed to generate response: {error_msg}")
+                        
+                        # Determine error type based on the error message
+                        if "not found" in error_msg.lower() or "doesn't exist" in error_msg.lower():
+                            raise OllamaError(f"Failed to generate response: {error_msg}", OllamaError.MODEL_ERROR)
+                        elif "memory" in error_msg.lower() or "resources" in error_msg.lower():
+                            raise OllamaError(f"Failed to generate response: {error_msg}", OllamaError.MEMORY_ERROR)
+                        else:
+                            raise OllamaError(f"Failed to generate response: {error_msg}")
                     
                     data = await response.json()
                     return data.get("response", "")
                     
         except aiohttp.ClientError as e:
             logger.error(f"Error calling Ollama API: {e}")
-            raise OllamaError(f"Failed to communicate with Ollama: {str(e)}")
+            
+            # Determine error type based on the exception
+            if isinstance(e, aiohttp.ClientConnectorError):
+                raise OllamaError(f"Failed to connect to Ollama: {str(e)}", OllamaError.CONNECTION_ERROR)
+            elif isinstance(e, aiohttp.ClientTimeoutError):
+                raise OllamaError(f"Request to Ollama timed out: {str(e)}", OllamaError.TIMEOUT_ERROR)
+            else:
+                raise OllamaError(f"Failed to communicate with Ollama: {str(e)}")
     
     def _check_cache(self, request_hash: str) -> Optional[str]:
         """

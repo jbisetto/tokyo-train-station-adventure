@@ -101,6 +101,105 @@ class TestTier2Processor:
             mock_generate.assert_called_once()
     
     @pytest.mark.asyncio
+    async def test_process_with_specific_error_types(self, sample_request):
+        """Test processing a request with different types of errors."""
+        from backend.ai.companion.tier2.tier2_processor import Tier2Processor
+        from backend.ai.companion.tier2.ollama_client import OllamaError
+        
+        processor = Tier2Processor()
+        
+        # Test with connection error
+        with patch.object(processor.ollama_client, 'generate') as mock_generate:
+            mock_generate.side_effect = OllamaError("Failed to connect to Ollama server")
+            
+            response = await processor.process(sample_request)
+            assert "connection issue" in response.lower()
+        
+        # Test with model not found error
+        with patch.object(processor.ollama_client, 'generate') as mock_generate:
+            mock_generate.side_effect = OllamaError("Model 'nonexistent' not found")
+            
+            response = await processor.process(sample_request)
+            assert "model" in response.lower()
+        
+        # Test with timeout error
+        with patch.object(processor.ollama_client, 'generate') as mock_generate:
+            mock_generate.side_effect = OllamaError("Request timed out")
+            
+            response = await processor.process(sample_request)
+            assert "taking too long" in response.lower()
+        
+        # Test with content filter error
+        with patch.object(processor.ollama_client, 'generate') as mock_generate:
+            mock_generate.side_effect = OllamaError("Content filtered due to safety concerns")
+            
+            response = await processor.process(sample_request)
+            assert "unable to provide" in response.lower()
+    
+    @pytest.mark.asyncio
+    async def test_process_with_retry(self, sample_request, sample_ollama_response):
+        """Test processing a request with retry on transient errors."""
+        from backend.ai.companion.tier2.tier2_processor import Tier2Processor
+        from backend.ai.companion.tier2.ollama_client import OllamaError
+        
+        processor = Tier2Processor()
+        
+        # Mock the ollama_client.generate method to fail once then succeed
+        with patch.object(processor.ollama_client, 'generate') as mock_generate:
+            # First call raises a transient error, second call succeeds
+            mock_generate.side_effect = [
+                OllamaError("Request timed out"),
+                sample_ollama_response
+            ]
+            
+            # Process the request
+            response = await processor.process(sample_request)
+            
+            # Check that the successful response was returned after retry
+            assert response is not None
+            assert "東京に行きたいです" in response
+            assert "Tōkyō ni ikitai desu" in response
+            
+            # Check that the ollama_client.generate method was called twice
+            assert mock_generate.call_count == 2
+    
+    @pytest.mark.asyncio
+    async def test_process_with_fallback_to_simpler_model(self, sample_request, sample_ollama_response):
+        """Test falling back to a simpler model when a complex model fails."""
+        from backend.ai.companion.tier2.tier2_processor import Tier2Processor
+        from backend.ai.companion.tier2.ollama_client import OllamaError
+        
+        # Set request to complex to trigger larger model selection
+        sample_request.complexity = ComplexityLevel.COMPLEX
+        
+        processor = Tier2Processor()
+        
+        # Mock the ollama_client.generate method to fail with the complex model but succeed with the simple one
+        with patch.object(processor.ollama_client, 'generate') as mock_generate:
+            # First call with complex model fails, second call with simple model succeeds
+            mock_generate.side_effect = [
+                OllamaError("Model too large for available memory"),
+                sample_ollama_response
+            ]
+            
+            # Process the request
+            response = await processor.process(sample_request)
+            
+            # Check that the successful response was returned after fallback
+            assert response is not None
+            assert "東京に行きたいです" in response
+            assert "Tōkyō ni ikitai desu" in response
+            
+            # Check that the ollama_client.generate method was called twice
+            assert mock_generate.call_count == 2
+            
+            # Check that the second call used the simpler model
+            args1, kwargs1 = mock_generate.call_args_list[0]
+            args2, kwargs2 = mock_generate.call_args_list[1]
+            assert kwargs1.get('model') == "llama3:16b"  # First call with complex model
+            assert kwargs2.get('model') == "llama3"      # Second call with simple model
+    
+    @pytest.mark.asyncio
     async def test_process_with_different_intent(self, sample_request):
         """Test processing a request with a different intent."""
         from backend.ai.companion.tier2.tier2_processor import Tier2Processor
