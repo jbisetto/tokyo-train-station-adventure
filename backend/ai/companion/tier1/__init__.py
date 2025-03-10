@@ -7,5 +7,6 @@ simple requests.
 """
 
 from backend.ai.companion.tier1.template_system import TemplateSystem
+from backend.ai.companion.tier1.pattern_matching import PatternMatcher
 
-__all__ = ['TemplateSystem'] 
+__all__ = ['TemplateSystem', 'PatternMatcher'] 
