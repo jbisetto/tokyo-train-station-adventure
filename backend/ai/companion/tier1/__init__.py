@@ -8,5 +8,18 @@ simple requests.
 
 from backend.ai.companion.tier1.template_system import TemplateSystem
 from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+from backend.ai.companion.tier1.decision_trees import (
+    DecisionTree,
+    DecisionTreeNavigator,
+    DecisionTreeManager,
+    DecisionTreeProcessor
+)
 
-__all__ = ['TemplateSystem', 'PatternMatcher'] 
+__all__ = [
+    'TemplateSystem',
+    'PatternMatcher',
+    'DecisionTree',
+    'DecisionTreeNavigator',
+    'DecisionTreeManager',
+    'DecisionTreeProcessor'
+] 
