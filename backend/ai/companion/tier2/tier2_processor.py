@@ -12,6 +12,7 @@ from backend.ai.companion.core.models import ClassifiedRequest, ComplexityLevel
 from backend.ai.companion.core.processor_framework import Processor
 from backend.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
 from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
+from backend.ai.companion.tier2.response_parser import ResponseParser
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class Tier2Processor(Processor):
         """Initialize the Tier 2 processor."""
         self.ollama_client = OllamaClient()
         self.prompt_engineering = PromptEngineering()
+        self.response_parser = ResponseParser()
         logger.debug("Initialized Tier2Processor")
     
     async def process(self, request: ClassifiedRequest) -> str:
@@ -51,15 +53,26 @@ class Tier2Processor(Processor):
             prompt = self.prompt_engineering.create_prompt(request)
             
             # Generate a response using the Ollama client
-            response = await self.ollama_client.generate(
+            raw_response = await self.ollama_client.generate(
                 request=request,
                 model=model,
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=500,
+                prompt=prompt
+            )
+            
+            # Parse and enhance the response
+            parsed_response = self.response_parser.parse_response(
+                raw_response=raw_response,
+                request=request,
+                format="markdown",
+                highlight_key_terms=True,
+                simplify=request.complexity == ComplexityLevel.SIMPLE,
+                add_learning_cues=True
             )
             
             logger.debug(f"Generated response for request {request.request_id}")
-            return response
+            return parsed_response
             
         except OllamaError as e:
             logger.error(f"Error generating response: {e}")
