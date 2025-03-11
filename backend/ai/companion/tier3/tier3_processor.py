@@ -17,11 +17,6 @@ from backend.ai.companion.core.models import (
 from backend.ai.companion.core.processor_framework import Processor
 from backend.ai.companion.tier3.bedrock_client import BedrockClient, BedrockError
 from backend.ai.companion.tier3.usage_tracker import UsageTracker, default_tracker
-from backend.ai.companion.tier3.specialized_handlers import (
-    SpecializedHandler,
-    SpecializedHandlerRegistry,
-    DefaultHandler
-)
 from backend.ai.companion.config import CLOUD_API_CONFIG
 
 
@@ -43,8 +38,7 @@ class Tier3Processor(Processor):
         """
         self.logger = logging.getLogger(__name__)
         self.client = self._create_bedrock_client(usage_tracker)
-        self.handler_registry = self._initialize_handler_registry()
-        self.logger.info("Tier 3 processor initialized with Bedrock client and specialized handlers")
+        self.logger.info("Tier 3 processor initialized with Bedrock client")
     
     def _create_bedrock_client(self, usage_tracker: Optional[UsageTracker] = None) -> BedrockClient:
         """
@@ -62,29 +56,6 @@ class Tier3Processor(Processor):
             max_tokens=CLOUD_API_CONFIG.get("max_tokens", 512),
             usage_tracker=usage_tracker or default_tracker
         )
-    
-    def _initialize_handler_registry(self) -> SpecializedHandlerRegistry:
-        """
-        Initialize the specialized handler registry.
-        
-        Returns:
-            A configured specialized handler registry
-        """
-        registry = SpecializedHandlerRegistry()
-        registry.initialize_default_handlers()
-        return registry
-    
-    def _get_handler_for_request(self, request: ClassifiedRequest) -> SpecializedHandler:
-        """
-        Get the appropriate specialized handler for the request.
-        
-        Args:
-            request: The classified request
-            
-        Returns:
-            A specialized handler for the request
-        """
-        return self.handler_registry.get_handler(request.intent)
     
     def process(self, request: ClassifiedRequest) -> str:
         """
@@ -143,45 +114,24 @@ class Tier3Processor(Processor):
         Raises:
             BedrockError: If there is an error generating the response
         """
-        # Get the appropriate specialized handler for the request
-        handler = self._get_handler_for_request(classified_request)
-        self.logger.info(f"Using {handler.__class__.__name__} for request {classified_request.request_id}")
+        # Create a custom prompt that includes the intent and entities
+        prompt = self._create_custom_prompt(classified_request)
         
-        # Use the specialized handler to handle the request
-        try:
-            # Set the bedrock client on the handler if it doesn't have one
-            if handler.bedrock_client is None:
-                handler.bedrock_client = self.client
-                
-            # Handle the request using the specialized handler
-            response = await handler.handle_request(classified_request)
-            return response
-            
-        except Exception as e:
-            self.logger.error(f"Error using specialized handler: {str(e)}")
-            self.logger.info("Falling back to default prompt generation")
-            
-            # Fall back to the default prompt generation if the specialized handler fails
-            prompt = self._create_custom_prompt(classified_request)
-            
-            # Generate a response using the Bedrock client
-            response = await self.client.generate(
-                request=companion_request,
-                model_id=CLOUD_API_CONFIG.get("model", "amazon.nova-micro-v1:0"),
-                temperature=CLOUD_API_CONFIG.get("temperature", 0.7),
-                max_tokens=CLOUD_API_CONFIG.get("max_tokens", 512),
-                prompt=prompt
-            )
-            
-            # Parse and clean the response
-            return self._parse_response(response)
+        # Generate a response using the Bedrock client
+        response = await self.client.generate(
+            request=companion_request,
+            model_id=CLOUD_API_CONFIG.get("model", "amazon.nova-micro-v1:0"),
+            temperature=CLOUD_API_CONFIG.get("temperature", 0.7),
+            max_tokens=CLOUD_API_CONFIG.get("max_tokens", 512),
+            prompt=prompt
+        )
+        
+        # Parse and clean the response
+        return self._parse_response(response)
     
     def _create_custom_prompt(self, request: ClassifiedRequest) -> str:
         """
         Create a custom prompt that includes intent and entity information.
-        
-        This is a fallback method used when specialized handlers are not available
-        or fail to generate a prompt.
         
         Args:
             request: The classified request
@@ -223,39 +173,41 @@ Intent: {intent}
     
     def _parse_response(self, response: str) -> str:
         """
-        Parse and clean the response from the language model.
+        Parse and clean the response from the Bedrock API.
         
         Args:
-            response: The raw response from the language model
+            response: The raw response from the API
             
         Returns:
             A cleaned response string
         """
-        # Remove any system or prompt text that might have been included
-        if "<assistant>" in response:
-            response = response.split("<assistant>")[1]
+        # Remove any system-like prefixes that might be in the response
+        cleaned_response = response.strip()
         
-        # Remove any trailing tags
-        if "</assistant>" in response:
-            response = response.split("</assistant>")[0]
+        # Remove any <assistant> tags that might be in the response
+        cleaned_response = cleaned_response.replace("<assistant>", "").replace("</assistant>", "")
         
-        return response.strip()
+        # Remove any leading/trailing whitespace
+        cleaned_response = cleaned_response.strip()
+        
+        return cleaned_response
     
     def _generate_fallback_response(self, request: ClassifiedRequest, error: Any) -> str:
         """
-        Generate a fallback response when there is an error.
+        Generate a fallback response when an error occurs.
         
         Args:
-            request: The classified request
+            request: The request that failed
             error: The error that occurred
             
         Returns:
             A fallback response
         """
-        self.logger.warning(f"Generating fallback response for request {request.request_id}")
+        self.logger.debug(f"Generating fallback response for request {request.request_id}")
         
-        # Create a simple, apologetic response
-        return (
-            "Woof! I'm sorry, but I'm having trouble understanding your request right now. "
-            "Could you please try asking in a different way, or ask me something else?"
-        ) 
+        # For quota errors, provide a specific message
+        if isinstance(error, BedrockError) and error.error_type == BedrockError.QUOTA_ERROR:
+            return "I'm sorry, but I've reached my limit for complex questions right now. Could you ask something simpler, or try again later?"
+        
+        # For other errors, provide a generic message
+        return "I'm sorry, I'm having trouble understanding that right now. Could you rephrase your question or ask something else?" 

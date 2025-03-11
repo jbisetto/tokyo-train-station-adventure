@@ -50,6 +50,35 @@ Our testing approach is guided by these principles:
 - **Coverage**: Aim for high test coverage, especially for core functionality
 - **Readability**: Tests should be clear about what they're testing and why
 
+## Best Practices for Fixing Failing Tests
+
+When encountering failing tests, follow these best practices:
+
+1. **Understand the Root Cause**
+   - Analyze why the test is failing before attempting to fix it
+   - Determine if the issue is with the test or the implementation
+   - Look for edge cases or assumptions that might be incorrect
+
+2. **Fix the Implementation, Not the Test**
+   - In most cases, the test is correctly defining the expected behavior
+   - Focus on fixing the implementation to meet the requirements
+   - Only modify the test if it's clearly incorrect or doesn't match requirements
+
+3. **Avoid Workarounds and Flags**
+   - **Don't add flags or parameters just to make tests pass**
+   - Avoid conditional logic that exists solely to satisfy test conditions
+   - These workarounds often hide real issues and lead to technical debt
+
+4. **Consider Design Implications**
+   - Failing tests might indicate a design flaw
+   - Consider if a different approach would better satisfy the requirements
+   - Be willing to refactor or redesign if necessary
+
+5. **Example: Serialization/Deserialization**
+   - When implementing serialization/deserialization, ensure the process is idempotent
+   - Avoid side effects during deserialization (e.g., updating timestamps)
+   - Consider direct property assignment instead of using methods with side effects
+
 ## Test Structure
 
 We structure our tests using the Arrange-Act-Assert pattern:
