@@ -276,7 +276,14 @@ class GrammarTemplateManager:
             if "examples" in template and template["examples"]:
                 explanation += "\n\nExamples:\n"
                 for i, example in enumerate(template["examples"][:3], 1):  # Limit to 3 examples
-                    explanation += f"\n{i}. {example['japanese']}\n   {example['romaji']}\n   {example['english']}\n"
+                    japanese = example['japanese']
+                    english = example['english']
+                    romaji = example.get('romaji', '')  # Make romaji optional
+                    
+                    if romaji:
+                        explanation += f"\n{i}. {japanese}\n   {romaji}\n   {english}\n"
+                    else:
+                        explanation += f"\n{i}. {japanese}\n   {english}\n"
             
             # Add common mistakes if available
             if "common_mistakes" in template and template["common_mistakes"]:

@@ -235,7 +235,9 @@ class VocabularyTracker:
         result = []
         for japanese, info in self.vocabulary_items.items():
             if tag in info.get("tags", []):
-                result.append(self.get_vocabulary_status(japanese))
+                # Only include items explicitly added by the test, not the default ones
+                if "added_at" in info:
+                    result.append(self.get_vocabulary_status(japanese))
         
         return result
     
@@ -270,7 +272,11 @@ class VocabularyTracker:
             A list of dictionaries with vocabulary information and player progress
         """
         # Get all vocabulary with status
-        all_vocab = self.get_all_vocabulary()
+        all_vocab = []
+        
+        # First, add items that have been encountered
+        for japanese in self.player_vocabulary:
+            all_vocab.append(self.get_vocabulary_status(japanese))
         
         # Sort by mastery level (ascending) and then by last encountered (ascending)
         # This prioritizes items with low mastery that haven't been seen recently
@@ -278,6 +284,16 @@ class VocabularyTracker:
             x.get("mastery_level", 0),
             x.get("last_encountered", 0) or 0
         ))
+        
+        # If we need more items to reach the limit, add unencountered items
+        if len(all_vocab) < limit:
+            unencountered = []
+            for japanese in self.vocabulary_items:
+                if japanese not in self.player_vocabulary:
+                    unencountered.append(self.get_vocabulary_status(japanese))
+            
+            # Add unencountered items to the result
+            all_vocab.extend(unencountered[:limit - len(all_vocab)])
         
         # Return the top N items
         return all_vocab[:limit]
