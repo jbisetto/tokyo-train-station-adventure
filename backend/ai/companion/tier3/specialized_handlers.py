@@ -16,6 +16,7 @@ from backend.ai.companion.core.models import (
     ProcessingTier
 )
 from backend.ai.companion.tier3.bedrock_client import BedrockClient
+from backend.ai.companion.tier3.context_manager import ConversationContext
 
 logger = logging.getLogger(__name__)
 
@@ -99,11 +100,60 @@ class SpecializedHandler(abc.ABC):
             model_id="anthropic.claude-3-sonnet-20240229-v1:0"
         )
         
-        logger.debug(f"Received response from Bedrock: {response[:100]}...")
+        return self.process_response(response, request)
+    
+    def handle(self, request: ClassifiedRequest, context: ConversationContext, bedrock_client: BedrockClient) -> str:
+        """
+        Synchronous version of handle_request for use with scenario detection.
         
-        processed_response = self.process_response(response, request)
+        Args:
+            request: The request to handle.
+            context: The conversation context.
+            bedrock_client: The Bedrock client to use for generating responses.
+            
+        Returns:
+            The response to send to the player.
+        """
+        prompt = self._create_scenario_prompt(request, context)
         
-        return processed_response
+        logger.debug(f"Sending prompt to Bedrock: {prompt[:100]}...")
+        
+        response = bedrock_client.generate_text(
+            prompt=prompt,
+            max_tokens=1000
+        )
+        
+        return self.process_response(response, request)
+    
+    def _create_scenario_prompt(self, request: ClassifiedRequest, context: ConversationContext) -> str:
+        """
+        Create a prompt for the given request and context.
+        
+        Args:
+            request: The request to create a prompt for.
+            context: The conversation context.
+            
+        Returns:
+            The prompt to send to the LLM.
+        """
+        # Default implementation - can be overridden by subclasses
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player has asked: "{request.player_input}"
+
+Player's language level: {context.player_language_level}
+Current location: {context.current_location}
+
+Recent conversation:
+"""
+        
+        # Add recent conversation context
+        for entry in context.entries[-3:]:
+            prompt += f"Player: {entry.request}\n"
+            prompt += f"Yuki: {entry.response}\n\n"
+        
+        prompt += "Provide a helpful, friendly response that addresses the player's request."
+        
+        return prompt
 
 
 class DefaultHandler(SpecializedHandler):
@@ -156,78 +206,321 @@ class DefaultHandler(SpecializedHandler):
         return prompt.strip()
 
 
-class GrammarExplanationHandler(SpecializedHandler):
+class TicketPurchaseHandler(SpecializedHandler):
     """
-    Specialized handler for grammar explanation requests.
+    Handler for ticket purchase scenarios.
     
-    This handler uses specialized prompts for explaining Japanese grammar
-    points in a way that's accessible to language learners.
+    This handler is responsible for helping players with purchasing tickets,
+    understanding fare information, and navigating the ticket purchasing process.
     """
     
     def can_handle(self, intent: IntentCategory) -> bool:
-        """
-        Check if this handler can handle the given intent.
+        """Check if this handler can handle the given intent."""
+        return intent == IntentCategory.GENERAL_HINT
+    
+    def create_prompt(self, request: ClassifiedRequest) -> str:
+        """Create a prompt for the given request."""
+        destination = request.extracted_entities.get("destination", "unknown location")
         
-        Args:
-            intent: The intent to check.
-            
-        Returns:
-            True if this handler can handle the intent, False otherwise.
-        """
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is trying to purchase a ticket to {destination}.
+
+Player's request: "{request.player_input}"
+
+Provide a helpful response that:
+1. Explains how to purchase a ticket to {destination}
+2. Includes relevant Japanese phrases they can use
+3. Mentions the approximate cost if known
+4. Describes the ticket machines or counter process
+
+Keep your response friendly, concise, and tailored to their language level.
+"""
+        return prompt
+    
+    def _create_scenario_prompt(self, request: ClassifiedRequest, context: ConversationContext) -> str:
+        """Create a specialized prompt for ticket purchase scenarios."""
+        destination = request.extracted_entities.get("destination", "unknown location")
+        
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is trying to purchase a ticket to {destination}.
+
+Player's language level: {context.player_language_level}
+Current location: {context.current_location}
+
+Recent conversation:
+"""
+        
+        # Add recent conversation context
+        for entry in context.entries[-3:]:
+            prompt += f"Player: {entry.request}\n"
+            prompt += f"Yuki: {entry.response}\n\n"
+        
+        prompt += f"""Player: {request.player_input}
+
+Provide a helpful response that:
+1. Explains how to purchase a ticket to {destination}
+2. Includes relevant Japanese phrases they can use (with both Japanese script and romaji)
+3. Mentions the approximate cost if known
+4. Describes the ticket machines or counter process
+
+Keep your response friendly, concise, and tailored to their language level ({context.player_language_level}).
+"""
+        return prompt
+
+
+class NavigationHandler(SpecializedHandler):
+    """
+    Handler for navigation scenarios.
+    
+    This handler is responsible for helping players navigate the train station,
+    find specific locations, and understand directions.
+    """
+    
+    def can_handle(self, intent: IntentCategory) -> bool:
+        """Check if this handler can handle the given intent."""
+        return intent == IntentCategory.DIRECTION_GUIDANCE
+    
+    def create_prompt(self, request: ClassifiedRequest) -> str:
+        """Create a prompt for the given request."""
+        location = request.extracted_entities.get("location", "unknown location")
+        
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is trying to navigate to {location}.
+
+Player's request: "{request.player_input}"
+
+Provide a helpful response that:
+1. Gives clear directions to {location}
+2. Includes relevant Japanese phrases they might see or hear
+3. Mentions any landmarks or signs to look for
+4. Estimates the walking time if applicable
+
+Keep your response friendly, concise, and easy to follow.
+"""
+        return prompt
+    
+    def _create_scenario_prompt(self, request: ClassifiedRequest, context: ConversationContext) -> str:
+        """Create a specialized prompt for navigation scenarios."""
+        location = request.extracted_entities.get("location", "unknown location")
+        
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is trying to navigate to {location}.
+
+Player's language level: {context.player_language_level}
+Current location: {context.current_location}
+
+Recent conversation:
+"""
+        
+        # Add recent conversation context
+        for entry in context.entries[-3:]:
+            prompt += f"Player: {entry.request}\n"
+            prompt += f"Yuki: {entry.response}\n\n"
+        
+        prompt += f"""Player: {request.player_input}
+
+Provide a helpful response that:
+1. Gives clear directions from {context.current_location} to {location}
+2. Includes relevant Japanese phrases they might see or hear (with both Japanese script and romaji)
+3. Mentions any landmarks or signs to look for
+4. Estimates the walking time if applicable
+
+Keep your response friendly, concise, and tailored to their language level ({context.player_language_level}).
+"""
+        return prompt
+
+
+class VocabularyHelpHandler(SpecializedHandler):
+    """
+    Handler for vocabulary help scenarios.
+    
+    This handler is responsible for helping players understand Japanese vocabulary,
+    providing translations, explanations, and examples.
+    """
+    
+    def can_handle(self, intent: IntentCategory) -> bool:
+        """Check if this handler can handle the given intent."""
+        return intent == IntentCategory.VOCABULARY_HELP
+    
+    def create_prompt(self, request: ClassifiedRequest) -> str:
+        """Create a prompt for the given request."""
+        word = request.extracted_entities.get("word", "unknown word")
+        
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is asking about the Japanese word "{word}".
+
+Player's request: "{request.player_input}"
+
+Provide a helpful response that:
+1. Explains the meaning of "{word}" in English
+2. Shows how to write it in Japanese (if not already provided)
+3. Provides the pronunciation (romaji)
+4. Gives 1-2 example sentences using the word
+5. Mentions any relevant cultural context if applicable
+
+Keep your response friendly, educational, and concise.
+"""
+        return prompt
+    
+    def _create_scenario_prompt(self, request: ClassifiedRequest, context: ConversationContext) -> str:
+        """Create a specialized prompt for vocabulary help scenarios."""
+        word = request.extracted_entities.get("word", "unknown word")
+        
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is asking about the Japanese word "{word}".
+
+Player's language level: {context.player_language_level}
+Current location: {context.current_location}
+
+Recent conversation:
+"""
+        
+        # Add recent conversation context
+        for entry in context.entries[-3:]:
+            prompt += f"Player: {entry.request}\n"
+            prompt += f"Yuki: {entry.response}\n\n"
+        
+        prompt += f"""Player: {request.player_input}
+
+Provide a helpful response that:
+1. Explains the meaning of "{word}" in English
+2. Shows how to write it in Japanese (if not already provided)
+3. Provides the pronunciation (romaji)
+4. Gives 1-2 example sentences using the word
+5. Mentions any relevant cultural context if applicable
+
+Adjust your explanation to their language level ({context.player_language_level}). Keep your response friendly, educational, and concise.
+"""
+        return prompt
+
+
+class GrammarExplanationHandler(SpecializedHandler):
+    """
+    Handler for grammar explanation scenarios.
+    
+    This handler is responsible for helping players understand Japanese grammar,
+    providing explanations, examples, and practice opportunities.
+    """
+    
+    def can_handle(self, intent: IntentCategory) -> bool:
+        """Check if this handler can handle the given intent."""
         return intent == IntentCategory.GRAMMAR_EXPLANATION
     
     def create_prompt(self, request: ClassifiedRequest) -> str:
-        """
-        Create a prompt for the given request.
+        """Create a prompt for the given request."""
+        grammar_point = request.extracted_entities.get("grammar_point", "unknown grammar point")
         
-        Args:
-            request: The request to create a prompt for.
-            
-        Returns:
-            The prompt to send to the LLM.
-        """
-        # Extract the grammar point if available
-        grammar_point = request.extracted_entities.get("grammar_point", "")
-        
-        prompt = f"""
-        You are a Japanese language teacher in the Tokyo Train Station Adventure game.
-        You specialize in explaining Japanese grammar in a clear, concise way for beginners.
-        
-        The player has asked about the following grammar point: "{request.player_input}"
-        
-        Please provide an explanation that:
-        1. Clearly explains the grammar point "{grammar_point}" at JLPT N5 level
-        2. Includes 2-3 simple, practical examples with romaji and English translations
-        3. Relates the explanation to situations the player might encounter in a train station
-        4. Uses visual formatting (bullet points, spacing) to make the explanation easy to follow
-        5. Is concise (150-200 words maximum)
-        
-        Your explanation:
-        """
-        
-        return prompt.strip()
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is asking about the Japanese grammar point "{grammar_point}".
+
+Player's request: "{request.player_input}"
+
+Provide a helpful response that:
+1. Explains the grammar point clearly at JLPT N5 level
+2. Shows the structure with examples
+3. Provides 2-3 example sentences using the grammar
+4. Mentions any common mistakes or nuances
+5. Relates it to the train station context if possible
+
+Keep your response friendly, educational, and structured for easy understanding.
+"""
+        return prompt
     
-    def process_response(self, response: str, request: ClassifiedRequest) -> str:
-        """
-        Process the response from the LLM.
+    def _create_scenario_prompt(self, request: ClassifiedRequest, context: ConversationContext) -> str:
+        """Create a specialized prompt for grammar explanation scenarios."""
+        grammar_point = request.extracted_entities.get("grammar_point", "unknown grammar point")
         
-        Args:
-            response: The raw response from the LLM.
-            request: The original request.
-            
-        Returns:
-            The processed response to send to the player.
-        """
-        # For grammar explanations, we want to ensure the response includes
-        # both Japanese script and romaji for all examples
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is asking about the Japanese grammar point "{grammar_point}".
+
+Player's language level: {context.player_language_level}
+Current location: {context.current_location}
+
+Recent conversation:
+"""
         
-        processed = response.strip()
+        # Add recent conversation context
+        for entry in context.entries[-3:]:
+            prompt += f"Player: {entry.request}\n"
+            prompt += f"Yuki: {entry.response}\n\n"
         
-        # Add a friendly closing if not present
-        if "good luck" not in processed.lower() and "がんばって" not in processed:
-            processed += "\n\nがんばって (Ganbatte)! Good luck with your Japanese studies!"
+        prompt += f"""Player: {request.player_input}
+
+Provide a helpful response that:
+1. Explains the grammar point clearly
+2. Shows the structure with examples
+3. Provides 2-3 example sentences using the grammar (with both Japanese script and romaji)
+4. Mentions any common mistakes or nuances
+5. Relates it to the train station context if possible
+
+Adjust your explanation to their language level ({context.player_language_level}). Keep your response friendly, educational, and structured for easy understanding.
+"""
+        return prompt
+
+
+class CulturalInformationHandler(SpecializedHandler):
+    """
+    Handler for cultural information scenarios.
+    
+    This handler is responsible for helping players understand Japanese culture,
+    customs, etiquette, and traditions, particularly as they relate to train
+    stations and public transportation.
+    """
+    
+    def can_handle(self, intent: IntentCategory) -> bool:
+        """Check if this handler can handle the given intent."""
+        return intent == IntentCategory.GENERAL_HINT
+    
+    def create_prompt(self, request: ClassifiedRequest) -> str:
+        """Create a prompt for the given request."""
+        topic = request.extracted_entities.get("topic", "unknown cultural topic")
         
-        return processed
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is asking about Japanese cultural topic: "{topic}".
+
+Player's request: "{request.player_input}"
+
+Provide a helpful response that:
+1. Explains the cultural aspect clearly and accurately
+2. Provides historical context if relevant
+3. Describes current practices and expectations
+4. Offers practical advice for the player as a visitor
+5. Includes any relevant Japanese terms (with translations)
+
+Keep your response friendly, informative, and respectful of Japanese culture.
+"""
+        return prompt
+    
+    def _create_scenario_prompt(self, request: ClassifiedRequest, context: ConversationContext) -> str:
+        """Create a specialized prompt for cultural information scenarios."""
+        topic = request.extracted_entities.get("topic", "unknown cultural topic")
+        
+        prompt = f"""You are Yuki, a friendly AI companion in the Tokyo Train Station Adventure game.
+The player is asking about Japanese cultural topic: "{topic}".
+
+Player's language level: {context.player_language_level}
+Current location: {context.current_location}
+
+Recent conversation:
+"""
+        
+        # Add recent conversation context
+        for entry in context.entries[-3:]:
+            prompt += f"Player: {entry.request}\n"
+            prompt += f"Yuki: {entry.response}\n\n"
+        
+        prompt += f"""Player: {request.player_input}
+
+Provide a helpful response that:
+1. Explains the cultural aspect clearly and accurately
+2. Provides historical context if relevant
+3. Describes current practices and expectations
+4. Offers practical advice for the player as a visitor
+5. Includes any relevant Japanese terms (with translations and romaji)
+
+Adjust your explanation to their language level ({context.player_language_level}). Keep your response friendly, informative, and respectful of Japanese culture.
+"""
+        return prompt
 
 
 class TranslationHandler(SpecializedHandler):

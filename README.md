@@ -24,6 +24,7 @@ The Tokyo Train Station Adventure is designed to make Japanese language learning
   - Rule-based systems (70% of interactions)
   - Local Ollama with DeepSeek 7B model (20% of interactions)
   - Amazon Bedrock APIs for complex scenarios (10% of interactions)
+  - Scenario detection system for specialized handling of common player requests
 - **Data Storage**: SQLite with Google/Facebook OAuth integration
 - **Communication**: Event-based architecture with domain events
 

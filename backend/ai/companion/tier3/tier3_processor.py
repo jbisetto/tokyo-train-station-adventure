@@ -20,6 +20,7 @@ from backend.ai.companion.tier3.bedrock_client import BedrockClient, BedrockErro
 from backend.ai.companion.tier3.usage_tracker import UsageTracker, default_tracker
 from backend.ai.companion.tier3.context_manager import ContextManager, default_context_manager
 from backend.ai.companion.tier3.conversation_manager import ConversationManager
+from backend.ai.companion.tier3.scenario_detection import ScenarioDetector, ScenarioType
 from backend.ai.companion.config import CLOUD_API_CONFIG
 
 
@@ -48,6 +49,7 @@ class Tier3Processor(Processor):
         self.client = self._create_bedrock_client(usage_tracker)
         self.context_manager = context_manager or default_context_manager
         self.conversation_manager = ConversationManager()
+        self.scenario_detector = ScenarioDetector()
         self.logger.info("Tier 3 processor initialized with Bedrock client")
     
     def _create_bedrock_client(self, usage_tracker: Optional[UsageTracker] = None) -> BedrockClient:
@@ -91,7 +93,35 @@ class Tier3Processor(Processor):
         )
         
         try:
-            # For complex requests, use the conversation manager for multi-turn conversations
+            # First, try to detect and handle specific scenarios
+            if request.complexity == ComplexityLevel.COMPLEX:
+                # Check if we have a conversation_id
+                conversation_id = request.additional_params.get("conversation_id", "")
+                
+                # Only attempt scenario detection if we have a conversation_id
+                if conversation_id:
+                    # Get the context
+                    context = self.context_manager.get_context(conversation_id)
+                    
+                    # Only proceed with scenario detection if we have a valid context
+                    if context:
+                        # Detect the scenario
+                        scenario_type = self.scenario_detector.detect_scenario(request)
+                        
+                        if scenario_type != ScenarioType.UNKNOWN:
+                            self.logger.info(f"Detected scenario {scenario_type.value} for request {request.request_id}")
+                            
+                            # Handle the scenario
+                            response = self.scenario_detector.handle_scenario(
+                                request,
+                                self.context_manager,
+                                self.client
+                            )
+                            
+                            self.logger.info(f"Generated response for scenario {scenario_type.value}")
+                            return response
+            
+            # For complex requests that don't match a specific scenario, use the conversation manager
             if request.complexity == ComplexityLevel.COMPLEX and "conversation_id" in request.additional_params:
                 self.logger.debug(f"Using conversation manager for complex request {request.request_id}")
                 response = self.conversation_manager.process(
