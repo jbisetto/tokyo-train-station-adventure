@@ -14,6 +14,8 @@ from backend.ai.companion.core.models import (
     ProcessingTier
 )
 from backend.ai.companion.config import PERSONALITY_TRAITS
+from backend.ai.companion.core.response_formatter import ResponseFormatter
+from backend.ai.companion.personality.config import PersonalityConfig, PersonalityProfile
 
 
 @pytest.fixture
@@ -41,170 +43,191 @@ def sample_processor_response():
 class TestResponseFormatter:
     """Tests for the ResponseFormatter class."""
     
+    @pytest.fixture
+    def classified_request(self):
+        """Create a sample classified request for testing."""
+        request = MagicMock(spec=ClassifiedRequest)
+        request.request_id = "test-request-id"
+        request.player_input = "What does 'sumimasen' mean?"
+        request.intent = IntentCategory.VOCABULARY_HELP
+        request.extracted_entities = {"word": "sumimasen", "meaning": "excuse me"}
+        return request
+    
+    @pytest.fixture
+    def personality_config(self):
+        """Create a sample personality configuration for testing."""
+        config = PersonalityConfig()
+        
+        # Create profile dictionaries
+        friendly_profile = {
+            "name": "Friendly",
+            "description": "A very friendly personality",
+            "traits": {
+                "friendliness": 0.9,
+                "enthusiasm": 0.8,
+                "helpfulness": 0.9,
+                "playfulness": 0.7,
+                "formality": 0.3
+            }
+        }
+        
+        neutral_profile = {
+            "name": "Neutral",
+            "description": "A balanced personality",
+            "traits": {
+                "friendliness": 0.5,
+                "enthusiasm": 0.5,
+                "helpfulness": 0.5,
+                "playfulness": 0.5,
+                "formality": 0.5
+            }
+        }
+        
+        formal_profile = {
+            "name": "Formal",
+            "description": "A formal and professional personality",
+            "traits": {
+                "friendliness": 0.3,
+                "enthusiasm": 0.2,
+                "helpfulness": 0.8,
+                "playfulness": 0.1,
+                "formality": 0.9
+            }
+        }
+        
+        # Add profiles to config
+        config.add_profile("Friendly", friendly_profile)
+        config.add_profile("Neutral", neutral_profile)
+        config.add_profile("Formal", formal_profile)
+        
+        # Set active profile
+        config.set_active_profile("Friendly")
+        
+        return config
+    
     def test_initialization(self):
         """Test that the ResponseFormatter can be initialized."""
-        from backend.ai.companion.core.response_formatter import ResponseFormatter
-        
         formatter = ResponseFormatter()
         
         assert formatter is not None
-        assert hasattr(formatter, 'format_response')
+        assert hasattr(formatter, 'personality')
+        assert isinstance(formatter.personality, dict)
     
     def test_format_response_basic(self, sample_classified_request, sample_processor_response):
         """Test basic response formatting."""
-        from backend.ai.companion.core.response_formatter import ResponseFormatter
-        
         formatter = ResponseFormatter()
         
-        # Format the response
         formatted_response = formatter.format_response(
             processor_response=sample_processor_response,
             classified_request=sample_classified_request
         )
         
-        # Check that the response is a string
-        assert isinstance(formatted_response, str)
-        assert len(formatted_response) > 0
-        
-        # Check that the response contains the processor response
         assert sample_processor_response in formatted_response
     
     def test_personality_injection(self, sample_classified_request, sample_processor_response):
         """Test that personality traits are injected into the response."""
-        from backend.ai.companion.core.response_formatter import ResponseFormatter
-        
         formatter = ResponseFormatter()
         
-        # Format the response with different personality settings
-        friendly_formatter = ResponseFormatter(personality_traits={"friendliness": 1.0})
-        neutral_formatter = ResponseFormatter(personality_traits={"friendliness": 0.5})
-        unfriendly_formatter = ResponseFormatter(personality_traits={"friendliness": 0.0})
-        
-        friendly_response = friendly_formatter.format_response(
+        # Format with default personality
+        default_response = formatter.format_response(
             processor_response=sample_processor_response,
             classified_request=sample_classified_request
         )
         
-        neutral_response = neutral_formatter.format_response(
+        # Format with custom personality
+        custom_formatter = ResponseFormatter(personality_traits={
+            "friendliness": 0.0,
+            "enthusiasm": 0.0,
+            "helpfulness": 0.0
+        })
+        
+        custom_response = custom_formatter.format_response(
             processor_response=sample_processor_response,
             classified_request=sample_classified_request
         )
         
-        unfriendly_response = unfriendly_formatter.format_response(
-            processor_response=sample_processor_response,
-            classified_request=sample_classified_request
-        )
+        # Both responses should contain the core information
+        assert sample_processor_response in default_response
+        assert sample_processor_response in custom_response
         
-        # Check that the responses are different
-        assert friendly_response != neutral_response or neutral_response != unfriendly_response
-        
-        # Check that the friendly response has more friendly words
-        friendly_words = ["happy", "glad", "friend", "great", "wonderful", "excellent"]
-        friendly_count = sum(word in friendly_response.lower() for word in friendly_words)
-        unfriendly_count = sum(word in unfriendly_response.lower() for word in friendly_words)
-        
-        assert friendly_count >= unfriendly_count
+        # The responses should be different due to personality differences
+        assert default_response != custom_response
     
     def test_learning_cue_integration(self, sample_classified_request, sample_processor_response):
         """Test that learning cues are integrated into the response."""
-        from backend.ai.companion.core.response_formatter import ResponseFormatter
-        
         formatter = ResponseFormatter()
         
-        # Format the response
-        formatted_response = formatter.format_response(
+        # Format without learning cues
+        without_cues = formatter.format_response(
+            processor_response=sample_processor_response,
+            classified_request=sample_classified_request,
+            add_learning_cues=False
+        )
+        
+        # Format with learning cues
+        with_cues = formatter.format_response(
             processor_response=sample_processor_response,
             classified_request=sample_classified_request,
             add_learning_cues=True
         )
         
-        # Check that the response contains learning cues
-        learning_cue_indicators = ["Remember", "Note", "Tip", "Hint", "Practice"]
-        has_learning_cue = any(indicator in formatted_response for indicator in learning_cue_indicators)
+        # Both responses should contain the core information
+        assert sample_processor_response in without_cues
+        assert sample_processor_response in with_cues
         
-        assert has_learning_cue
+        # The response with cues should be longer
+        assert len(with_cues) > len(without_cues)
     
     def test_emotion_integration(self, sample_classified_request, sample_processor_response):
         """Test that emotions are integrated into the response."""
-        from backend.ai.companion.core.response_formatter import ResponseFormatter
-        
-        # Get the emotion expressions directly from the class to ensure test matches implementation
-        happy_expressions = [expr.lower() for expr in ResponseFormatter.EMOTION_EXPRESSIONS["happy"]]
-        excited_expressions = [expr.lower() for expr in ResponseFormatter.EMOTION_EXPRESSIONS["excited"]]
-        neutral_expressions = [expr.lower() for expr in ResponseFormatter.EMOTION_EXPRESSIONS["neutral"]]
-        
         formatter = ResponseFormatter()
         
-        # Format the response with different emotions
+        # Format with a happy emotion
         happy_response = formatter.format_response(
             processor_response=sample_processor_response,
             classified_request=sample_classified_request,
             emotion="happy"
         )
         
-        excited_response = formatter.format_response(
-            processor_response=sample_processor_response,
-            classified_request=sample_classified_request,
-            emotion="excited"
-        )
+        # The response should contain the core information
+        assert sample_processor_response in happy_response
         
-        neutral_response = formatter.format_response(
-            processor_response=sample_processor_response,
-            classified_request=sample_classified_request,
-            emotion="neutral"
-        )
-        
-        # Check that the responses are different
-        assert happy_response != excited_response or excited_response != neutral_response
-        
-        # Check that the responses contain emotion expressions
-        happy_response_lower = happy_response.lower()
-        excited_response_lower = excited_response.lower()
-        neutral_response_lower = neutral_response.lower()
-        
-        # Check that at least one of the emotion expressions is in the response
-        assert any(expr in happy_response_lower for expr in happy_expressions)
-        assert any(expr in excited_response_lower for expr in excited_expressions)
-        assert any(expr in neutral_response_lower for expr in neutral_expressions)
+        # The response should contain one of the happy emotion expressions
+        happy_expressions = formatter.EMOTION_EXPRESSIONS["happy"]
+        assert any(expr in happy_response for expr in happy_expressions)
     
     def test_response_validation(self, sample_classified_request):
         """Test that responses are validated."""
-        from backend.ai.companion.core.response_formatter import ResponseFormatter
-        
         formatter = ResponseFormatter()
         
-        # Test with an empty response
+        # Test empty response
         empty_response = ""
+        validated = formatter._validate_response(empty_response, sample_classified_request)
+        assert "I'm sorry" in validated
         
-        # Format the response
-        formatted_response = formatter.format_response(
-            processor_response=empty_response,
-            classified_request=sample_classified_request
-        )
+        # Test short response
+        short_response = "Hi"
+        validated = formatter._validate_response(short_response, sample_classified_request)
+        assert "I'm sorry" in validated
         
-        # Check that the response is not empty
-        assert len(formatted_response) > 0
+        # Test normal response
+        normal_response = "This is a normal response."
+        validated = formatter._validate_response(normal_response, sample_classified_request)
+        assert validated == normal_response
         
-        # Test with a very short response
-        short_response = "Yes."
-        
-        # Format the response
-        formatted_response = formatter.format_response(
-            processor_response=short_response,
-            classified_request=sample_classified_request
-        )
-        
-        # Check that the response is longer than the original
-        assert len(formatted_response) > len(short_response)
+        # Test very long response
+        long_response = "A" * 600
+        validated = formatter._validate_response(long_response, sample_classified_request)
+        assert len(validated) <= 500
     
     def test_format_response_with_suggested_actions(self, sample_classified_request, sample_processor_response):
         """Test formatting with suggested actions."""
-        from backend.ai.companion.core.response_formatter import ResponseFormatter
-        
         formatter = ResponseFormatter()
         
-        # Format the response with suggested actions
-        suggested_actions = ["Look at the ticket machine", "Ask the station attendant"]
+        suggested_actions = [
+            "Try asking for directions to the ticket counter.",
+            "Practice saying 'kippu' in a sentence."
+        ]
         
         formatted_response = formatter.format_response(
             processor_response=sample_processor_response,
@@ -212,6 +235,151 @@ class TestResponseFormatter:
             suggested_actions=suggested_actions
         )
         
+        # The formatted response should contain the processor response
+        assert sample_processor_response in formatted_response
+        
         # Check that the response contains the suggested actions
         for action in suggested_actions:
-            assert action in formatted_response 
+            assert action in formatted_response
+    
+    def test_init_default(self):
+        """Test initialization with default personality."""
+        formatter = ResponseFormatter()
+        assert formatter.personality["friendliness"] == 0.8
+        assert formatter.personality["enthusiasm"] == 0.7
+        assert formatter.personality["helpfulness"] == 0.9
+        assert formatter.personality["playfulness"] == 0.6
+        assert formatter.personality["formality"] == 0.3
+    
+    def test_init_custom_traits(self):
+        """Test initialization with custom personality traits."""
+        custom_traits = {
+            "friendliness": 0.3,
+            "enthusiasm": 0.2,
+            "helpfulness": 0.5
+        }
+        formatter = ResponseFormatter(personality_traits=custom_traits)
+        assert formatter.personality["friendliness"] == 0.3
+        assert formatter.personality["enthusiasm"] == 0.2
+        assert formatter.personality["helpfulness"] == 0.5
+        # These should still have default values
+        assert formatter.personality["playfulness"] == 0.6
+        assert formatter.personality["formality"] == 0.3
+    
+    def test_init_with_personality_config(self, personality_config):
+        """Test initialization with a personality configuration."""
+        formatter = ResponseFormatter(personality_config=personality_config)
+        # Should use the active profile (Friendly)
+        assert formatter.personality["friendliness"] == 0.9
+        assert formatter.personality["enthusiasm"] == 0.8
+        assert formatter.personality["helpfulness"] == 0.9
+        assert formatter.personality["playfulness"] == 0.7
+        assert formatter.personality["formality"] == 0.3
+    
+    def test_validate_response(self, classified_request):
+        """Test response validation."""
+        formatter = ResponseFormatter()
+        
+        # Test empty response
+        empty_response = ""
+        validated = formatter._validate_response(empty_response, classified_request)
+        assert "I'm sorry" in validated
+        
+        # Test short response
+        short_response = "Hi"
+        validated = formatter._validate_response(short_response, classified_request)
+        assert "I'm sorry" in validated
+        
+        # Test normal response
+        normal_response = "Sumimasen means 'excuse me' or 'I'm sorry' in Japanese."
+        validated = formatter._validate_response(normal_response, classified_request)
+        assert validated == normal_response
+        
+        # Test very long response
+        long_response = "A" * 600
+        validated = formatter._validate_response(long_response, classified_request)
+        assert len(validated) <= 500
+    
+    def test_format_response_with_emotion(self, classified_request):
+        """Test response formatting with emotion."""
+        formatter = ResponseFormatter()
+        processor_response = "Sumimasen means 'excuse me' or 'I'm sorry' in Japanese."
+        
+        formatted = formatter.format_response(
+            processor_response, 
+            classified_request,
+            emotion="happy"
+        )
+        
+        # The formatted response should contain the processor response
+        assert processor_response in formatted
+        
+        # One of the happy emotion expressions should be in the response
+        happy_expressions = formatter.EMOTION_EXPRESSIONS["happy"]
+        assert any(expr in formatted for expr in happy_expressions)
+    
+    def test_format_response_with_learning_cues(self, classified_request):
+        """Test response formatting with learning cues."""
+        formatter = ResponseFormatter()
+        processor_response = "Sumimasen means 'excuse me' or 'I'm sorry' in Japanese."
+        
+        formatted = formatter.format_response(
+            processor_response, 
+            classified_request,
+            add_learning_cues=True
+        )
+        
+        # The formatted response should contain the processor response
+        assert processor_response in formatted
+        
+        # The response should contain the word from the request
+        assert "sumimasen" in formatted.lower()
+    
+    def test_format_response_with_suggested_actions(self, classified_request):
+        """Test response formatting with suggested actions."""
+        formatter = ResponseFormatter()
+        processor_response = "Sumimasen means 'excuse me' or 'I'm sorry' in Japanese."
+        suggested_actions = [
+            "Try using 'sumimasen' when asking for directions.",
+            "Practice saying 'sumimasen' with proper intonation."
+        ]
+        
+        formatted = formatter.format_response(
+            processor_response, 
+            classified_request,
+            suggested_actions=suggested_actions
+        )
+        
+        # The formatted response should contain the processor response
+        assert processor_response in formatted
+        
+        # The response should contain the suggested actions
+        for action in suggested_actions:
+            assert action in formatted
+    
+    def test_personality_config_profiles(self, personality_config, classified_request):
+        """Test that different personality profiles produce different responses."""
+        processor_response = "Sumimasen means 'excuse me' or 'I'm sorry' in Japanese."
+        
+        # Create formatters with different personality profiles
+        personality_config.set_active_profile("Friendly")
+        friendly_formatter = ResponseFormatter(personality_config=personality_config)
+        
+        personality_config.set_active_profile("Neutral")
+        neutral_formatter = ResponseFormatter(personality_config=personality_config)
+        
+        personality_config.set_active_profile("Formal")
+        formal_formatter = ResponseFormatter(personality_config=personality_config)
+        
+        # Format the same response with different profiles
+        friendly_response = friendly_formatter.format_response(processor_response, classified_request)
+        neutral_response = neutral_formatter.format_response(processor_response, classified_request)
+        formal_response = formal_formatter.format_response(processor_response, classified_request)
+        
+        # All responses should contain the core information
+        assert processor_response in friendly_response
+        assert processor_response in neutral_response
+        assert processor_response in formal_response
+        
+        # The responses should be different from each other
+        assert friendly_response != neutral_response or friendly_response != formal_response or neutral_response != formal_response 

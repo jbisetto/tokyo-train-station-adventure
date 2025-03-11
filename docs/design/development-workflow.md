@@ -153,4 +153,78 @@ We use continuous integration to:
 3. Generate test coverage reports
 4. Build and deploy to testing environments
 
-This workflow ensures we build a robust, well-tested system with clear documentation of our progress through the implementation plan. 
+This workflow ensures we build a robust, well-tested system with clear documentation of our progress through the implementation plan.
+
+## Documentation Approach
+
+We maintain different types of documentation for different audiences and purposes:
+
+### Documentation Types
+
+1. **System Design Documentation** (`docs/design/system/`)
+   - Technical design documents for developers
+   - Focuses on implementation details, architecture, and integration
+   - Follows a consistent format (see below)
+   - Example: `personality_engine_implementation.md`
+
+2. **AI Component Documentation** (`docs/ai/`)
+   - Higher-level documentation of AI components
+   - More accessible to non-developers
+   - Focuses on concepts, capabilities, and usage
+   - Example: `personality-engine.md`
+
+3. **Project Management Documentation** (`docs/pm/`)
+   - Implementation plans and project tracking
+   - Outlines tasks, progress, and timelines
+   - Example: `companion-ai-implementation-plan.md`
+
+4. **UI Documentation** (`docs/ui/`)
+   - Design guidelines and UI component documentation
+   - Wireframes, mockups, and user flow diagrams
+
+5. **Marketing Documentation** (`docs/marketing/`)
+   - User-facing descriptions and promotional materials
+   - Feature highlights and benefits
+
+### System Design Document Format
+
+All system design documents in `docs/design/system/` follow this consistent format:
+
+1. **Overview**
+   - High-level description of the system and its purpose
+   - Key capabilities and benefits
+
+2. **Architecture**
+   - Components that make up the system
+   - Relationships between components
+   - Diagrams where appropriate
+
+3. **Implementation Details**
+   - Specific details about how the system is implemented
+   - Key classes, methods, and data structures
+   - Algorithms and approaches used
+   - Code examples where helpful
+
+4. **Integration Points**
+   - How the system interacts with other components
+   - APIs and interfaces
+   - Data flow between systems
+
+5. **Testing Strategy**
+   - Approaches for testing the system
+   - Types of tests (unit, integration, etc.)
+   - Key test cases and scenarios
+
+6. **Future Enhancements**
+   - Potential improvements or extensions
+   - Planned features for future iterations
+
+### Documentation Maintenance Guidelines
+
+1. **Consistency**: Maintain consistent formatting and structure within each documentation type
+2. **Cross-referencing**: Reference related documents where appropriate
+3. **Minimal duplication**: Avoid duplicating information across documents
+4. **Update with code**: Update documentation when implementing or changing features
+5. **Clarity of purpose**: Each document should clearly state its purpose and audience
+
+This approach ensures that documentation serves its intended purpose without creating excessive maintenance overhead. 

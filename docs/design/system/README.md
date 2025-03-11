@@ -34,13 +34,13 @@ Each system design document typically includes:
 - [Template System Implementation](template_system_implementation.md): Describes the template-based response generation system
 - [Decision Trees Implementation](decision_trees_implementation.md): Explains the use of decision trees for rule-based request handling
 - [Ollama Integration Implementation](ollama_integration_implementation.md): Documents the integration with local LLM for intermediate processing
+- [Personality Engine Implementation](personality_engine_implementation.md): Details how the companion's personality is implemented and adapted
 
 ## Future Documentation
 
 As the system evolves, additional documentation may be added for new components and features. Potential future documentation topics include:
 
-1. **Personality Engine**: How the companion's personality is implemented and adapted
-2. **Learning Assistance Features**: Systems for tracking and supporting player learning
-3. **API Integration**: Design of the API endpoints for accessing the companion AI
-4. **Performance Optimization**: Strategies for optimizing system performance
-5. **Monitoring and Analytics**: Systems for monitoring usage and gathering insights 
+1. **Learning Assistance Features**: Systems for tracking and supporting player learning
+2. **API Integration**: Design of the API endpoints for accessing the companion AI
+3. **Performance Optimization**: Strategies for optimizing system performance
+4. **Monitoring and Analytics**: Systems for monitoring usage and gathering insights 

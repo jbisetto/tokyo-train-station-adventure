@@ -11,7 +11,7 @@ import logging
 from typing import Dict, List, Optional, Any
 
 from backend.ai.companion.core.models import ClassifiedRequest, IntentCategory
-from backend.ai.companion.config import PERSONALITY_TRAITS
+from backend.ai.companion.personality.config import PersonalityConfig
 
 logger = logging.getLogger(__name__)
 
@@ -151,42 +151,52 @@ class ResponseFormatter:
     # Enthusiasm phrases to add based on enthusiasm level
     ENTHUSIASM_PHRASES = {
         "high": [
-            "This is really exciting!",
-            "I love explaining this!",
-            "Japanese is such a fascinating language!",
-            "This is one of my favorite things to talk about!",
-            "Learning this will be super helpful for your adventures!"
+            "I'm super excited to explain this!",
+            "This is such a fun topic to explore!",
+            "I absolutely love helping with this kind of question!",
+            "Learning Japanese is so exciting, isn't it?",
+            "I can't wait to see you master this concept!"
         ],
         "medium": [
-            "This is interesting.",
-            "I enjoy explaining this.",
-            "Japanese has some interesting features.",
-            "This is a helpful thing to know.",
-            "This will be useful for your adventures."
+            "I'm happy to explain this.",
+            "This is an interesting topic.",
+            "I enjoy helping with these questions.",
+            "Learning Japanese is rewarding.",
+            "You'll get better with practice."
         ],
         "low": [
-            "Here's the explanation.",
-            "This is how it works.",
-            "The information is as follows.",
-            "This is what you should know.",
-            "This is relevant to your question."
+            "Let me explain this.",
+            "Here's how it works.",
+            "This is the explanation.",
+            "Japanese has these patterns.",
+            "Practice will help you improve."
         ]
     }
     
-    def __init__(self, personality_traits: Optional[Dict[str, float]] = None):
+    def __init__(self, personality_traits: Optional[Dict[str, float]] = None, personality_config: Optional[PersonalityConfig] = None):
         """
         Initialize the ResponseFormatter.
         
         Args:
             personality_traits: Optional dictionary of personality traits to override defaults
+            personality_config: Optional personality configuration to use
         """
         self.personality = self.DEFAULT_PERSONALITY.copy()
+        
+        # If a personality config is provided, use it
+        self.personality_config = personality_config
         
         # Update with any provided personality traits
         if personality_traits:
             for trait, value in personality_traits.items():
                 if trait in self.personality:
                     self.personality[trait] = max(0.0, min(1.0, value))  # Clamp between 0 and 1
+        # If a personality config is provided but no traits, use the active profile
+        elif self.personality_config:
+            active_profile = self.personality_config.get_active_profile()
+            for trait in self.personality:
+                if active_profile.get_trait_value(trait) is not None:
+                    self.personality[trait] = active_profile.get_trait_value(trait)
         
         logger.debug(f"Initialized ResponseFormatter with personality: {self.personality}")
     
@@ -209,87 +219,84 @@ class ResponseFormatter:
             suggested_actions: Optional list of suggested actions for the player
             
         Returns:
-            A formatted response string
+            The formatted response
         """
-        logger.debug(f"Formatting response for request {classified_request.request_id}")
-        
-        # Validate the processor response
+        # Validate the response
         validated_response = self._validate_response(processor_response, classified_request)
         
-        # Start building the formatted response
-        formatted_parts = []
-        
-        # Add greeting/opening based on personality
+        # Create opening/greeting
         opening = self._create_opening(classified_request)
-        if opening:
-            formatted_parts.append(opening)
         
-        # Add the main response content
-        formatted_parts.append(validated_response)
+        # Create closing
+        closing = self._create_closing(classified_request)
         
-        # Add learning cues if requested
+        # Create learning cue if requested
+        learning_cue = None
         if add_learning_cues:
             learning_cue = self._create_learning_cue(classified_request)
-            if learning_cue:
-                formatted_parts.append(learning_cue)
         
-        # Add emotion expression if provided
+        # Create emotion expression if provided
+        emotion_expression = None
         if emotion and emotion in self.EMOTION_EXPRESSIONS:
-            emotion_expr = random.choice(self.EMOTION_EXPRESSIONS[emotion])
-            formatted_parts.append(emotion_expr)
+            emotion_expression = random.choice(self.EMOTION_EXPRESSIONS[emotion])
         
-        # Add suggested actions if provided
+        # Format suggested actions if provided
+        formatted_actions = None
         if suggested_actions and len(suggested_actions) > 0:
-            actions_text = self._format_suggested_actions(suggested_actions)
-            formatted_parts.append(actions_text)
+            formatted_actions = self._format_suggested_actions(suggested_actions)
         
-        # Add closing based on personality
-        closing = self._create_closing(classified_request)
+        # Combine all parts into the final response
+        parts = []
+        
+        if opening:
+            parts.append(opening)
+        
+        if emotion_expression:
+            parts.append(emotion_expression)
+        
+        parts.append(validated_response)
+        
+        if learning_cue:
+            parts.append("")  # Add a blank line
+            parts.append(learning_cue)
+        
+        if formatted_actions:
+            parts.append("")  # Add a blank line
+            parts.append(formatted_actions)
+        
         if closing:
-            formatted_parts.append(closing)
+            parts.append("")  # Add a blank line
+            parts.append(closing)
         
-        # Join all parts with appropriate spacing
-        formatted_response = " ".join(formatted_parts)
-        
-        logger.debug(f"Formatted response: {formatted_response[:50]}...")
-        return formatted_response
+        return "\n".join(parts)
     
     def _validate_response(self, response: str, request: ClassifiedRequest) -> str:
         """
-        Validate and potentially enhance a processor response.
+        Validate and clean up a response.
         
         Args:
-            response: The processor response to validate
-            request: The classified request
+            response: The response to validate
+            request: The request that generated the response
             
         Returns:
-            A validated and potentially enhanced response
+            The validated response
         """
-        # Handle empty responses
-        if not response or response.strip() == "":
-            logger.warning(f"Empty response received for request {request.request_id}")
-            return "I'm not sure how to answer that. Could you rephrase your question?"
+        # Check if response is empty or too short
+        if not response or len(response.strip()) < 10:
+            logger.warning(f"Response too short, using fallback: {response}")
+            return "I'm sorry, I couldn't generate a proper response. Could you please rephrase your question?"
         
-        # Handle very short responses
-        if len(response.split()) < 3:
-            logger.info(f"Very short response received for request {request.request_id}: {response}")
-            
-            # Expand based on intent
-            if request.intent == IntentCategory.VOCABULARY_HELP and "word" in request.extracted_entities:
-                word = request.extracted_entities["word"]
-                return f"{response} '{word}' is an important word to know when navigating train stations in Japan."
-            
-            elif request.intent == IntentCategory.GRAMMAR_EXPLANATION:
-                return f"{response} This grammar point will help you communicate more effectively in Japanese."
-            
-            elif request.intent == IntentCategory.DIRECTION_GUIDANCE:
-                return f"{response} Finding your way around Japanese train stations can be challenging at first, but you'll get the hang of it!"
-            
-            elif request.intent == IntentCategory.TRANSLATION_CONFIRMATION:
-                return f"{response} Translation helps bridge the language gap during your adventures in Japan."
-            
+        # Check if response is too long (more than 500 characters)
+        if len(response) > 500:
+            logger.info(f"Response too long ({len(response)} chars), truncating")
+            # Try to truncate at a sentence boundary
+            truncated = response[:497]
+            last_period = truncated.rfind('.')
+            if last_period > 400:  # Only truncate at period if it's not too short
+                truncated = truncated[:last_period + 1]
             else:
-                return f"{response} I hope that helps with your question!"
+                truncated += "..."
+            return truncated
         
         return response
     
@@ -298,22 +305,25 @@ class ResponseFormatter:
         Create an opening/greeting based on personality and request.
         
         Args:
-            request: The classified request
+            request: The request to create an opening for
             
         Returns:
-            An opening string or None
+            An opening string, or None if no opening should be added
         """
-        # Determine friendliness level
-        if self.personality["friendliness"] > 0.7:
-            friendliness = "high"
-        elif self.personality["friendliness"] > 0.3:
-            friendliness = "medium"
-        else:
-            friendliness = "low"
+        # Get the friendliness level
+        friendliness = self.personality["friendliness"]
         
-        # 50% chance to add an opening based on friendliness
-        if random.random() < self.personality["friendliness"]:
-            return random.choice(self.FRIENDLY_PHRASES[friendliness])
+        # Determine which set of phrases to use based on friendliness
+        if friendliness > 0.7:
+            phrases = self.FRIENDLY_PHRASES["high"]
+        elif friendliness > 0.3:
+            phrases = self.FRIENDLY_PHRASES["medium"]
+        else:
+            phrases = self.FRIENDLY_PHRASES["low"]
+        
+        # Only add an opening sometimes, based on friendliness
+        if random.random() < friendliness:
+            return random.choice(phrases)
         
         return None
     
@@ -322,40 +332,50 @@ class ResponseFormatter:
         Create a closing based on personality and request.
         
         Args:
-            request: The classified request
+            request: The request to create a closing for
             
         Returns:
-            A closing string or None
+            A closing string, or None if no closing should be added
         """
-        # Determine helpfulness level for closing
-        if self.personality["helpfulness"] > 0.7:
-            closings = [
+        # Get the helpfulness level
+        helpfulness = self.personality["helpfulness"]
+        
+        # Closings for different helpfulness levels
+        closings = {
+            "high": [
                 "Is there anything else you'd like to know?",
                 "Let me know if you need any more help!",
-                "Feel free to ask if you have more questions!",
+                "Feel free to ask if you have any other questions!",
                 "I'm here if you need any more assistance!",
-                "Hope that helps! Anything else you're curious about?"
-            ]
-        elif self.personality["helpfulness"] > 0.3:
-            closings = [
+                "Don't hesitate to ask if you need more help!"
+            ],
+            "medium": [
                 "Hope that helps.",
-                "Let me know if you need more information.",
+                "Let me know if you have questions.",
                 "Feel free to ask more questions.",
                 "I'm here to help if needed.",
-                "Is that clear enough?"
-            ]
-        else:
-            closings = [
-                "That's the answer.",
-                "That's all.",
+                "Ask if you need more information."
+            ],
+            "low": [
                 "That's the information.",
                 "That concludes my explanation.",
-                "That's what you needed to know."
+                "That's all for this topic.",
+                "That's what you need to know.",
+                "That's the answer to your question."
             ]
+        }
         
-        # 40% chance to add a closing based on helpfulness
-        if random.random() < self.personality["helpfulness"] * 0.5:
-            return random.choice(closings)
+        # Determine which set of closings to use
+        if helpfulness > 0.7:
+            closing_set = closings["high"]
+        elif helpfulness > 0.3:
+            closing_set = closings["medium"]
+        else:
+            closing_set = closings["low"]
+        
+        # Only add a closing sometimes, based on helpfulness
+        if random.random() < helpfulness * 0.5:
+            return random.choice(closing_set)
         
         return None
     
@@ -364,49 +384,74 @@ class ResponseFormatter:
         Create a learning cue based on the request intent.
         
         Args:
-            request: The classified request
+            request: The request to create a learning cue for
             
         Returns:
-            A learning cue string or None
+            A learning cue string, or None if no cue could be created
         """
-        # Get the appropriate cues for this intent
-        intent_cues = self.LEARNING_CUES.get(request.intent, self.LEARNING_CUES["default"])
+        # Get the appropriate cues for the intent
+        intent = request.intent if hasattr(request, 'intent') else None
+        cues = self.LEARNING_CUES.get(intent, self.LEARNING_CUES["default"])
         
         # Select a random cue
-        cue_template = random.choice(intent_cues)
+        cue_template = random.choice(cues)
         
-        # Format the cue with extracted entities
+        # Try to fill in placeholders
         try:
-            return cue_template.format(**request.extracted_entities)
-        except KeyError:
-            # If we can't format with the extracted entities, return the template as is
-            # or a default cue
-            if "{" in cue_template:
-                return random.choice(self.LEARNING_CUES["default"])
-            return cue_template
+            # Get entities from the request
+            entities = getattr(request, 'extracted_entities', {}) or {}
+            
+            # For vocabulary help, try to extract word and meaning
+            if intent == IntentCategory.VOCABULARY_HELP and 'word' in entities:
+                word = entities['word']
+                meaning = entities.get('meaning', 'unknown')
+                return cue_template.format(word=word, meaning=meaning)
+            
+            # For grammar explanation, try to extract pattern
+            elif intent == IntentCategory.GRAMMAR_EXPLANATION and 'pattern' in entities:
+                pattern = entities['pattern']
+                return cue_template.format(pattern=pattern)
+            
+            # For translation confirmation, try to extract original and translation
+            elif intent == IntentCategory.TRANSLATION_CONFIRMATION:
+                original = entities.get('original', 'phrase')
+                translation = entities.get('translation', 'translation')
+                return cue_template.format(original=original, translation=translation)
+            
+            # For other intents, just return the template as is
+            else:
+                return cue_template
+                
+        except KeyError as e:
+            logger.warning(f"Failed to format learning cue: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error creating learning cue: {e}")
+            return None
     
     def _format_suggested_actions(self, actions: List[str]) -> str:
         """
-        Format a list of suggested actions.
+        Format a list of suggested actions for the player.
         
         Args:
             actions: List of suggested actions
             
         Returns:
-            A formatted string of suggested actions
+            Formatted string with suggested actions
         """
-        if not actions:
-            return ""
+        # Get the formality level
+        formality = self.personality["formality"]
         
-        # Different formats based on formality
-        if self.personality["formality"] > 0.7:
-            intro = "I would recommend the following actions:"
-            formatted = "\n- " + "\n- ".join(actions)
-        elif self.personality["formality"] > 0.3:
-            intro = "Here are some things you could try:"
-            formatted = "\n- " + "\n- ".join(actions)
+        # Different headers based on formality
+        if formality > 0.7:
+            header = "I would suggest the following actions:"
+        elif formality > 0.3:
+            header = "Here are some things you could try:"
         else:
-            intro = "Maybe try these:"
-            formatted = "\n- " + "\n- ".join(actions)
+            header = "Try these:"
         
-        return f"{intro}{formatted}" 
+        # Format each action as a bullet point
+        action_items = [f"• {action}" for action in actions]
+        
+        # Combine header and actions
+        return header + "\n" + "\n".join(action_items) 
