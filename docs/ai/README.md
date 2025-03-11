@@ -16,6 +16,7 @@ The Tokyo Train Station Adventure includes a sophisticated AI companion that hel
 ### Components
 
 - [Personality Engine](personality-engine.md) - Documentation for the personality engine, which manages the companion's personality traits and adaptation
+- [Learning Assistance](learning-assistance.md) - Documentation for the learning assistance module, which helps players learn Japanese
 
 ## Planned Documentation
 
@@ -25,6 +26,5 @@ The following documentation is planned for future development:
 - Tiered Processing Framework
 - Response Formatting System
 - Scenario Detection and Handling
-- Learning Assistance Features
 - Context Preservation Mechanisms
 - Multi-turn Conversation Management 
