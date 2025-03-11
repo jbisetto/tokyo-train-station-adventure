@@ -12,11 +12,14 @@ from typing import Dict, Any, Optional
 from backend.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
-    ProcessingTier
+    ProcessingTier,
+    ComplexityLevel
 )
 from backend.ai.companion.core.processor_framework import Processor
 from backend.ai.companion.tier3.bedrock_client import BedrockClient, BedrockError
 from backend.ai.companion.tier3.usage_tracker import UsageTracker, default_tracker
+from backend.ai.companion.tier3.context_manager import ContextManager, default_context_manager
+from backend.ai.companion.tier3.conversation_manager import ConversationManager
 from backend.ai.companion.config import CLOUD_API_CONFIG
 
 
@@ -29,15 +32,22 @@ class Tier3Processor(Processor):
     the most expensive processor in the tiered processing framework.
     """
     
-    def __init__(self, usage_tracker: Optional[UsageTracker] = None):
+    def __init__(
+        self,
+        usage_tracker: Optional[UsageTracker] = None,
+        context_manager: Optional[ContextManager] = None
+    ):
         """
         Initialize the Tier 3 processor.
         
         Args:
             usage_tracker: Optional usage tracker for monitoring API usage
+            context_manager: Optional context manager for tracking conversation context
         """
         self.logger = logging.getLogger(__name__)
         self.client = self._create_bedrock_client(usage_tracker)
+        self.context_manager = context_manager or default_context_manager
+        self.conversation_manager = ConversationManager()
         self.logger.info("Tier 3 processor initialized with Bedrock client")
     
     def _create_bedrock_client(self, usage_tracker: Optional[UsageTracker] = None) -> BedrockClient:
@@ -81,7 +91,18 @@ class Tier3Processor(Processor):
         )
         
         try:
-            # Use asyncio to run the async generate method
+            # For complex requests, use the conversation manager for multi-turn conversations
+            if request.complexity == ComplexityLevel.COMPLEX and "conversation_id" in request.additional_params:
+                self.logger.debug(f"Using conversation manager for complex request {request.request_id}")
+                response = self.conversation_manager.process(
+                    request,
+                    self.context_manager,
+                    self.client
+                )
+                self.logger.info(f"Generated response for complex request {request.request_id}")
+                return response
+            
+            # For other requests, use the standard processing flow
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             response = loop.run_until_complete(
