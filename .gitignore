@@ -1,3 +1,7 @@
+# Created by pytest automatically.
+*
+# Created by venv; see https://docs.python.org/3/library/venv.html
+*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -61,4 +65,7 @@ tokyo-py/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Project specific ignores
+docs/design/system/rest/ 
