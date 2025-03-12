@@ -3,7 +3,8 @@ API routers package.
 """
 
 from fastapi import APIRouter
-from backend.api.routers.companion import router as companion_router  # Use absolute import
+from backend.api.routers.companion import router as companion_router
+from backend.api.routers.dialogue import router as dialogue_router
 
 # Create the main API router
 api_router = APIRouter(
@@ -16,6 +17,9 @@ api_router = APIRouter(
 
 # Include the companion router
 api_router.include_router(companion_router)
+
+# Include the dialogue router
+api_router.include_router(dialogue_router)
 
 # Add a root endpoint
 @api_router.get("/")

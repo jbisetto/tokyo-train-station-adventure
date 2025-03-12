@@ -71,9 +71,11 @@ class AdapterFactory:
             A request adapter instance
         """
         from backend.api.adapters.companion_assist import CompanionAssistRequestAdapter
+        from backend.api.adapters.dialogue_process import DialogueProcessRequestAdapter
         
         adapters = {
             "companion_assist": CompanionAssistRequestAdapter(),
+            "dialogue_process": DialogueProcessRequestAdapter(),
         }
         
         return adapters.get(adapter_type)
@@ -90,9 +92,11 @@ class AdapterFactory:
             A response adapter instance
         """
         from backend.api.adapters.companion_assist import CompanionAssistResponseAdapter
+        from backend.api.adapters.dialogue_process import DialogueProcessResponseAdapter
         
         adapters = {
             "companion_assist": CompanionAssistResponseAdapter(),
+            "dialogue_process": DialogueProcessResponseAdapter(),
         }
         
         return adapters.get(adapter_type) 

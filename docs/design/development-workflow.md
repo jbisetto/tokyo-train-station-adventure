@@ -50,6 +50,59 @@ Our testing approach is guided by these principles:
 - **Coverage**: Aim for high test coverage, especially for core functionality
 - **Readability**: Tests should be clear about what they're testing and why
 
+## Test Organization
+
+To maintain a consistent project structure, all tests must follow these organizational guidelines:
+
+1. **Root Test Directory**
+   - All tests must be placed in the root `tests/` directory, not in module-specific test directories
+   - This ensures tests are easily discoverable and consistently organized
+
+2. **Mirror Project Structure**
+   - The test directory structure should mirror the project structure
+   - Example: Tests for code in `backend/api/routers/` should be in `tests/backend/api/routers/`
+
+3. **Naming Conventions**
+   - Test files should be named with a `test_` prefix followed by the name of the module being tested
+   - Example: Tests for `dialogue_process.py` should be in `test_dialogue_process.py`
+   - Test client files should be named with a descriptive name followed by `_test_client.py`
+   - Example: `dialogue_test_client.py`
+
+4. **Test Types**
+   - Unit tests should be placed in the same directory as the module they test
+   - Integration tests should be placed in a directory that represents the components being integrated
+   - End-to-end tests should be placed in `tests/e2e/`
+
+5. **Test Utilities**
+   - Common test utilities should be placed in `tests/utils/`
+   - Fixtures should be placed in `tests/conftest.py` or module-specific `conftest.py` files
+
+Example directory structure:
+```
+project/
+├── backend/
+│   ├── api/
+│   │   ├── routers/
+│   │   │   ├── dialogue.py
+│   │   │   └── companion.py
+│   │   └── models/
+│   │       ├── dialogue_process.py
+│   │       └── companion_assist.py
+├── tests/
+│   ├── backend/
+│   │   ├── api/
+│   │   │   ├── routers/
+│   │   │   │   ├── test_dialogue.py
+│   │   │   │   └── test_companion.py
+│   │   │   ├── models/
+│   │   │   │   ├── test_dialogue_process.py
+│   │   │   │   └── test_companion_assist.py
+│   │   │   └── dialogue_test_client.py
+│   ├── conftest.py
+│   └── utils/
+│       └── test_helpers.py
+```
+
 ## Best Practices for Fixing Failing Tests
 
 When encountering failing tests, follow these best practices:
