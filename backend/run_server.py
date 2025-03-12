@@ -1,12 +1,8 @@
 """
-Tokyo Train Station Adventure - Backend Entry Point
+Script to run the FastAPI server.
 """
 
 import uvicorn
-from backend.api import create_app  # Use absolute import
-
-# Create the FastAPI application
-app = create_app()
 
 if __name__ == "__main__":
     # Run the application with uvicorn
@@ -16,4 +12,4 @@ if __name__ == "__main__":
         port=8000,
         reload=True,
         log_level="info"
-    )
+    ) 
