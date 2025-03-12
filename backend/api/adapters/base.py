@@ -73,11 +73,13 @@ class AdapterFactory:
         from backend.api.adapters.companion_assist import CompanionAssistRequestAdapter
         from backend.api.adapters.dialogue_process import DialogueProcessRequestAdapter
         from backend.api.adapters.player_progress import PlayerProgressRequestAdapter
+        from backend.api.adapters.game_state import SaveGameStateRequestAdapter
         
         adapters = {
             "companion_assist": CompanionAssistRequestAdapter(),
             "dialogue_process": DialogueProcessRequestAdapter(),
             "player_progress": PlayerProgressRequestAdapter(),
+            "save_game_state": SaveGameStateRequestAdapter(),
         }
         
         return adapters.get(adapter_type)
@@ -96,11 +98,19 @@ class AdapterFactory:
         from backend.api.adapters.companion_assist import CompanionAssistResponseAdapter
         from backend.api.adapters.dialogue_process import DialogueProcessResponseAdapter
         from backend.api.adapters.player_progress import PlayerProgressResponseAdapter
+        from backend.api.adapters.game_state import (
+            SaveGameStateResponseAdapter,
+            LoadGameStateResponseAdapter,
+            ListSavedGamesResponseAdapter
+        )
         
         adapters = {
             "companion_assist": CompanionAssistResponseAdapter(),
             "dialogue_process": DialogueProcessResponseAdapter(),
             "player_progress": PlayerProgressResponseAdapter(),
+            "save_game_state": SaveGameStateResponseAdapter(),
+            "load_game_state": LoadGameStateResponseAdapter(),
+            "list_saved_games": ListSavedGamesResponseAdapter(),
         }
         
         return adapters.get(adapter_type) 
