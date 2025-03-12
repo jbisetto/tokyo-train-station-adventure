@@ -72,10 +72,12 @@ class AdapterFactory:
         """
         from backend.api.adapters.companion_assist import CompanionAssistRequestAdapter
         from backend.api.adapters.dialogue_process import DialogueProcessRequestAdapter
+        from backend.api.adapters.player_progress import PlayerProgressRequestAdapter
         
         adapters = {
             "companion_assist": CompanionAssistRequestAdapter(),
             "dialogue_process": DialogueProcessRequestAdapter(),
+            "player_progress": PlayerProgressRequestAdapter(),
         }
         
         return adapters.get(adapter_type)
@@ -93,10 +95,12 @@ class AdapterFactory:
         """
         from backend.api.adapters.companion_assist import CompanionAssistResponseAdapter
         from backend.api.adapters.dialogue_process import DialogueProcessResponseAdapter
+        from backend.api.adapters.player_progress import PlayerProgressResponseAdapter
         
         adapters = {
             "companion_assist": CompanionAssistResponseAdapter(),
             "dialogue_process": DialogueProcessResponseAdapter(),
+            "player_progress": PlayerProgressResponseAdapter(),
         }
         
         return adapters.get(adapter_type) 

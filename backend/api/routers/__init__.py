@@ -5,6 +5,7 @@ API routers package.
 from fastapi import APIRouter
 from backend.api.routers.companion import router as companion_router
 from backend.api.routers.dialogue import router as dialogue_router
+from backend.api.routers.player import router as player_router
 
 # Create the main API router
 api_router = APIRouter(
@@ -20,6 +21,9 @@ api_router.include_router(companion_router)
 
 # Include the dialogue router
 api_router.include_router(dialogue_router)
+
+# Include the player router
+api_router.include_router(player_router)
 
 # Add a root endpoint
 @api_router.get("/")
