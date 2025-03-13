@@ -2,12 +2,15 @@
 API routers package.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
+
 from backend.api.routers.companion import router as companion_router
 from backend.api.routers.dialogue import router as dialogue_router
 from backend.api.routers.player import router as player_router
 from backend.api.routers.game_state import router as game_state_router
 from backend.api.routers.npc import router as npc_router
+from backend.api.routers.npc_dialogue import router as npc_dialogue_router
 
 # Create the main API router
 api_router = APIRouter(
@@ -18,20 +21,13 @@ api_router = APIRouter(
     }
 )
 
-# Include the companion router
+# Include the routers
 api_router.include_router(companion_router)
-
-# Include the dialogue router
 api_router.include_router(dialogue_router)
-
-# Include the player router
 api_router.include_router(player_router)
-
-# Include the game state router
 api_router.include_router(game_state_router)
-
-# Include the NPC router
 api_router.include_router(npc_router)
+api_router.include_router(npc_dialogue_router)
 
 # Add a root endpoint
 @api_router.get("/")

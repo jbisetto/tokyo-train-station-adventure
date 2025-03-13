@@ -2,123 +2,130 @@
 Base adapter interfaces for transforming between API and internal data formats.
 """
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, TypeVar
+from typing import Dict, Any, TypeVar, Generic, Type
 
-# Define type variables for request and response types
-RequestT = TypeVar('RequestT')
-ResponseT = TypeVar('ResponseT')
-InternalRequestT = TypeVar('InternalRequestT')
-InternalResponseT = TypeVar('InternalResponseT')
+# Generic type variables
+T = TypeVar('T')  # Request/Response type
+U = TypeVar('U')  # Adapted type
 
 
-class RequestAdapter(Generic[RequestT, InternalRequestT], ABC):
-    """
-    Base interface for request adapters.
+class RequestAdapter(Generic[T, U]):
+    """Base interface for request adapters."""
     
-    Request adapters transform external API requests into internal format.
-    """
-    
-    @abstractmethod
-    def adapt(self, request: RequestT) -> InternalRequestT:
+    def adapt(self, request: T) -> U:
         """
-        Transform an external request to the internal format.
+        Adapt the request to the internal format.
         
         Args:
-            request: The external request to transform
+            request: The request to adapt.
             
         Returns:
-            The transformed internal request
+            The adapted request.
         """
-        pass
+        raise NotImplementedError("Subclasses must implement adapt()")
 
 
-class ResponseAdapter(Generic[InternalResponseT, ResponseT], ABC):
-    """
-    Base interface for response adapters.
+class ResponseAdapter(Generic[T, U]):
+    """Base interface for response adapters."""
     
-    Response adapters transform internal responses into external API format.
-    """
-    
-    @abstractmethod
-    def adapt(self, response: InternalResponseT) -> ResponseT:
+    def adapt(self, response: T) -> U:
         """
-        Transform an internal response to the external format.
+        Adapt the response to the API format.
         
         Args:
-            response: The internal response to transform
+            response: The response to adapt.
             
         Returns:
-            The transformed external response
+            The adapted response.
         """
-        pass
+        raise NotImplementedError("Subclasses must implement adapt()")
 
 
 class AdapterFactory:
-    """
-    Factory for creating adapters.
-    """
+    """Factory for creating adapters."""
     
     @staticmethod
     def get_request_adapter(adapter_type: str) -> RequestAdapter:
         """
-        Get a request adapter for the specified type.
+        Get a request adapter by type.
         
         Args:
-            adapter_type: The type of adapter to get
+            adapter_type: The type of adapter to get.
             
         Returns:
-            A request adapter instance
+            The adapter.
+            
+        Raises:
+            ValueError: If the adapter type is not supported.
         """
+        # Import adapters here to avoid circular imports
         from backend.api.adapters.companion_assist import CompanionAssistRequestAdapter
         from backend.api.adapters.dialogue_process import DialogueProcessRequestAdapter
         from backend.api.adapters.player_progress import PlayerProgressRequestAdapter
-        from backend.api.adapters.game_state import SaveGameStateRequestAdapter
+        from backend.api.adapters.game_state import (
+            GameStateSaveRequestAdapter,
+            GameStateLoadRequestAdapter,
+            GameStateListRequestAdapter
+        )
         
         adapters = {
             "companion_assist": CompanionAssistRequestAdapter(),
             "dialogue_process": DialogueProcessRequestAdapter(),
             "player_progress": PlayerProgressRequestAdapter(),
-            "save_game_state": SaveGameStateRequestAdapter(),
+            "game_state_save": GameStateSaveRequestAdapter(),
+            "game_state_load": GameStateLoadRequestAdapter(),
+            "game_state_list": GameStateListRequestAdapter()
         }
         
-        return adapters.get(adapter_type)
+        if adapter_type not in adapters:
+            raise ValueError(f"Unsupported request adapter type: {adapter_type}")
+        
+        return adapters[adapter_type]
     
     @staticmethod
     def get_response_adapter(adapter_type: str) -> ResponseAdapter:
         """
-        Get a response adapter for the specified type.
+        Get a response adapter by type.
         
         Args:
-            adapter_type: The type of adapter to get
+            adapter_type: The type of adapter to get.
             
         Returns:
-            A response adapter instance
+            The adapter.
+            
+        Raises:
+            ValueError: If the adapter type is not supported.
         """
+        # Import adapters here to avoid circular imports
         from backend.api.adapters.companion_assist import CompanionAssistResponseAdapter
         from backend.api.adapters.dialogue_process import DialogueProcessResponseAdapter
         from backend.api.adapters.player_progress import PlayerProgressResponseAdapter
         from backend.api.adapters.game_state import (
-            SaveGameStateResponseAdapter,
-            LoadGameStateResponseAdapter,
-            ListSavedGamesResponseAdapter
+            GameStateSaveResponseAdapter,
+            GameStateLoadResponseAdapter,
+            GameStateListResponseAdapter
         )
         from backend.api.adapters.npc import (
             NPCInformationResponseAdapter,
             NPCConfigurationResponseAdapter,
             NPCInteractionStateResponseAdapter
         )
+        from backend.api.adapters.npc_dialogue import NPCDialogueResponseAdapter
         
         adapters = {
             "companion_assist": CompanionAssistResponseAdapter(),
             "dialogue_process": DialogueProcessResponseAdapter(),
             "player_progress": PlayerProgressResponseAdapter(),
-            "save_game_state": SaveGameStateResponseAdapter(),
-            "load_game_state": LoadGameStateResponseAdapter(),
-            "list_saved_games": ListSavedGamesResponseAdapter(),
+            "game_state_save": GameStateSaveResponseAdapter(),
+            "game_state_load": GameStateLoadResponseAdapter(),
+            "game_state_list": GameStateListResponseAdapter(),
             "npc_information": NPCInformationResponseAdapter(),
             "npc_configuration": NPCConfigurationResponseAdapter(),
             "npc_interaction_state": NPCInteractionStateResponseAdapter(),
+            "npc_dialogue": NPCDialogueResponseAdapter()
         }
         
-        return adapters.get(adapter_type) 
+        if adapter_type not in adapters:
+            raise ValueError(f"Unsupported response adapter type: {adapter_type}")
+        
+        return adapters[adapter_type] 

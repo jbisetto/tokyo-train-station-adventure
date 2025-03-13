@@ -92,13 +92,12 @@ def save_game_state(game_state: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def load_game_state(player_id: str, save_id: Optional[str] = None) -> Dict[str, Any]:
+def load_game_state(request_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Load a game state.
     
     Args:
-        player_id: The ID of the player.
-        save_id: The ID of the save to load. If None, the most recent save is loaded.
+        request_data: A dictionary containing the player_id and optionally save_id.
         
     Returns:
         The loaded game state.
@@ -108,6 +107,9 @@ def load_game_state(player_id: str, save_id: Optional[str] = None) -> Dict[str, 
         PlayerNotFoundError: If the player is not found.
         SaveNotFoundError: If the save is not found.
     """
+    player_id = request_data.get("player_id")
+    save_id = request_data.get("save_id")
+    
     validate_player_id(player_id)
     
     # Check if player exists
@@ -135,12 +137,12 @@ def load_game_state(player_id: str, save_id: Optional[str] = None) -> Dict[str, 
     return player_saves[save_id]
 
 
-def list_saved_games(player_id: str) -> Dict[str, Any]:
+def list_saved_games(request_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     List all saved games for a player.
     
     Args:
-        player_id: The ID of the player.
+        request_data: A dictionary containing the player_id.
         
     Returns:
         A dictionary containing the player ID and a list of save metadata.
@@ -149,6 +151,7 @@ def list_saved_games(player_id: str) -> Dict[str, Any]:
         InvalidPlayerIdError: If the player ID is invalid.
         PlayerNotFoundError: If the player is not found.
     """
+    player_id = request_data.get("player_id")
     validate_player_id(player_id)
     
     # Check if player exists
@@ -157,19 +160,17 @@ def list_saved_games(player_id: str) -> Dict[str, Any]:
     
     player_saves = _game_states[player_id]
     
-    # Create save metadata list
-    saves = []
-    for save_id, save in player_saves.items():
-        location_name = save["location"].get("area", "Unknown")
-        quest_name = save["quest_state"].get("active_quest", "Unknown")
-        
-        saves.append({
+    # Create a list of save metadata
+    saves = [
+        {
             "save_id": save_id,
             "timestamp": save["timestamp"],
-            "location_name": location_name,
-            "quest_name": quest_name,
+            "location_name": save["location"].get("area", "Unknown"),
+            "quest_name": save["quest_state"].get("active_quest", "None"),
             "level": None  # Level is not implemented yet
-        })
+        }
+        for save_id, save in player_saves.items()
+    ]
     
     # Sort saves by timestamp (newest first)
     saves.sort(key=lambda save: save["timestamp"], reverse=True)
@@ -180,147 +181,138 @@ def list_saved_games(player_id: str) -> Dict[str, Any]:
     }
 
 
-# Create some mock data for testing
+# Create mock data for testing
 def _create_mock_data():
-    """Create mock game state data for testing."""
-    # Player 1: player123
-    player1_id = "player123"
+    """Create mock data for testing."""
+    # Create a player
+    player_id = "test_player"
     
-    # Save 1: Tokyo Station
-    save_game_state({
-        "player_id": player1_id,
-        "session_id": "session1",
+    # Create some saves
+    save1 = {
+        "player_id": player_id,
+        "session_id": "test_session_1",
         "timestamp": datetime.utcnow() - timedelta(days=2),
         "location": {
-            "area": "tokyo_station_entrance",
+            "area": "tokyo_station",
             "position": {
                 "x": 100,
                 "y": 200
             }
         },
         "quest_state": {
-            "active_quest": "find_platform",
-            "quest_step": "talk_to_station_attendant",
+            "active_quest": "find_ticket_machine",
+            "quest_step": "locate_machine",
             "objectives": [
                 {
-                    "id": "find_station_map",
+                    "id": "obj1",
                     "completed": True,
-                    "description": "Find a station map"
+                    "description": "Enter Tokyo Station"
                 },
                 {
-                    "id": "talk_to_attendant",
+                    "id": "obj2",
                     "completed": False,
-                    "description": "Ask the station attendant for directions"
+                    "description": "Find the ticket machine"
                 }
             ]
         },
-        "inventory": ["wallet", "phone", "station_map"],
+        "inventory": ["map", "phrase_book"],
         "game_flags": {
-            "tutorialCompleted": True,
-            "metCharacters": ["station_guard"]
+            "tutorial_completed": True,
+            "met_station_attendant": False
         },
         "companions": {
-            "hachi": {
+            "ai_assistant": {
                 "relationship": 0.5,
                 "assistance_used": 2
             }
         }
-    })
+    }
     
-    # Save 2: Ticket Machine Area
-    save_game_state({
-        "player_id": player1_id,
-        "session_id": "session2",
+    save2 = {
+        "player_id": player_id,
+        "session_id": "test_session_2",
         "timestamp": datetime.utcnow() - timedelta(hours=5),
         "location": {
-            "area": "ticket_machine_area",
+            "area": "shinjuku_station",
             "position": {
-                "x": 320,
-                "y": 240
+                "x": 150,
+                "y": 300
             }
         },
         "quest_state": {
-            "active_quest": "buy_ticket_to_odawara",
-            "quest_step": "find_ticket_machine",
+            "active_quest": "buy_ticket",
+            "quest_step": "select_destination",
             "objectives": [
                 {
-                    "id": "speak_to_information_desk",
+                    "id": "obj1",
                     "completed": True,
-                    "description": "Speak to the information desk attendant"
+                    "description": "Find the ticket machine"
                 },
                 {
-                    "id": "locate_ticket_machine",
-                    "completed": True,
-                    "description": "Find a ticket machine"
-                },
-                {
-                    "id": "purchase_ticket",
+                    "id": "obj2",
                     "completed": False,
-                    "description": "Purchase a ticket to Odawara"
+                    "description": "Select destination"
                 }
             ]
         },
-        "inventory": ["wallet", "phone", "station_map", "notebook"],
+        "inventory": ["map", "phrase_book", "station_guide"],
         "game_flags": {
-            "tutorialCompleted": True,
-            "metCharacters": ["station_guard", "info_attendant"]
+            "tutorial_completed": True,
+            "met_station_attendant": True
         },
         "companions": {
-            "hachi": {
-                "relationship": 0.65,
-                "assistance_used": 3
-            }
-        }
-    })
-    
-    # Player 2: player456
-    player2_id = "player456"
-    
-    # Save 1: Platform Area
-    save_game_state({
-        "player_id": player2_id,
-        "session_id": "session1",
-        "timestamp": datetime.utcnow() - timedelta(days=1),
-        "location": {
-            "area": "platform_3",
-            "position": {
-                "x": 450,
-                "y": 180
-            }
-        },
-        "quest_state": {
-            "active_quest": "board_train_to_kyoto",
-            "quest_step": "wait_for_train",
-            "objectives": [
-                {
-                    "id": "find_platform",
-                    "completed": True,
-                    "description": "Find Platform 3"
-                },
-                {
-                    "id": "validate_ticket",
-                    "completed": True,
-                    "description": "Validate your ticket"
-                },
-                {
-                    "id": "board_train",
-                    "completed": False,
-                    "description": "Board the train when it arrives"
-                }
-            ]
-        },
-        "inventory": ["wallet", "phone", "validated_ticket", "bento_box"],
-        "game_flags": {
-            "tutorialCompleted": True,
-            "metCharacters": ["ticket_inspector", "fellow_passenger"]
-        },
-        "companions": {
-            "hachi": {
-                "relationship": 0.8,
+            "ai_assistant": {
+                "relationship": 0.7,
                 "assistance_used": 5
             }
         }
-    })
+    }
+    
+    save3 = {
+        "player_id": player_id,
+        "session_id": "test_session_3",
+        "timestamp": datetime.utcnow() - timedelta(days=1),
+        "location": {
+            "area": "akihabara_station",
+            "position": {
+                "x": 200,
+                "y": 400
+            }
+        },
+        "quest_state": {
+            "active_quest": "find_platform",
+            "quest_step": "check_schedule",
+            "objectives": [
+                {
+                    "id": "obj1",
+                    "completed": True,
+                    "description": "Buy ticket"
+                },
+                {
+                    "id": "obj2",
+                    "completed": False,
+                    "description": "Find the correct platform"
+                }
+            ]
+        },
+        "inventory": ["map", "phrase_book", "station_guide", "ticket"],
+        "game_flags": {
+            "tutorial_completed": True,
+            "met_station_attendant": True,
+            "bought_ticket": True
+        },
+        "companions": {
+            "ai_assistant": {
+                "relationship": 0.8,
+                "assistance_used": 7
+            }
+        }
+    }
+    
+    # Save the mock data
+    save_game_state(save1)
+    save_game_state(save2)
+    save_game_state(save3)
 
 
 # Create mock data when module is imported

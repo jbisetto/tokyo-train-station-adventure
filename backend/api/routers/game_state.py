@@ -65,7 +65,7 @@ async def save_game(
         logger.info(f"Saving game state for player {request.playerId}")
         
         # Get the request adapter
-        request_adapter = AdapterFactory.get_request_adapter("save_game_state")
+        request_adapter = AdapterFactory.get_request_adapter("game_state_save")
         
         # Transform request to internal format
         internal_request = request_adapter.adapt(request.dict())
@@ -74,7 +74,7 @@ async def save_game(
         result = save_game_state(internal_request)
         
         # Get the response adapter
-        response_adapter = AdapterFactory.get_response_adapter("save_game_state")
+        response_adapter = AdapterFactory.get_response_adapter("game_state_save")
         
         # Transform result to API format
         response_data = response_adapter.adapt(result)
@@ -100,19 +100,19 @@ async def save_game(
 @router.get(
     "/{player_id}",
     response_model=LoadGameStateResponse,
-    summary="Load a saved game state",
-    description="Load a saved game state for a player"
+    summary="Load a game state",
+    description="Load a game state for a player"
 )
 async def load_game(
-    player_id: str = Path(..., description="The ID of the player"),
-    save_id: Optional[str] = Query(None, description="The ID of the save to load")
+    player_id: str = Path(..., description="The player ID"),
+    save_id: Optional[str] = Query(None, description="The save ID (optional)")
 ) -> LoadGameStateResponse:
     """
-    Load a saved game state.
+    Load a game state.
     
     Args:
-        player_id: The ID of the player.
-        save_id: The ID of the save to load. If not provided, the most recent save is loaded.
+        player_id: The player ID.
+        save_id: The save ID (optional).
         
     Returns:
         The loaded game state.
@@ -121,14 +121,27 @@ async def load_game(
         HTTPException: If an error occurs while loading the game state.
     """
     try:
-        logger.info(f"Loading game state for player {player_id}" + 
-                   (f" with save ID {save_id}" if save_id else " (most recent)"))
+        logger.info(f"Loading game state for player {player_id}")
+        
+        # Prepare request data
+        request_data = {
+            "playerId": player_id
+        }
+        
+        if save_id:
+            request_data["saveId"] = save_id
+            
+        # Get the request adapter
+        request_adapter = AdapterFactory.get_request_adapter("game_state_load")
+        
+        # Transform request to internal format
+        internal_request = request_adapter.adapt(request_data)
         
         # Load the game state
-        result = load_game_state(player_id, save_id)
+        result = load_game_state(internal_request)
         
         # Get the response adapter
-        response_adapter = AdapterFactory.get_response_adapter("load_game_state")
+        response_adapter = AdapterFactory.get_response_adapter("game_state_load")
         
         # Transform result to API format
         response_data = response_adapter.adapt(result)
@@ -153,8 +166,7 @@ async def load_game(
         logger.error(f"Save not found: {str(e)}")
         raise HTTPException(
             status_code=404,
-            detail=f"Save not found for player {player_id}" + 
-                  (f" with save ID {save_id}" if save_id else "")
+            detail=f"Save not found for player {player_id}"
         )
     except Exception as e:
         logger.error(f"Error loading game state: {str(e)}")
@@ -170,29 +182,40 @@ async def load_game(
     summary="List saved games",
     description="List all saved games for a player"
 )
-async def list_saves(
-    player_id: str = Path(..., description="The ID of the player")
+async def list_games(
+    player_id: str = Path(..., description="The player ID")
 ) -> ListSavedGamesResponse:
     """
-    List all saved games for a player.
+    List saved games for a player.
     
     Args:
-        player_id: The ID of the player.
+        player_id: The player ID.
         
     Returns:
-        A list of saved games for the player.
+        A list of saved games.
         
     Raises:
-        HTTPException: If an error occurs while listing the saved games.
+        HTTPException: If an error occurs while listing saved games.
     """
     try:
         logger.info(f"Listing saved games for player {player_id}")
         
+        # Prepare request data
+        request_data = {
+            "playerId": player_id
+        }
+        
+        # Get the request adapter
+        request_adapter = AdapterFactory.get_request_adapter("game_state_list")
+        
+        # Transform request to internal format
+        internal_request = request_adapter.adapt(request_data)
+        
         # List saved games
-        result = list_saved_games(player_id)
+        result = list_saved_games(internal_request)
         
         # Get the response adapter
-        response_adapter = AdapterFactory.get_response_adapter("list_saved_games")
+        response_adapter = AdapterFactory.get_response_adapter("game_state_list")
         
         # Transform result to API format
         response_data = response_adapter.adapt(result)

@@ -12,7 +12,7 @@ from backend.api.models.game_state import (
 )
 
 
-class SaveGameStateRequestAdapter(RequestAdapter):
+class GameStateSaveRequestAdapter(RequestAdapter):
     """Adapter for save game state requests."""
 
     def adapt(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -23,7 +23,7 @@ class SaveGameStateRequestAdapter(RequestAdapter):
             request_data: The external request to transform
             
         Returns:
-            The transformed internal request
+            The transformed external response
         """
         return self.to_internal(request_data)
 
@@ -78,7 +78,74 @@ class SaveGameStateRequestAdapter(RequestAdapter):
         return internal_data
 
 
-class SaveGameStateResponseAdapter(ResponseAdapter):
+class GameStateLoadRequestAdapter(RequestAdapter):
+    """Adapter for load game state requests."""
+
+    def adapt(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Transform an external request to the internal format.
+        
+        Args:
+            request_data: The external request to transform
+            
+        Returns:
+            The transformed internal request
+        """
+        return self.to_internal(request_data)
+
+    def to_internal(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert API request data to internal format.
+        
+        Args:
+            request_data: The API request data.
+            
+        Returns:
+            The internal format data.
+        """
+        # For load requests, we typically just need the player ID and save ID
+        internal_data = {
+            "player_id": request_data.get("playerId"),
+            "save_id": request_data.get("saveId")
+        }
+        
+        return internal_data
+
+
+class GameStateListRequestAdapter(RequestAdapter):
+    """Adapter for list saved games requests."""
+
+    def adapt(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Transform an external request to the internal format.
+        
+        Args:
+            request_data: The external request to transform
+            
+        Returns:
+            The transformed internal request
+        """
+        return self.to_internal(request_data)
+
+    def to_internal(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert API request data to internal format.
+        
+        Args:
+            request_data: The API request data.
+            
+        Returns:
+            The internal format data.
+        """
+        # For list requests, we typically just need the player ID
+        internal_data = {
+            "player_id": request_data.get("playerId")
+        }
+        
+        return internal_data
+
+
+class GameStateSaveResponseAdapter(ResponseAdapter):
     """Adapter for save game state responses."""
 
     def adapt(self, internal_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -113,7 +180,7 @@ class SaveGameStateResponseAdapter(ResponseAdapter):
         return api_data.dict()
 
 
-class LoadGameStateResponseAdapter(ResponseAdapter):
+class GameStateLoadResponseAdapter(ResponseAdapter):
     """Adapter for load game state responses."""
 
     def adapt(self, internal_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -178,7 +245,7 @@ class LoadGameStateResponseAdapter(ResponseAdapter):
         return api_data.dict()
 
 
-class ListSavedGamesResponseAdapter(ResponseAdapter):
+class GameStateListResponseAdapter(ResponseAdapter):
     """Adapter for list saved games responses."""
 
     def adapt(self, internal_data: Dict[str, Any]) -> Dict[str, Any]:
