@@ -103,6 +103,11 @@ class AdapterFactory:
             LoadGameStateResponseAdapter,
             ListSavedGamesResponseAdapter
         )
+        from backend.api.adapters.npc import (
+            NPCInformationResponseAdapter,
+            NPCConfigurationResponseAdapter,
+            NPCInteractionStateResponseAdapter
+        )
         
         adapters = {
             "companion_assist": CompanionAssistResponseAdapter(),
@@ -111,6 +116,9 @@ class AdapterFactory:
             "save_game_state": SaveGameStateResponseAdapter(),
             "load_game_state": LoadGameStateResponseAdapter(),
             "list_saved_games": ListSavedGamesResponseAdapter(),
+            "npc_information": NPCInformationResponseAdapter(),
+            "npc_configuration": NPCConfigurationResponseAdapter(),
+            "npc_interaction_state": NPCInteractionStateResponseAdapter(),
         }
         
         return adapters.get(adapter_type) 
