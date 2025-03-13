@@ -3,8 +3,8 @@ Data access layer for game state operations.
 """
 
 import uuid
-from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional
 
 # In-memory storage for game states (in a real implementation, this would be a database)
 _game_states: Dict[str, Dict[str, Any]] = {}
@@ -62,7 +62,7 @@ def save_game_state(game_state: Dict[str, Any]) -> Dict[str, Any]:
     
     # Generate a unique save ID
     save_id = str(uuid.uuid4())
-    timestamp = game_state.get("timestamp", datetime.now(UTC))
+    timestamp = game_state.get("timestamp", datetime.utcnow())
     
     # Create a new save entry
     save_entry = {
@@ -190,7 +190,7 @@ def _create_mock_data():
     save_game_state({
         "player_id": player1_id,
         "session_id": "session1",
-        "timestamp": datetime.now(UTC) - timedelta(days=2),
+        "timestamp": datetime.utcnow() - timedelta(days=2),
         "location": {
             "area": "tokyo_station_entrance",
             "position": {
@@ -231,7 +231,7 @@ def _create_mock_data():
     save_game_state({
         "player_id": player1_id,
         "session_id": "session2",
-        "timestamp": datetime.now(UTC) - timedelta(hours=5),
+        "timestamp": datetime.utcnow() - timedelta(hours=5),
         "location": {
             "area": "ticket_machine_area",
             "position": {
@@ -280,7 +280,7 @@ def _create_mock_data():
     save_game_state({
         "player_id": player2_id,
         "session_id": "session1",
-        "timestamp": datetime.now(UTC) - timedelta(days=1),
+        "timestamp": datetime.utcnow() - timedelta(days=1),
         "location": {
             "area": "platform_3",
             "position": {

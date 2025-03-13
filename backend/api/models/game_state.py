@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 
 
 class Position(BaseModel):
@@ -46,8 +46,7 @@ class SaveGameStateRequest(BaseModel):
     gameFlags: Optional[Dict[str, Any]] = Field(default={}, description="Game state flags")
     companions: Optional[Dict[str, CompanionState]] = Field(default={}, description="Companion states")
 
-    @field_validator('playerId')
-    @classmethod
+    @validator('playerId')
     def validate_player_id(cls, v):
         if len(v) < 3:
             raise ValueError("Player ID must be at least 3 characters long")

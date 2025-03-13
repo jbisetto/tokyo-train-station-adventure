@@ -1,6 +1,6 @@
-from datetime import datetime, UTC
+from datetime import datetime
 import uuid
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from backend.api.adapters.base import RequestAdapter, ResponseAdapter
 from backend.api.models.game_state import (
@@ -8,12 +8,7 @@ from backend.api.models.game_state import (
     SaveGameStateResponse,
     LoadGameStateResponse,
     ListSavedGamesResponse,
-    SaveMetadata,
-    Location,
-    QuestState,
-    Objective,
-    Position,
-    CompanionState
+    SaveMetadata
 )
 
 
@@ -88,19 +83,19 @@ class SaveGameStateResponseAdapter(ResponseAdapter):
 
     def adapt(self, internal_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Adapt internal data to API format.
+        Transform an internal response to the external format.
         
         Args:
-            internal_data: The internal data.
+            internal_data: The internal response to transform
             
         Returns:
-            The API response data.
+            The transformed external response
         """
         return self.to_api(internal_data)
 
     def to_api(self, internal_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Convert internal data to API format.
+        Convert internal data to API response format.
         
         Args:
             internal_data: The internal data.
@@ -112,10 +107,10 @@ class SaveGameStateResponseAdapter(ResponseAdapter):
         api_data = SaveGameStateResponse(
             success=internal_data.get("success", True),
             saveId=internal_data.get("save_id", str(uuid.uuid4())),
-            timestamp=internal_data.get("timestamp", datetime.now(UTC))
+            timestamp=internal_data.get("timestamp", datetime.utcnow())
         )
         
-        return api_data.model_dump()
+        return api_data.dict()
 
 
 class LoadGameStateResponseAdapter(ResponseAdapter):
@@ -123,19 +118,19 @@ class LoadGameStateResponseAdapter(ResponseAdapter):
 
     def adapt(self, internal_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Adapt internal data to API format.
+        Transform an internal response to the external format.
         
         Args:
-            internal_data: The internal data.
+            internal_data: The internal response to transform
             
         Returns:
-            The API response data.
+            The transformed external response
         """
         return self.to_api(internal_data)
 
     def to_api(self, internal_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Convert internal data to API format.
+        Convert internal data to API response format.
         
         Args:
             internal_data: The internal data.
@@ -145,59 +140,42 @@ class LoadGameStateResponseAdapter(ResponseAdapter):
         """
         # Convert internal data to API format
         api_data = LoadGameStateResponse(
-            playerId=internal_data.get("player_id", ""),
-            saveId=internal_data.get("save_id", ""),
-            sessionId=internal_data.get("session_id", ""),
-            timestamp=internal_data.get("timestamp", datetime.now(UTC)),
-            lastPlayed=internal_data.get("last_played", datetime.now(UTC)),
-            location=self._convert_location(internal_data.get("location", {})),
-            questState=self._convert_quest_state(internal_data.get("quest_state", {})),
-            inventory=internal_data.get("inventory", []),
-            gameFlags=internal_data.get("game_flags", {}),
-            companions=self._convert_companions(internal_data.get("companions", {}))
+            playerId=internal_data["player_id"],
+            saveId=internal_data["save_id"],
+            sessionId=internal_data["session_id"],
+            timestamp=internal_data["timestamp"],
+            lastPlayed=internal_data["last_played"],
+            location={
+                "area": internal_data["location"]["area"],
+                "position": {
+                    "x": internal_data["location"]["position"]["x"],
+                    "y": internal_data["location"]["position"]["y"]
+                }
+            },
+            questState={
+                "activeQuest": internal_data["quest_state"]["active_quest"],
+                "questStep": internal_data["quest_state"]["quest_step"],
+                "objectives": [
+                    {
+                        "id": obj["id"],
+                        "completed": obj["completed"],
+                        "description": obj["description"]
+                    }
+                    for obj in internal_data["quest_state"]["objectives"]
+                ]
+            },
+            inventory=internal_data["inventory"],
+            gameFlags=internal_data["game_flags"],
+            companions={
+                companion_id: {
+                    "relationship": state["relationship"],
+                    "assistanceUsed": state["assistance_used"]
+                }
+                for companion_id, state in internal_data["companions"].items()
+            }
         )
         
-        return api_data.model_dump()
-
-    def _convert_location(self, location_data: Dict[str, Any]) -> Location:
-        """Convert location data to API format."""
-        position_data = location_data.get("position", {})
-        return Location(
-            area=location_data.get("area", ""),
-            position=Position(
-                x=position_data.get("x", 0),
-                y=position_data.get("y", 0)
-            )
-        )
-
-    def _convert_quest_state(self, quest_data: Dict[str, Any]) -> QuestState:
-        """Convert quest state data to API format."""
-        return QuestState(
-            activeQuest=quest_data.get("active_quest", ""),
-            questStep=quest_data.get("quest_step", ""),
-            objectives=self._convert_objectives(quest_data.get("objectives", []))
-        )
-
-    def _convert_objectives(self, objectives_data: List[Dict[str, Any]]) -> List[Objective]:
-        """Convert objectives data to API format."""
-        return [
-            Objective(
-                id=obj.get("id", ""),
-                completed=obj.get("completed", False),
-                description=obj.get("description", "")
-            )
-            for obj in objectives_data
-        ]
-
-    def _convert_companions(self, companions_data: Dict[str, Any]) -> Dict[str, CompanionState]:
-        """Convert companions data to API format."""
-        return {
-            companion_id: CompanionState(
-                relationship=state.get("relationship", 0.0),
-                assistanceUsed=state.get("assistance_used", 0)
-            )
-            for companion_id, state in companions_data.items()
-        }
+        return api_data.dict()
 
 
 class ListSavedGamesResponseAdapter(ResponseAdapter):
@@ -205,19 +183,19 @@ class ListSavedGamesResponseAdapter(ResponseAdapter):
 
     def adapt(self, internal_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Adapt internal data to API format.
+        Transform an internal response to the external format.
         
         Args:
-            internal_data: The internal data.
+            internal_data: The internal response to transform
             
         Returns:
-            The API response data.
+            The transformed external response
         """
         return self.to_api(internal_data)
 
     def to_api(self, internal_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Convert internal data to API format.
+        Convert internal data to API response format.
         
         Args:
             internal_data: The internal data.
@@ -226,22 +204,20 @@ class ListSavedGamesResponseAdapter(ResponseAdapter):
             The API response data.
         """
         # Convert internal data to API format
-        api_data = ListSavedGamesResponse(
-            playerId=internal_data.get("player_id", ""),
-            saves=self._convert_saves(internal_data.get("saves", []))
-        )
-        
-        return api_data.model_dump()
-
-    def _convert_saves(self, saves_data: List[Dict[str, Any]]) -> List[SaveMetadata]:
-        """Convert saves data to API format."""
-        return [
+        saves = [
             SaveMetadata(
-                saveId=save.get("save_id", ""),
-                timestamp=save.get("timestamp", datetime.now(UTC)),
-                location=save.get("location_name", ""),
-                questName=save.get("quest_name", ""),
+                saveId=save["save_id"],
+                timestamp=save["timestamp"],
+                location=save["location_name"],
+                questName=save["quest_name"],
                 level=save.get("level")
             )
-            for save in saves_data
-        ] 
+            for save in internal_data["saves"]
+        ]
+        
+        api_data = ListSavedGamesResponse(
+            playerId=internal_data["player_id"],
+            saves=saves
+        )
+        
+        return api_data.dict() 
