@@ -53,10 +53,10 @@ async def save_game(
     Save the current game state.
     
     Args:
-        request: The save game state request.
+        request: The save game state request
         
     Returns:
-        A response containing the save ID and timestamp.
+        The save game state response
         
     Raises:
         HTTPException: If an error occurs while saving the game state.
@@ -68,7 +68,7 @@ async def save_game(
         request_adapter = AdapterFactory.get_request_adapter("save_game_state")
         
         # Transform request to internal format
-        internal_request = request_adapter.adapt(request.dict())
+        internal_request = request_adapter.adapt(request.model_dump())
         
         # Save the game state
         result = save_game_state(internal_request)
@@ -79,21 +79,19 @@ async def save_game(
         # Transform result to API format
         response_data = response_adapter.adapt(result)
         
-        logger.info(f"Game state saved successfully with save ID {response_data['saveId']}")
-        
-        return response_data
+        return SaveGameStateResponse(**response_data)
         
     except InvalidPlayerIdError as e:
         logger.error(f"Invalid player ID: {str(e)}")
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid player ID format: {request.playerId}"
+            detail={"error": "invalid_player_id", "message": str(e)}
         )
     except Exception as e:
         logger.error(f"Error saving game state: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail="An error occurred while saving the game state"
+            detail={"error": "internal_server_error", "message": "An error occurred while saving the game state"}
         )
 
 

@@ -3,7 +3,7 @@ Tests for the Game State API.
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi.testclient import TestClient
 
 from backend.api import create_app
@@ -23,7 +23,7 @@ def sample_game_state():
     return {
         "playerId": "test_player",
         "sessionId": "test_session",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "location": {
             "area": "test_area",
             "position": {
@@ -42,14 +42,12 @@ def sample_game_state():
                 }
             ]
         },
-        "inventory": ["test_item"],
-        "gameFlags": {
-            "testFlag": True
-        },
+        "inventory": ["item1", "item2"],
+        "gameFlags": {"flag1": True, "flag2": False},
         "companions": {
-            "test_companion": {
-                "relationship": 0.5,
-                "assistanceUsed": 1
+            "dog": {
+                "relationship": 0.8,
+                "assistanceUsed": 5
             }
         }
     }
@@ -113,10 +111,12 @@ def test_load_game_state(client, sample_game_state):
     assert "inventory" in data
     assert data["inventory"] == sample_game_state["inventory"]
     assert "gameFlags" in data
-    assert data["gameFlags"]["testFlag"] == sample_game_state["gameFlags"]["testFlag"]
+    assert data["gameFlags"]["flag1"] == sample_game_state["gameFlags"]["flag1"]
+    assert data["gameFlags"]["flag2"] == sample_game_state["gameFlags"]["flag2"]
     assert "companions" in data
-    assert "test_companion" in data["companions"]
-    assert data["companions"]["test_companion"]["relationship"] == sample_game_state["companions"]["test_companion"]["relationship"]
+    assert "dog" in data["companions"]
+    assert data["companions"]["dog"]["relationship"] == sample_game_state["companions"]["dog"]["relationship"]
+    assert data["companions"]["dog"]["assistanceUsed"] == sample_game_state["companions"]["dog"]["assistanceUsed"]
 
 
 def test_load_game_state_with_save_id(client, sample_game_state):
