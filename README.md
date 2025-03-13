@@ -23,10 +23,13 @@ The Tokyo Train Station Adventure is designed to make Japanese language learning
 - **AI Processing**: 
   - Rule-based systems (70% of interactions)
   - Local Ollama with DeepSeek 7B model (20% of interactions)
+    - Configurable parameters via API for temperature, top_p, etc.
+    - Japanese language correction features
   - Amazon Bedrock APIs for complex scenarios (10% of interactions)
   - Scenario detection system for specialized handling of common player requests
 - **Data Storage**: SQLite with Google/Facebook OAuth integration
 - **Communication**: Event-based architecture with domain events
+- **API**: RESTful API with comprehensive endpoints for game functionality
 
 ## Repository Structure
 
@@ -41,6 +44,20 @@ tokyo-train-station-adventure/
 └── docs/                             # Project documentation
 ```
 
+## API Documentation
+
+The backend provides a comprehensive REST API for game functionality:
+
+### Core Endpoints
+
+- **Companion Assist**: `POST /api/companion/assist` - Get assistance from the companion dog
+- **Dialogue Processing**: `POST /api/dialogue/process` - Process dialogue exchanges
+- **Game State**: `POST /api/game/state`, `GET /api/game/state/{player_id}` - Save/load game progress
+- **NPC Interaction**: Various endpoints for NPC information and dialogue
+- **DeepSeek Engine**: `POST /api/npc/engine/parameters` - Configure the AI language model
+
+Full API documentation is available at `/api/docs` when running the server.
+
 ## Development Plan
 
 1. **Phase 1**: Japanese language processing prototype with DeepSeek 7B
@@ -50,90 +67,54 @@ tokyo-train-station-adventure/
 
 ## Getting Started
 
-*Development setup instructions will be added as the project progresses.*
+### Prerequisites
 
-## Testing
+- Python 3.10+
+- Node.js 16+
+- SQLite
 
-The project follows a Test-Driven Development (TDD) approach, with comprehensive test coverage for all components. The tests are organized to match the module structure of the codebase.
+### Backend Setup
 
-### Setting Up the Test Environment
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/tokyo-train-station-adventure.git
+   cd tokyo-train-station-adventure
+   ```
 
-1. Create and activate a virtual environment:
+2. Create a virtual environment and install dependencies:
    ```bash
    python -m venv tokyo-py
    source tokyo-py/bin/activate  # On Windows: tokyo-py\Scripts\activate
-   ```
-
-2. Install the required dependencies:
-   ```bash
    pip install -r requirements.txt
    ```
 
-   Alternatively, you can install the testing dependencies directly:
+3. Start the backend server:
    ```bash
-   pip install pytest pytest-asyncio pytest-cov pytest-mock pyyaml aiohttp boto3
+   python -m backend.main
    ```
 
-### Running Tests
+4. Access the API documentation at http://localhost:8000/api/docs
 
-- Run all tests:
-  ```bash
-  python -m pytest
-  ```
+## Testing
 
-- Run tests for a specific module:
-  ```bash
-  python -m pytest tests/backend/ai/companion/tier3/
-  ```
+The project includes comprehensive tests for all components:
 
-- Run a specific test file:
-  ```bash
-  python -m pytest tests/backend/ai/companion/tier3/test_tier3_processor.py
-  ```
-
-- Run a specific test:
-  ```bash
-  python -m pytest tests/backend/ai/companion/tier3/test_tier3_processor.py::TestTier3Processor::test_process
-  ```
-
-- Run tests with verbose output:
-  ```bash
-  python -m pytest -v
-  ```
-
-- Run tests with coverage report:
-  ```bash
-  python -m pytest --cov=backend
-  ```
-
-### Test Structure
-
-The test suite is organized to mirror the structure of the codebase:
-
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test interactions between components
-- **Functional Tests**: Test complete workflows
-
-Each module in the companion AI system has corresponding test files that verify its functionality:
-
-```
-tests/
-└── backend/
-    └── ai/
-        └── companion/
-            ├── core/              # Tests for core components
-            ├── tier1/             # Tests for rule-based processing
-            ├── tier2/             # Tests for local LLM integration
-            ├── tier3/             # Tests for cloud API integration
-            └── utils/             # Tests for utility functions
-```
-
-### Continuous Integration
-
-The project uses a shell script to run all tests as part of the development workflow:
+### Running Backend Tests
 
 ```bash
-./run_tests.sh
+# Run all tests
+python -m pytest
+
+# Run specific test file
+python -m pytest tests/backend/api/test_deepseek_parameters.py
+
+# Run with verbose output
+python -m pytest -v
 ```
 
-This script runs the full test suite and generates a coverage report.
+For more detailed testing information, see the [Testing README](tests/README.md).
+
+## License
+
+This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
+
