@@ -98,8 +98,6 @@ class ConversationState(BaseModel):
 class GameProgressUnlocks(BaseModel):
     """Progress-related information."""
     unlockedTopics: List[str] = Field(..., description="Dialogue topics unlocked with this NPC")
-    completedInteractions: List[str] = Field(..., description="Key interactions completed with this NPC")
-    availableQuests: List[str] = Field(..., description="Quests available from this NPC based on progress")
 
 
 class NPCInteractionStateResponse(BaseModel):
@@ -117,4 +115,48 @@ class ErrorResponse(BaseModel):
     """Error response model."""
     error: str = Field(..., description="Error type")
     message: str = Field(..., description="Error message")
-    details: Optional[Any] = Field(None, description="Additional error details") 
+    details: Optional[Any] = Field(None, description="Additional error details")
+
+
+# Update NPC Configuration Models
+
+class UpdateNPCProfileRequest(BaseModel):
+    """Profile information for updating an NPC."""
+    name: str = Field(..., description="The NPC's display name")
+    role: str = Field(..., description="The NPC's role in the train station")
+    location: str = Field(..., description="The NPC's primary location")
+    personality: List[str] = Field(..., description="List of personality traits")
+    expertise: List[str] = Field(..., description="Topics the NPC is knowledgeable about")
+    limitations: List[str] = Field(..., description="Topics the NPC is not knowledgeable about")
+
+
+class UpdateLanguageProfileRequest(BaseModel):
+    """Language profile for updating an NPC."""
+    defaultLanguage: str = Field(..., description="Primary language of the NPC")
+    japaneseLevel: str = Field(..., description="JLPT level of Japanese used by the NPC")
+    speechPatterns: List[str] = Field(..., description="Characteristic speech patterns")
+    commonPhrases: List[str] = Field(..., description="Frequently used phrases")
+    vocabularyFocus: List[str] = Field(..., description="Vocabulary domains this NPC emphasizes")
+
+
+class UpdatePromptTemplatesRequest(BaseModel):
+    """Prompt templates for updating an NPC."""
+    initialGreeting: str = Field(..., description="Template for initial greeting")
+    responseFormat: str = Field(..., description="Format specification for responses")
+    errorHandling: str = Field(..., description="Template for handling errors")
+    conversationClose: str = Field(..., description="Template for ending conversations")
+
+
+class UpdateConversationParametersRequest(BaseModel):
+    """Conversation parameters for updating an NPC."""
+    maxTurns: int = Field(..., description="Maximum number of conversation turns")
+    temperatureDefault: float = Field(..., description="Default temperature for AI generation")
+    contextWindowSize: int = Field(..., description="Size of context window for conversation history")
+
+
+class UpdateNPCConfigurationRequest(BaseModel):
+    """Request model for updating NPC configuration."""
+    profile: UpdateNPCProfileRequest = Field(..., description="General profile information about the NPC")
+    languageProfile: UpdateLanguageProfileRequest = Field(..., description="Language-related characteristics")
+    promptTemplates: UpdatePromptTemplatesRequest = Field(..., description="Templates used for AI prompt construction")
+    conversationParameters: UpdateConversationParametersRequest = Field(..., description="Parameters controlling conversation behavior") 

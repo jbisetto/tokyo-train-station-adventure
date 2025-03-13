@@ -54,9 +54,6 @@ class AdapterFactory:
             
         Returns:
             The adapter.
-            
-        Raises:
-            ValueError: If the adapter type is not supported.
         """
         # Import adapters here to avoid circular imports
         from backend.api.adapters.companion_assist import CompanionAssistRequestAdapter
@@ -67,6 +64,7 @@ class AdapterFactory:
             GameStateLoadRequestAdapter,
             GameStateListRequestAdapter
         )
+        from backend.api.adapters.npc import NPCConfigurationUpdateRequestAdapter
         
         adapters = {
             "companion_assist": CompanionAssistRequestAdapter(),
@@ -74,13 +72,11 @@ class AdapterFactory:
             "player_progress": PlayerProgressRequestAdapter(),
             "game_state_save": GameStateSaveRequestAdapter(),
             "game_state_load": GameStateLoadRequestAdapter(),
-            "game_state_list": GameStateListRequestAdapter()
+            "game_state_list": GameStateListRequestAdapter(),
+            "npc_configuration_update": NPCConfigurationUpdateRequestAdapter()
         }
         
-        if adapter_type not in adapters:
-            raise ValueError(f"Unsupported request adapter type: {adapter_type}")
-        
-        return adapters[adapter_type]
+        return adapters.get(adapter_type)
     
     @staticmethod
     def get_response_adapter(adapter_type: str) -> ResponseAdapter:

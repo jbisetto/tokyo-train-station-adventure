@@ -4,6 +4,10 @@ Data access layer for NPC operations.
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime, UTC, timedelta
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 # Custom exceptions
@@ -138,6 +142,57 @@ def get_npc_interaction_state(player_id: str, npc_id: str) -> Dict[str, Any]:
         raise InteractionStateNotFoundError(f"No interaction state found for player {player_id} and NPC {npc_id}")
     
     return _interaction_states[player_id][npc_id]
+
+
+def update_npc_configuration(npc_id: str, config_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Update the configuration for an NPC.
+    
+    Args:
+        npc_id: The ID of the NPC.
+        config_data: The updated configuration data.
+        
+    Returns:
+        A dictionary containing the updated configuration for the NPC.
+        
+    Raises:
+        InvalidNPCIdError: If the NPC ID is invalid.
+        NPCNotFoundError: If the NPC is not found.
+    """
+    validate_npc_id(npc_id)
+    
+    if npc_id not in _npc_configs:
+        raise NPCNotFoundError(f"NPC configuration with ID {npc_id} not found")
+    
+    # Create a deep copy of the configuration to update
+    updated_config = _npc_configs[npc_id].copy()
+    
+    logger.debug(f"Original config: {updated_config}")
+    logger.debug(f"Update data: {config_data}")
+    
+    # Update each section of the configuration
+    if "profile" in config_data:
+        logger.debug(f"Updating profile: {config_data['profile']}")
+        updated_config["profile"] = config_data["profile"]
+    
+    if "languageProfile" in config_data:
+        logger.debug(f"Updating languageProfile: {config_data['languageProfile']}")
+        updated_config["languageProfile"] = config_data["languageProfile"]
+    
+    if "promptTemplates" in config_data:
+        logger.debug(f"Updating promptTemplates: {config_data['promptTemplates']}")
+        updated_config["promptTemplates"] = config_data["promptTemplates"]
+    
+    if "conversationParameters" in config_data:
+        logger.debug(f"Updating conversationParameters: {config_data['conversationParameters']}")
+        updated_config["conversationParameters"] = config_data["conversationParameters"]
+    
+    # Update the configuration in the data store
+    _npc_configs[npc_id] = updated_config
+    
+    logger.debug(f"Updated config: {_npc_configs[npc_id]}")
+    
+    return _npc_configs[npc_id]
 
 
 # Create mock data for testing
