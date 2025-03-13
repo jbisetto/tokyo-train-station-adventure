@@ -65,6 +65,7 @@ class AdapterFactory:
             GameStateListRequestAdapter
         )
         from backend.api.adapters.npc import NPCConfigurationUpdateRequestAdapter
+        from backend.api.adapters.deepseek_parameters import DeepSeekParametersRequestAdapter
         
         adapters = {
             "companion_assist": CompanionAssistRequestAdapter(),
@@ -73,7 +74,8 @@ class AdapterFactory:
             "game_state_save": GameStateSaveRequestAdapter(),
             "game_state_load": GameStateLoadRequestAdapter(),
             "game_state_list": GameStateListRequestAdapter(),
-            "npc_configuration_update": NPCConfigurationUpdateRequestAdapter()
+            "npc_configuration_update": NPCConfigurationUpdateRequestAdapter(),
+            "deepseek_parameters": DeepSeekParametersRequestAdapter()
         }
         
         return adapters.get(adapter_type)
@@ -107,6 +109,7 @@ class AdapterFactory:
             NPCInteractionStateResponseAdapter
         )
         from backend.api.adapters.npc_dialogue import NPCDialogueResponseAdapter
+        from backend.api.adapters.deepseek_parameters import DeepSeekParametersResponseAdapter
         
         adapters = {
             "companion_assist": CompanionAssistResponseAdapter(),
@@ -118,7 +121,8 @@ class AdapterFactory:
             "npc_information": NPCInformationResponseAdapter(),
             "npc_configuration": NPCConfigurationResponseAdapter(),
             "npc_interaction_state": NPCInteractionStateResponseAdapter(),
-            "npc_dialogue": NPCDialogueResponseAdapter()
+            "npc_dialogue": NPCDialogueResponseAdapter(),
+            "deepseek_parameters": DeepSeekParametersResponseAdapter()
         }
         
         if adapter_type not in adapters:

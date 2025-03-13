@@ -128,30 +128,33 @@ class TestResponseFormatter:
         """Test that personality traits are injected into the response."""
         formatter = ResponseFormatter()
         
-        # Format with default personality
-        default_response = formatter.format_response(
-            processor_response=sample_processor_response,
-            classified_request=sample_classified_request
-        )
-        
-        # Format with custom personality
-        custom_formatter = ResponseFormatter(personality_traits={
-            "friendliness": 0.0,
-            "enthusiasm": 0.0,
-            "helpfulness": 0.0
-        })
-        
-        custom_response = custom_formatter.format_response(
-            processor_response=sample_processor_response,
-            classified_request=sample_classified_request
-        )
-        
-        # Both responses should contain the core information
-        assert sample_processor_response in default_response
-        assert sample_processor_response in custom_response
-        
-        # The responses should be different due to personality differences
-        assert default_response != custom_response
+        # Mock random.random to always return 0.5 to ensure personality elements are added
+        with patch('random.random', return_value=0.5):
+            with patch('random.choice', side_effect=lambda x: x[0]):  # Always choose the first option
+                # Format with default personality
+                default_response = formatter.format_response(
+                    processor_response=sample_processor_response,
+                    classified_request=sample_classified_request
+                )
+                
+                # Format with custom personality
+                custom_formatter = ResponseFormatter(personality_traits={
+                    "friendliness": 0.0,
+                    "enthusiasm": 0.0,
+                    "helpfulness": 0.0
+                })
+                
+                custom_response = custom_formatter.format_response(
+                    processor_response=sample_processor_response,
+                    classified_request=sample_classified_request
+                )
+                
+                # Both responses should contain the core information
+                assert sample_processor_response in default_response
+                assert sample_processor_response in custom_response
+                
+                # The responses should be different due to personality differences
+                assert default_response != custom_response
     
     def test_learning_cue_integration(self, sample_classified_request, sample_processor_response):
         """Test that learning cues are integrated into the response."""

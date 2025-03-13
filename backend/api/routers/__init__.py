@@ -11,6 +11,7 @@ from backend.api.routers.player import router as player_router
 from backend.api.routers.game_state import router as game_state_router
 from backend.api.routers.npc import router as npc_router
 from backend.api.routers.npc_dialogue import router as npc_dialogue_router
+from backend.api.routers.deepseek_parameters import router as deepseek_parameters_router
 
 # Create the main API router
 api_router = APIRouter(
@@ -28,6 +29,7 @@ api_router.include_router(player_router)
 api_router.include_router(game_state_router)
 api_router.include_router(npc_router)
 api_router.include_router(npc_dialogue_router)
+api_router.include_router(deepseek_parameters_router)
 
 # Add a root endpoint
 @api_router.get("/")
