@@ -49,7 +49,7 @@ def format_response(response: Dict[str, Any]) -> str:
     return formatted
 
 
-def format_debug_info(response: Dict[str, Any]) -> str:
+def format_debug_info(response: Dict[str, Any]) -> Dict[str, Any]:
     """
     Format the debug information for display.
     
@@ -57,10 +57,10 @@ def format_debug_info(response: Dict[str, Any]) -> str:
         response: The response from the API
         
     Returns:
-        A formatted string representation of the debug information
+        A dictionary with debug information
     """
     if not response:
-        return "No debug information available."
+        return {"error": "No debug information available."}
         
     # Extract relevant parts for debugging
     companion = response.get("companion", {})
@@ -75,7 +75,7 @@ def format_debug_info(response: Dict[str, Any]) -> str:
         "metadata": meta
     }
     
-    return json.dumps(debug_info, indent=2)
+    return debug_info
 
 
 def get_quest_steps_for_quest(quest: str) -> List[str]:
@@ -105,7 +105,7 @@ async def handle_submit(
     target_entity: str,
     target_location: str,
     language: str
-) -> Tuple[str, str]:
+) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
     """
     Handle form submission.
     
@@ -122,7 +122,7 @@ async def handle_submit(
         language: The language of the player's request
         
     Returns:
-        A tuple of (formatted_response, debug_info)
+        A tuple of (formatted_response, request_payload, response_payload)
     """
     # Create the payload
     payload = get_default_payload(
@@ -146,9 +146,9 @@ async def handle_submit(
         formatted_response = format_response(response)
         debug_info = format_debug_info(response)
         
-        return formatted_response, debug_info
+        return formatted_response, payload, response
     except Exception as e:
-        return f"Error: {str(e)}", "Error occurred during API request."
+        return f"Error: {str(e)}", payload, {"error": str(e)}
 
 
 def create_app():
@@ -238,20 +238,28 @@ def create_app():
                 
                 submit_button = gr.Button("Submit Request", variant="primary")
         
+        # Companion Response Section
+        gr.Markdown("### Companion Response")
+        response_output = gr.HTML(
+            value="Submit a request to see the companion's response.",
+            label="Response"
+        )
+        
+        # Debug Information Section
+        gr.Markdown("### Debug Information")
         with gr.Row():
             with gr.Column(scale=1):
-                gr.Markdown("### Companion Response")
-                response_output = gr.HTML(
-                    value="Submit a request to see the companion's response.",
-                    label="Response"
-                )
-            
+                with gr.Accordion("Request JSON", open=False):
+                    request_json = gr.JSON(
+                        value={},
+                        label="Request Payload"
+                    )
             with gr.Column(scale=1):
-                gr.Markdown("### Debug Information")
-                debug_output = gr.JSON(
-                    value={},
-                    label="Debug Info"
-                )
+                with gr.Accordion("Response JSON", open=False):
+                    response_json = gr.JSON(
+                        value={},
+                        label="Response Payload"
+                    )
         
         # Handle form submission
         submit_button.click(
@@ -268,7 +276,7 @@ def create_app():
                 target_location,
                 language
             ],
-            outputs=[response_output, debug_output]
+            outputs=[response_output, request_json, response_json]
         )
     
     return app
