@@ -4,6 +4,7 @@ Router for companion-related endpoints.
 
 import logging
 import uuid
+import json
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.models.companion_assist import CompanionAssistRequest, CompanionAssistResponse
@@ -36,27 +37,35 @@ async def companion_assist(request: CompanionAssistRequest):
     """
     try:
         # Log the incoming request
-        logger.info(f"Received companion assist request for player {request.playerId}")
+        request_id = str(uuid.uuid4())
+        logger.info(f"Received companion assist request for player {request.playerId} (request_id: {request_id})")
+        logger.debug(f"Request details - type: {request.request.type}, text: {request.request.text}, location: {request.gameContext.location}")
         
         # Get the request adapter
+        logger.debug(f"Getting request adapter for companion_assist (request_id: {request_id})")
         request_adapter = AdapterFactory.get_request_adapter("companion_assist")
         if not request_adapter:
+            logger.error(f"Request adapter not found for companion_assist (request_id: {request_id})")
             raise HTTPException(status_code=500, detail="Request adapter not found")
         
         # Transform the request to internal format
+        logger.debug(f"Adapting request to internal format (request_id: {request_id})")
         internal_request = request_adapter.adapt(request)
+        logger.debug(f"Internal request created with ID: {internal_request.request_id}")
         
         # Process the request
         # For testing purposes, we'll create a mock response
         # In production, this would call the actual companion AI system
         try:
             # Try to import and use the actual process_companion_request function
+            logger.debug(f"Attempting to process request with companion AI (request_id: {request_id})")
             from backend.ai.companion import process_companion_request
             internal_response = await process_companion_request(internal_request)
-        except (ImportError, TypeError):
+            logger.debug(f"Successfully processed request with companion AI (request_id: {request_id})")
+        except (ImportError, TypeError) as e:
             # If the function is not available or not properly implemented,
             # create a mock response for testing
-            logger.warning("Using mock response for companion assist request")
+            logger.warning(f"Using mock response for companion assist request due to error: {str(e)} (request_id: {request_id})")
             from backend.ai.companion.core.models import CompanionResponse, IntentCategory, ProcessingTier
             internal_response = CompanionResponse(
                 request_id=internal_request.request_id,
@@ -85,21 +94,25 @@ async def companion_assist(request: CompanionAssistRequest):
             )
         
         # Get the response adapter
+        logger.debug(f"Getting response adapter for companion_assist (request_id: {request_id})")
         response_adapter = AdapterFactory.get_response_adapter("companion_assist")
         if not response_adapter:
+            logger.error(f"Response adapter not found for companion_assist (request_id: {request_id})")
             raise HTTPException(status_code=500, detail="Response adapter not found")
         
         # Transform the response to API format
+        logger.debug(f"Adapting internal response to API format (request_id: {request_id})")
         api_response = response_adapter.adapt(internal_response)
         
         # Log the response
-        logger.info(f"Processed companion assist request for player {request.playerId}")
+        logger.info(f"Processed companion assist request for player {request.playerId} (request_id: {request_id})")
+        logger.debug(f"Response details - dialogue length: {len(api_response.dialogue.text)}, processing tier: {api_response.meta.processingTier}")
         
         return api_response
         
     except Exception as e:
         # Log the error
-        logger.error(f"Error processing companion assist request: {str(e)}")
+        logger.error(f"Error processing companion assist request: {str(e)}", exc_info=True)
         
         # Raise an HTTP exception
         raise HTTPException(

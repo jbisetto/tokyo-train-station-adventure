@@ -7,6 +7,11 @@ with Japanese language learning and navigation through the train station.
 
 __version__ = "0.1.0"
 
+import logging
+
+# Create a logger
+logger = logging.getLogger(__name__)
+
 # Import core components for easier access
 # These imports will be uncommented as we implement each component
 from backend.ai.companion.core.request_handler import RequestHandler
@@ -27,44 +32,60 @@ async def process_companion_request(request_data, game_context=None):
     Returns:
         Dictionary containing the companion's response
     """
-    # Create the required components
-    intent_classifier = IntentClassifier()
-    processor_factory = ProcessorFactory()
-    response_formatter = ResponseFormatter()
+    request_id = getattr(request_data, 'request_id', 'unknown')
+    logger.info(f"Processing companion request: {request_id}")
+    logger.debug(f"Request data: player_input='{getattr(request_data, 'player_input', '')}', request_type='{getattr(request_data, 'request_type', '')}'")
     
-    # Create a request handler with the components
-    handler = RequestHandler(
-        intent_classifier=intent_classifier,
-        processor_factory=processor_factory,
-        response_formatter=response_formatter
-    )
-    
-    # Process the request to get the response text
-    response_text = await handler.handle_request(request_data, game_context)
-    
-    # Get the intent and tier from the classifier
-    intent, complexity, tier, confidence, entities = intent_classifier.classify(request_data)
-    
-    # Create a CompanionResponse object
-    response = CompanionResponse(
-        request_id=request_data.request_id,
-        response_text=response_text,
-        intent=intent,
-        processing_tier=tier,
-        suggested_actions=["How do I buy a ticket?", "What is 'platform' in Japanese?"],
-        learning_cues={
-            "japanese_text": entities.get("word", ""),
-            "pronunciation": entities.get("pronunciation", ""),
-            "learning_moments": [intent.value],
-            "vocabulary_unlocked": [entities.get("word", "")]
-        },
-        emotion="helpful",
-        confidence=confidence,
-        debug_info={
-            "complexity": complexity.value,
-            "tier": tier.value,
-            "entities": entities
-        }
-    )
-    
-    return response 
+    try:
+        # Create the required components
+        logger.debug(f"Creating companion AI components for request: {request_id}")
+        intent_classifier = IntentClassifier()
+        processor_factory = ProcessorFactory()
+        response_formatter = ResponseFormatter()
+        
+        # Create a request handler with the components
+        logger.debug(f"Creating request handler for request: {request_id}")
+        handler = RequestHandler(
+            intent_classifier=intent_classifier,
+            processor_factory=processor_factory,
+            response_formatter=response_formatter
+        )
+        
+        # Process the request to get the response text
+        logger.debug(f"Handling request with request handler: {request_id}")
+        response_text = await handler.handle_request(request_data, game_context)
+        logger.debug(f"Received response text from handler (length: {len(response_text)}): {request_id}")
+        
+        # Get the intent and tier from the classifier
+        logger.debug(f"Classifying request: {request_id}")
+        intent, complexity, tier, confidence, entities = intent_classifier.classify(request_data)
+        logger.debug(f"Request classified as intent={intent.name}, complexity={complexity.name}, tier={tier.name}, confidence={confidence}: {request_id}")
+        
+        # Create a CompanionResponse object
+        logger.debug(f"Creating CompanionResponse object: {request_id}")
+        response = CompanionResponse(
+            request_id=request_data.request_id,
+            response_text=response_text,
+            intent=intent,
+            processing_tier=tier,
+            suggested_actions=["How do I buy a ticket?", "What is 'platform' in Japanese?"],
+            learning_cues={
+                "japanese_text": entities.get("word", ""),
+                "pronunciation": entities.get("pronunciation", ""),
+                "learning_moments": [intent.value],
+                "vocabulary_unlocked": [entities.get("word", "")]
+            },
+            emotion="helpful",
+            confidence=confidence,
+            debug_info={
+                "complexity": complexity.value,
+                "tier": tier.value,
+                "entities": entities
+            }
+        )
+        
+        logger.info(f"Successfully processed companion request: {request_id}")
+        return response
+    except Exception as e:
+        logger.error(f"Error processing companion request: {str(e)}", exc_info=True)
+        raise 
