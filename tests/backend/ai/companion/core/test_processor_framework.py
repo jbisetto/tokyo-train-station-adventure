@@ -80,11 +80,28 @@ class TestTier1Processor:
         assert processor is not None
         assert hasattr(processor, 'process')
     
-    def test_tier1_processor_process(self, sample_classified_request):
+    def test_tier1_processor_process(self, sample_classified_request, monkeypatch):
         """Test that the Tier 1 processor can process a request."""
         from backend.ai.companion.core.processor_framework import Tier1Processor
+        from unittest.mock import MagicMock
         
+        # Create mocks for the components
+        mock_template_system = MagicMock()
+        mock_template_system.process_request.return_value = "Response from template system"
+        
+        mock_pattern_matcher = MagicMock()
+        mock_pattern_matcher.match.return_value = {"matched": False}
+        
+        mock_tree_processor = MagicMock()
+        mock_tree_processor.process_request.return_value = (None, {})
+        
+        # Create a processor with mocked components
         processor = Tier1Processor()
+        
+        # Replace the components with mocks
+        processor.template_system = mock_template_system
+        processor.pattern_matcher = mock_pattern_matcher
+        processor.tree_processor = mock_tree_processor
         
         # Process a request
         result = processor.process(sample_classified_request)
@@ -92,6 +109,82 @@ class TestTier1Processor:
         # Check that the result is a string
         assert isinstance(result, str)
         assert len(result) > 0
+        
+        # Verify that the pattern matcher was called
+        mock_pattern_matcher.match.assert_called_once_with(sample_classified_request.player_input)
+    
+    def test_tier1_processor_with_pattern_match(self, sample_classified_request, monkeypatch):
+        """Test that the Tier 1 processor can process a request with a pattern match."""
+        from backend.ai.companion.core.processor_framework import Tier1Processor
+        from unittest.mock import MagicMock
+        
+        # Create mocks for the components
+        mock_template_system = MagicMock()
+        mock_template_system.process_request.return_value = "Response from template system"
+        
+        mock_pattern_matcher = MagicMock()
+        mock_pattern_matcher.match.return_value = {"matched": True}
+        mock_pattern_matcher.extract_entities.return_value = {"word": "kippu"}
+        
+        mock_tree_processor = MagicMock()
+        mock_tree_processor.process_request.return_value = (None, {})
+        
+        # Create a processor with mocked components
+        processor = Tier1Processor()
+        
+        # Replace the components with mocks
+        processor.template_system = mock_template_system
+        processor.pattern_matcher = mock_pattern_matcher
+        processor.tree_processor = mock_tree_processor
+        
+        # Process a request
+        result = processor.process(sample_classified_request)
+        
+        # Check that the result is a string
+        assert isinstance(result, str)
+        assert result == "Response from template system"
+        
+        # Verify that the pattern matcher was called
+        mock_pattern_matcher.match.assert_called_once_with(sample_classified_request.player_input)
+        mock_pattern_matcher.extract_entities.assert_called_once()
+        mock_template_system.process_request.assert_called_once_with(sample_classified_request)
+    
+    def test_tier1_processor_with_decision_tree(self, sample_classified_request, monkeypatch):
+        """Test that the Tier 1 processor can process a request with a decision tree."""
+        from backend.ai.companion.core.processor_framework import Tier1Processor
+        from unittest.mock import MagicMock
+        
+        # Create mocks for the components
+        mock_template_system = MagicMock()
+        
+        mock_pattern_matcher = MagicMock()
+        
+        mock_tree_processor = MagicMock()
+        mock_tree_processor.process_request.return_value = ("Response from decision tree", {"state": "updated"})
+        
+        # Create a processor with mocked components
+        processor = Tier1Processor()
+        
+        # Replace the components with mocks
+        processor.template_system = mock_template_system
+        processor.pattern_matcher = mock_pattern_matcher
+        processor.tree_processor = mock_tree_processor
+        
+        # Add conversation state to the request
+        sample_classified_request.additional_params["conversation_state"] = {"state": "initial"}
+        
+        # Process a request
+        result = processor.process(sample_classified_request)
+        
+        # Check that the result is a string
+        assert isinstance(result, str)
+        assert result == "Response from decision tree"
+        
+        # Verify that the tree processor was called
+        mock_tree_processor.process_request.assert_called_once()
+        
+        # Verify that the state was updated
+        assert sample_classified_request.additional_params["conversation_state"] == {"state": "updated"}
 
 
 class TestTier2Processor:

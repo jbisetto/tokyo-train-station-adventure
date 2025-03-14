@@ -178,8 +178,11 @@ class TestResponseFormatter:
         assert sample_processor_response in without_cues
         assert sample_processor_response in with_cues
         
-        # The response with cues should be longer
-        assert len(with_cues) > len(without_cues)
+        # Check that the with_cues response contains a learning cue
+        # Look for common phrases in learning cues
+        learning_cue_indicators = ["Remember:", "Tip:", "Practice point:", "Note:", "Hint:"]
+        has_learning_cue = any(indicator in with_cues for indicator in learning_cue_indicators)
+        assert has_learning_cue, f"Expected learning cue in response: {with_cues}"
     
     def test_emotion_integration(self, sample_classified_request, sample_processor_response):
         """Test that emotions are integrated into the response."""

@@ -77,7 +77,8 @@ class TestScenarioDetectionIntegration:
             # Verify that the scenario detection was used
             mock_bedrock_client.generate_text.assert_called_once()
     
-    def test_scenario_detection_with_request_handler(self, mock_context_manager, mock_bedrock_client):
+    @pytest.mark.asyncio
+    async def test_scenario_detection_with_request_handler(self, mock_context_manager, mock_bedrock_client):
         """Test that the scenario detection system works with the RequestHandler."""
         # Create a Tier3Processor with our mocks
         with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
@@ -127,7 +128,7 @@ class TestScenarioDetectionIntegration:
             )
             
             # Process the request
-            response = handler.handle_request(companion_request, conversation_context)
+            response = await handler.handle_request(companion_request, conversation_context)
             
             # Verify that the response is what we expect
             assert response == "Formatted response"

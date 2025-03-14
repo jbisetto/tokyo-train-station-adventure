@@ -52,7 +52,7 @@ async def companion_assist(request: CompanionAssistRequest):
         try:
             # Try to import and use the actual process_companion_request function
             from backend.ai.companion import process_companion_request
-            internal_response = process_companion_request(internal_request)
+            internal_response = await process_companion_request(internal_request)
         except (ImportError, TypeError):
             # If the function is not available or not properly implemented,
             # create a mock response for testing

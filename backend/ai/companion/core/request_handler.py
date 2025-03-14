@@ -7,6 +7,7 @@ It coordinates the flow of requests through the system.
 
 import logging
 import traceback
+import inspect
 from typing import Optional, Any, Dict, Tuple
 
 from backend.ai.companion.core.models import (
@@ -46,7 +47,7 @@ class RequestHandler:
         self.response_formatter = response_formatter
         self.logger = logging.getLogger(__name__)
     
-    def handle_request(self, request: CompanionRequest, 
+    async def handle_request(self, request: CompanionRequest, 
                       conversation_context: Optional[ConversationContext] = None) -> str:
         """
         Handle a request from the player.
@@ -79,7 +80,13 @@ class RequestHandler:
             processor = self.processor_factory.get_processor(tier)
             
             # Process the request
-            processor_response = processor.process(classified_request)
+            # Check if the processor's process method is async
+            if inspect.iscoroutinefunction(processor.process):
+                # If it's async, await it
+                processor_response = await processor.process(classified_request)
+            else:
+                # If it's not async, call it normally
+                processor_response = processor.process(classified_request)
             
             # Format the response
             response = self.response_formatter.format_response(

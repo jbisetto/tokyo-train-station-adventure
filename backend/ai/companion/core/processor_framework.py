@@ -18,6 +18,9 @@ from backend.ai.companion.config import (
     LOCAL_MODEL_CONFIG,
     CLOUD_API_CONFIG
 )
+from backend.ai.companion.tier1.template_system import TemplateSystem
+from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+from backend.ai.companion.tier1.decision_trees import DecisionTreeManager, DecisionTreeProcessor
 
 
 class Processor(abc.ABC):
@@ -53,6 +56,19 @@ class Tier1Processor(Processor):
     def __init__(self):
         """Initialize the Tier 1 processor."""
         self.logger = logging.getLogger(__name__)
+        
+        # Initialize the template system
+        self.template_system = TemplateSystem()
+        
+        # Initialize the pattern matcher
+        self.pattern_matcher = PatternMatcher()
+        
+        # Initialize the decision tree system
+        self.tree_manager = DecisionTreeManager()
+        self.tree_processor = DecisionTreeProcessor(self.tree_manager)
+        
+        # Load default trees
+        self._load_default_trees()
     
     def process(self, request: ClassifiedRequest) -> str:
         """
@@ -66,13 +82,38 @@ class Tier1Processor(Processor):
         """
         self.logger.info(f"Processing request {request.request_id} with Tier 1 processor")
         
-        # Create a prompt for the rule-based processor
-        prompt = self._create_prompt(request)
+        # Create a companion request from the classified request
+        companion_request = self._create_companion_request(request)
         
-        # In a real implementation, we would match the prompt against
-        # predefined patterns and templates to generate a response
+        # First, try to process the request using decision trees for multi-turn interactions
+        conversation_state = request.additional_params.get("conversation_state")
+        if conversation_state:
+            try:
+                response, new_state = self.tree_processor.process_request(companion_request, conversation_state)
+                # Store the new state in the request for future use
+                request.additional_params["conversation_state"] = new_state
+                if response:
+                    return response
+            except Exception as e:
+                self.logger.error(f"Error processing request with decision tree: {e}")
+                # Continue with other processing methods if decision tree fails
         
-        # For now, return a simple response based on the intent
+        # If no decision tree handled the request, try pattern matching
+        match_result = self.pattern_matcher.match(request.player_input)
+        if match_result.get("matched", False):
+            # Extract entities from the match result
+            entities = self.pattern_matcher.extract_entities(match_result)
+            # Update the request's extracted entities
+            request.extracted_entities.update(entities)
+            
+            # Use the template system to generate a response
+            try:
+                return self.template_system.process_request(request)
+            except Exception as e:
+                self.logger.error(f"Error processing request with template system: {e}")
+                # Continue with fallback response if template system fails
+        
+        # If no pattern matched, fall back to a simple response based on intent
         intent = request.intent.value
         if "vocabulary" in intent:
             return "That word means 'ticket' in Japanese."
@@ -84,6 +125,50 @@ class Tier1Processor(Processor):
             return "Yes, that's correct! Good job!"
         else:
             return "I'm here to help you navigate the train station and learn Japanese."
+    
+    def _create_companion_request(self, request: ClassifiedRequest) -> Any:
+        """
+        Create a companion request from a classified request.
+        
+        Args:
+            request: The classified request
+            
+        Returns:
+            A companion request
+        """
+        from backend.ai.companion.core.models import CompanionRequest
+        
+        # Create a new CompanionRequest with the same basic fields
+        companion_request = CompanionRequest(
+            request_id=request.request_id,
+            player_input=request.player_input,
+            request_type=request.request_type,
+            timestamp=request.timestamp,
+            game_context=request.game_context,
+            additional_params=request.additional_params.copy()  # Copy additional params
+        )
+        
+        return companion_request
+    
+    def _load_default_trees(self):
+        """Load default decision trees."""
+        try:
+            # Load trees from the trees directory
+            import os
+            import json
+            
+            trees_dir = os.path.join(os.path.dirname(__file__), "../tier1/trees")
+            if os.path.exists(trees_dir):
+                for filename in os.listdir(trees_dir):
+                    if filename.endswith(".json"):
+                        try:
+                            file_path = os.path.join(trees_dir, filename)
+                            self.tree_manager.load_tree_from_file(file_path)
+                            self.logger.info(f"Loaded decision tree from {file_path}")
+                        except Exception as e:
+                            self.logger.error(f"Error loading decision tree {filename}: {e}")
+        except Exception as e:
+            self.logger.error(f"Error loading default trees: {e}")
     
     def _create_prompt(self, request: ClassifiedRequest) -> str:
         """

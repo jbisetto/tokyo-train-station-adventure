@@ -1,6 +1,6 @@
 general:
   data_dir: data
-  log_level: INFO
+  log_level: DEBUG
 retry:
   backoff_factor: 2.0
   base_delay: 1.0
@@ -10,6 +10,7 @@ retry:
   max_retries: 3
 tier1:
   enabled: true
+  default_model: llama3
 tier2:
   enabled: true
   ollama:
@@ -17,8 +18,8 @@ tier2:
     cache_dir: null
     cache_enabled: true
     cache_ttl: 86400
-    complex_model: llama3:16b
-    default_model: llama3
+    complex_model: mistral:latest  
+    default_model: deepseek-r1:latest  # Use the correct model name with version
     log_interval: 100
     max_cache_entries: 1000
     max_cache_size_mb: 100
@@ -29,7 +30,7 @@ tier3:
     default_model: amazon.nova-micro-v1:0
     max_tokens: 1000
     models:
-      complex: amazon.titan-text-express-v1
+      # complex: amazon.titan-text-express-v1  # This line is commented out and won't be used
       default: amazon.nova-micro-v1:0
     region_name: us-east-1
     temperature: 0.7

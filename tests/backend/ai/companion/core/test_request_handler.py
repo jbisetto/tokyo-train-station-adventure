@@ -19,42 +19,47 @@ from backend.ai.companion.core.models import (
 @pytest.fixture
 def mock_intent_classifier():
     """Create a mock intent classifier."""
-    classifier = MagicMock()
-    
-    # Configure the classify method to return a sample classification
-    classifier.classify.return_value = (
+    mock = MagicMock()
+    mock.classify.return_value = (
         IntentCategory.VOCABULARY_HELP,
         ComplexityLevel.SIMPLE,
         ProcessingTier.TIER_1,
-        0.95,
+        0.9,
         {"word": "kippu"}
     )
-    
-    return classifier
+    return mock
 
 
 @pytest.fixture
 def mock_processor_factory():
     """Create a mock processor factory."""
-    factory = MagicMock()
-    
-    # Configure the get_processor method to return a mock processor
+    mock = MagicMock()
     mock_processor = MagicMock()
-    mock_processor.process.return_value = "Mock processor response"
-    factory.get_processor.return_value = mock_processor
-    
-    return factory
+    mock_processor.process.return_value = "This is a test response."
+    mock.get_processor.return_value = mock_processor
+    return mock
 
 
 @pytest.fixture
 def mock_response_formatter():
     """Create a mock response formatter."""
-    formatter = MagicMock()
-    
-    # Configure the format_response method to return a sample response
-    formatter.format_response.return_value = "Formatted response"
-    
-    return formatter
+    mock = MagicMock()
+    mock.format_response.return_value = "Formatted response."
+    return mock
+
+
+@pytest.fixture
+def sample_game_context():
+    """Create a sample game context."""
+    return GameContext(
+        player_location="main_concourse",
+        current_objective="find_ticket_machine",
+        nearby_npcs=["station_attendant", "tourist"],
+        nearby_objects=["ticket_machine", "information_board"],
+        player_inventory=["wallet", "phone"],
+        language_proficiency={"vocabulary": 0.4, "grammar": 0.3, "reading": 0.5},
+        game_progress={"tutorial_completed": True, "tickets_purchased": 0}
+    )
 
 
 class TestRequestHandler:
@@ -74,7 +79,8 @@ class TestRequestHandler:
         assert handler.processor_factory == mock_processor_factory
         assert handler.response_formatter == mock_response_formatter
     
-    def test_handle_request_flow(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter, sample_game_context):
+    @pytest.mark.asyncio
+    async def test_handle_request_flow(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter, sample_game_context):
         """Test the complete request handling flow."""
         from backend.ai.companion.core.request_handler import RequestHandler
         
@@ -95,7 +101,7 @@ class TestRequestHandler:
         )
         
         # Handle the request
-        response = handler.handle_request(request)
+        response = await handler.handle_request(request)
         
         # Check that the classifier was called
         mock_intent_classifier.classify.assert_called_once_with(request)
@@ -103,17 +109,18 @@ class TestRequestHandler:
         # Check that the processor factory was called with the correct tier
         mock_processor_factory.get_processor.assert_called_once_with(ProcessingTier.TIER_1)
         
-        # Check that the processor was called with a ClassifiedRequest
+        # Check that the processor was called with the classified request
         processor = mock_processor_factory.get_processor.return_value
         processor.process.assert_called_once()
         
-        # Check that the formatter was called
+        # Check that the response formatter was called
         mock_response_formatter.format_response.assert_called_once()
         
-        # Check the response
-        assert response == "Formatted response"
+        # Check that the response is correct
+        assert response == "Formatted response."
     
-    def test_handle_request_with_conversation_context(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter):
+    @pytest.mark.asyncio
+    async def test_handle_request_with_conversation_context(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter):
         """Test handling a request with conversation context."""
         from backend.ai.companion.core.request_handler import RequestHandler
         from backend.ai.companion.core.models import ConversationContext
@@ -136,14 +143,15 @@ class TestRequestHandler:
         )
         
         # Handle the request with conversation context
-        response = handler.handle_request(request, conversation_context)
+        response = await handler.handle_request(request, conversation_context)
         
         # Check that the conversation context was updated
         assert len(conversation_context.request_history) == 1
         assert len(conversation_context.response_history) == 1
-        assert conversation_context.request_history[0].request_id == "req-123"
+        assert conversation_context.request_history[0] == request
     
-    def test_handle_request_with_error(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter):
+    @pytest.mark.asyncio
+    async def test_handle_request_with_error(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter):
         """Test handling a request when an error occurs."""
         from backend.ai.companion.core.request_handler import RequestHandler
         
@@ -166,7 +174,7 @@ class TestRequestHandler:
         )
         
         # Handle the request and check that it handles the error
-        response = handler.handle_request(request)
+        response = await handler.handle_request(request)
         
         # Check that the error was handled and a fallback response was returned
         assert "error" in response.lower() or "sorry" in response.lower() 
