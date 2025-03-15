@@ -65,6 +65,7 @@ class PromptEngineering:
         prompt += self._add_final_instructions(request)
         
         logger.debug(f"Created prompt for request {request.request_id}")
+        logger.debug(f"Full prompt:\n{prompt}")
         return prompt
     
     def _create_base_prompt(self, request: ClassifiedRequest) -> str:

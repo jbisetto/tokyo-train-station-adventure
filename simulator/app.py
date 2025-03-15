@@ -199,9 +199,9 @@ def create_app():
                 # Update quest steps when quest changes
                 def update_quest_steps(quest_value):
                     if quest_value == "None":
-                        return gr.Dropdown.update(choices=["None"], value="None")
+                        return {"choices": ["None"], "value": "None"}
                     steps = get_quest_steps_for_quest(quest_value)
-                    return gr.Dropdown.update(choices=["None"] + steps, value="None")
+                    return {"choices": ["None"] + steps, "value": "None"}
                 
                 quest.change(update_quest_steps, inputs=[quest], outputs=[quest_step])
                 
