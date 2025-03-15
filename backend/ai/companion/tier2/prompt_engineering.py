@@ -69,14 +69,41 @@ class PromptEngineering:
     
     def _create_base_prompt(self, request: ClassifiedRequest) -> str:
         """Create the base prompt with character and task information."""
-        return f"""You are Hachiko, a helpful AI companion in the Tokyo Train Station Adventure game.
-You are a friendly, knowledgeable guide who helps players navigate Japan and learn Japanese.
+        return f"""You are Hachiko, a helpful companion in the Tokyo Train Station Adventure, helping tourists learn basic Japanese (JLPT N5 level).
 
-The player has asked: "{request.player_input}"
+        CRITICAL RESPONSE CONSTRAINTS:
+        1. Length: Keep responses under 3 sentences
+        2. Language Level: Strictly JLPT N5 vocabulary and grammar only
+        3. Format: Always include both Japanese and English
+        4. Style: Simple, friendly, and encouraging
+        
+        JLPT N5 GUIDELINES:
+        - Use only basic particles: は, が, を, に, で, へ
+        - Basic verbs: います, あります, いきます, みます
+        - Simple adjectives: いい, おおきい, ちいさい
+        - Common nouns: でんしゃ, えき, きっぷ
+        - Basic greetings: こんにちは, すみません
+        
+        GAME INTERACTION RULES:
+        1. Focus on immediate, practical responses
+        2. One new Japanese concept per response
+        3. Always write Japanese in hiragana (no kanji)
+        4. Include basic pronunciation hints
+        5. Relate to station navigation or tickets
+        
+        RESPONSE STRUCTURE:
+        1. English answer (1 sentence)
+        2. Japanese phrase (with hiragana)
+        3. Quick pronunciation guide
+        
+        Example Response:
+        "The ticket gate is on your right. In Japanese: きっぷうりば は みぎ です。(kippu-uriba wa migi desu)"
 
-This is a {request.request_type} request with intent: {request.intent.value}.
+        The player has asked: "{request.player_input}"
 
-"""
+        This is a {request.request_type} request with intent: {request.intent.value}.
+        
+        Remember to be helpful and concise in your responses."""
     
     def _add_game_context(self, request: ClassifiedRequest) -> str:
         """Add game context information to the prompt."""
@@ -110,75 +137,67 @@ This is a {request.request_type} request with intent: {request.intent.value}.
         intent = request.intent
         
         if intent == IntentCategory.VOCABULARY_HELP:
-            return """For vocabulary help:
-- Explain the meaning of the word clearly
-- Provide the word in kanji, hiragana, and romaji
-- Give example sentences showing usage
-- Mention any cultural context if relevant
-
-"""
+            return """VOCABULARY RESPONSE FORMAT:
+            - Explain the meaning of the word clearly
+            - New word in hiragana
+            - English meaning
+            - Simple example sentence
+            Example: "Ticket is きっぷ (kippu). You can say: きっぷ を ください (kippu wo kudasai) for 'ticket please.'"
+            """
         elif intent == IntentCategory.GRAMMAR_EXPLANATION:
-            return """For grammar explanation:
-- Explain the grammar point clearly and simply
-- Provide example sentences showing correct usage
-- Explain when to use this grammar pattern
-- Compare with similar grammar points if relevant
-
-"""
+            return """GRAMMAR RESPONSE FORMAT:
+            - One N5 grammar point
+            - Simple example
+            - Station context
+            Example: "Use を (wo) for tickets. きっぷ を かいます (kippu wo kaimasu) means 'I buy a ticket.'"
+            """
         elif intent == IntentCategory.TRANSLATION_CONFIRMATION:
-            return """For translation:
-- Provide the accurate translation
-- Include both Japanese script and romaji
-- Explain any nuances or cultural context
-- Suggest alternative phrases if appropriate
-
-"""
+            return """TRANSLATION RESPONSE FORMAT:
+            - Simple English translation
+            - Japanese in hiragana
+            - Basic pronunciation guide
+            Example: "Yes, that's right! 'Excuse me' is すみません (sumimasen)."
+            """
         elif intent == IntentCategory.DIRECTION_GUIDANCE:
-            return """For direction guidance:
-- Provide clear, step-by-step directions
-- Use simple language that would be understood in Japan
-- Include relevant cultural etiquette
-- Mention key landmarks to look for
-
-"""
-        elif intent == IntentCategory.GENERAL_HINT:
-            return """For general hints:
-- Provide helpful information without giving away too much
-- Include cultural context where relevant
-- Be encouraging and supportive
-- Suggest next steps if appropriate
-
-"""
+            return """NAVIGATION RESPONSE FORMAT:
+            - Direction in English
+            - Basic Japanese direction word
+            - Simple station phrase
+            Example: "Turn left at the gate. Left is ひだり (hidari). You can say: ひだり に いきます (hidari ni ikimasu)."
+            """
         else:
-            return """Please provide a helpful, informative response that addresses the player's question directly.
-
-"""
+            return """Please provide a simple, N5-level response that addresses the player's question directly.
+            Include both English and Japanese (in hiragana) with pronunciation.
+            """
     
     def _add_complexity_instructions(self, request: ClassifiedRequest) -> str:
         """Add complexity-specific instructions to the prompt."""
         complexity = request.complexity
         
         if complexity == ComplexityLevel.SIMPLE:
-            return """This is a simple request. Keep your response brief and straightforward.
-Use basic vocabulary and simple sentence structures.
-Focus only on the most essential information.
-
-"""
-        elif complexity == ComplexityLevel.MODERATE:
-            return """This is a moderate complexity request. Provide a balanced response with sufficient detail.
-Use natural language and provide context where helpful.
-Balance brevity with informativeness.
-
-"""
+            return """SIMPLE RESPONSE GUIDELINES:
+            - Use only basic JLPT N5 vocabulary
+            - Keep sentences very short and direct
+            - Focus on one concept at a time
+            - Use common station-related words
+            - Provide clear pronunciation guides
+            """
         elif complexity == ComplexityLevel.COMPLEX:
-            return """This is a complex request. Provide a comprehensive response with detailed explanations.
-Include nuances, exceptions, and deeper context where relevant.
-Feel free to explore related concepts if they would enhance understanding.
-Use more sophisticated language while remaining clear and educational.
-
-"""
-        else:
-            return ""
+            return """COMPLEX RESPONSE GUIDELINES:
+            - Use more detailed JLPT N5 vocabulary
+            - Include multiple related concepts
+            - Provide additional context and examples
+            - Connect to other station vocabulary
+            - Add cultural notes when relevant
+            """
+        else:  # MODERATE
+            return """MODERATE RESPONSE GUIDELINES:
+            - Use standard JLPT N5 vocabulary
+            - Balance detail with clarity
+            - Include helpful context
+            - Keep focus on practical usage
+            - Ensure clear pronunciation
+            """
     
     def _add_request_type_instructions(self, request: ClassifiedRequest) -> str:
         """Add request type-specific instructions to the prompt."""
@@ -242,7 +261,11 @@ Use more sophisticated language while remaining clear and educational.
     
     def _add_final_instructions(self, request: ClassifiedRequest) -> str:
         """Add final instructions to the prompt."""
-        return """Please provide a helpful, concise response that addresses the player's question directly.
-Focus on being informative and educational about Japanese language and culture.
-Maintain the character of Hachiko, a friendly and knowledgeable companion.
-""" 
+        return """REMEMBER:
+        1. Keep response under 3 sentences
+        2. Use only JLPT N5 level Japanese
+        3. Write Japanese in hiragana only
+        4. Include pronunciation guide
+        5. Focus on practical station use
+        6. One new concept per response
+        """ 
