@@ -83,6 +83,9 @@ class RequestHandler:
                 extracted_entities=entities
             )
             
+            # Log the tier selection at INFO level
+            self.logger.info(f"Request {request_id} routed to {tier.name} processor with intent={intent.name}, complexity={complexity.name}, confidence={confidence:.2f}")
+            
             # Get the appropriate processor for the tier
             self.logger.debug(f"Getting processor for tier {tier.name}: {request_id}")
             processor_start = time.time()

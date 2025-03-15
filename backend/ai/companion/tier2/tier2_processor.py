@@ -72,35 +72,42 @@ class Tier2Processor(Processor):
         try:
             # Select the appropriate model based on complexity
             model = self._select_model(request.complexity)
+            logger.info(f"Selected model {model} for request {request.request_id} with complexity {request.complexity.value}")
             
             # Create a prompt using the prompt engineering module
             prompt = self.prompt_engineering.create_prompt(request)
             
             # Try to generate a response with retries for transient errors
+            logger.info(f"Attempting to generate response for request {request.request_id} with model {model}")
             response, error = await self._generate_with_retries(request, model, prompt)
             
             # If we got a response, return it
             if response:
+                logger.info(f"Successfully generated response for request {request.request_id} with model {model}")
                 success = True
                 return response
             
             # If we got a model-related error, try with a simpler model
             if error and error.is_model_related() and model != "llama3":
-                logger.warning(f"Model-related error with {model}, falling back to simpler model")
+                logger.warning(f"Model-related error with {model} for request {request.request_id}, falling back to simpler model")
                 self.monitor.track_fallback("tier2", "simpler_model")
                 
                 fallback_model = "llama3"
+                logger.info(f"Attempting to generate response with fallback model {fallback_model} for request {request.request_id}")
                 response, error = await self._generate_with_retries(request, fallback_model, prompt)
                 
                 # If we got a response with the fallback model, return it
                 if response:
+                    logger.info(f"Successfully generated response with fallback model {fallback_model} for request {request.request_id}")
                     success = True
                     return response
             
             # If we still don't have a response, return a fallback response
             if error:
+                logger.warning(f"Failed to generate response for request {request.request_id} after all attempts. Error: {error}")
                 return self._generate_fallback_response(request, error)
             else:
+                logger.warning(f"Failed to generate response for request {request.request_id} with unknown error")
                 return self._generate_fallback_response(request, "Unknown error")
         finally:
             # Track response time and success
@@ -233,7 +240,7 @@ class Tier2Processor(Processor):
         
         # If we should fall back to Tier 1, use the Tier 1 processor
         if should_fallback_to_tier1:
-            logger.info(f"Falling back to Tier 1 processor for request {request.request_id}")
+            logger.info(f"Falling back to Tier 1 processor for request {request.request_id} due to error: {error}")
             self.monitor.track_fallback("tier2", "tier1")
             
             # Create a modified request with Tier 1 as the processing tier
@@ -255,6 +262,7 @@ class Tier2Processor(Processor):
                 # Track the request to Tier 1
                 self.monitor.track_request("tier1", request.request_id)
                 
+                logger.info(f"Processing request {request.request_id} with Tier 1 processor as fallback")
                 start_time = time.time()
                 response = tier1_processor.process(tier1_request)
                 
@@ -264,15 +272,18 @@ class Tier2Processor(Processor):
                 self.monitor.track_response_time("tier1", response_time_ms)
                 self.monitor.track_success("tier1", True)
                 
+                logger.info(f"Successfully processed request {request.request_id} with Tier 1 processor as fallback")
                 return response
             except Exception as e:
-                logger.error(f"Error in Tier 1 fallback: {str(e)}")
+                logger.error(f"Error in Tier 1 fallback for request {request.request_id}: {str(e)}")
                 
                 # Track the error and failure for Tier 1
                 self.monitor.track_error("tier1", "fallback_error", str(e))
                 self.monitor.track_success("tier1", False)
                 
                 # If Tier 1 also fails, continue to the default fallback responses
+        else:
+            logger.info(f"Not falling back to Tier 1 for request {request.request_id}, using default fallback response")
         
         # If we shouldn't fall back to Tier 1 or Tier 1 failed, use the default fallback responses
         # Track the fallback to default response
@@ -281,32 +292,38 @@ class Tier2Processor(Processor):
         # If the error is an OllamaError, use its error type to generate a more specific response
         if isinstance(error, OllamaError):
             if error.error_type == OllamaError.CONNECTION_ERROR:
+                logger.info(f"Returning connection error fallback response for request {request.request_id}")
                 return (
                     "I'm sorry, I'm having a connection issue with my language model service. "
                     "Please try again in a moment."
                 )
             elif error.error_type == OllamaError.MODEL_ERROR:
+                logger.info(f"Returning model error fallback response for request {request.request_id}")
                 return (
                     "I'm sorry, there seems to be an issue with the language model I'm trying to use. "
                     "Please try a simpler question or try again later."
                 )
             elif error.error_type == OllamaError.TIMEOUT_ERROR:
+                logger.info(f"Returning timeout error fallback response for request {request.request_id}")
                 return (
                     "I'm sorry, generating a response is taking too long. "
                     "Please try asking a simpler question or try again later."
                 )
             elif error.error_type == OllamaError.CONTENT_ERROR:
+                logger.info(f"Returning content error fallback response for request {request.request_id}")
                 return (
                     "I'm sorry, I'm unable to provide a response to that question due to content restrictions. "
                     "Please try asking something else."
                 )
             elif error.error_type == OllamaError.MEMORY_ERROR:
+                logger.info(f"Returning memory error fallback response for request {request.request_id}")
                 return (
                     "I'm sorry, the language model is currently using too much memory. "
                     "Please try asking a simpler question or try again later."
                 )
         
         # Default fallback response
+        logger.info(f"Returning default fallback response for request {request.request_id}")
         return (
             "I'm sorry, I'm having trouble processing your request at the moment. "
             "Could you try rephrasing your question or asking something else?"
@@ -331,19 +348,23 @@ class Tier2Processor(Processor):
                 OllamaError.TIMEOUT_ERROR,
                 OllamaError.MEMORY_ERROR
             ]:
+                logger.debug(f"Deciding to fall back to Tier 1 due to LLM service issue: {error.error_type}")
                 return True
                 
             # For model errors, we might want to fall back to Tier 1 if we've already
             # tried a simpler model and it still failed
             if error.error_type == OllamaError.MODEL_ERROR:
+                logger.debug(f"Deciding to fall back to Tier 1 due to model error")
                 return True
                 
             # For content errors, we probably don't want to fall back to Tier 1
             # since the request itself might be problematic
             if error.error_type == OllamaError.CONTENT_ERROR:
+                logger.debug(f"Deciding NOT to fall back to Tier 1 due to content error")
                 return False
         
         # For unknown errors, fall back to Tier 1 as a safe option
+        logger.debug(f"Deciding to fall back to Tier 1 due to unknown error: {error}")
         return True
     
     def _get_tier1_processor(self):

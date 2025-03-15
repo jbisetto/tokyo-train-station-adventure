@@ -1,0 +1,158 @@
+2025-03-14 19:56:07 - backend.api.routers.companion - INFO - companion.py:41 - companion_assist - Received companion assist request for player test_player_123 (request_id: 22bc2ca5-9860-4c0b-a2db-2a766f30fe96)
+2025-03-14 19:56:07 - backend.api.routers.companion - DEBUG - companion.py:42 - companion_assist - Request details - type: assistance, text: how do i get a ticket to odawara from here, location: station_entrance
+2025-03-14 19:56:07 - backend.api.routers.companion - DEBUG - companion.py:45 - companion_assist - Getting request adapter for companion_assist (request_id: 22bc2ca5-9860-4c0b-a2db-2a766f30fe96)
+2025-03-14 19:56:07 - backend.api.routers.companion - DEBUG - companion.py:52 - companion_assist - Adapting request to internal format (request_id: 22bc2ca5-9860-4c0b-a2db-2a766f30fe96)
+2025-03-14 19:56:07 - backend.api.routers.companion - DEBUG - companion.py:54 - companion_assist - Internal request created with ID: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.api.routers.companion - DEBUG - companion.py:61 - companion_assist - Attempting to process request with companion AI (request_id: 22bc2ca5-9860-4c0b-a2db-2a766f30fe96)
+2025-03-14 19:56:07 - backend.ai.companion - INFO - __init__.py:36 - process_companion_request - Processing companion request: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion - DEBUG - __init__.py:37 - process_companion_request - Request data: player_input='how do i get a ticket to odawara from here', request_type='assistance'
+2025-03-14 19:56:07 - backend.ai.companion - DEBUG - __init__.py:41 - process_companion_request - Creating companion AI components for request: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.response_formatter - DEBUG - response_formatter.py:201 - __init__ - Initialized ResponseFormatter with personality: {'friendliness': 0.8, 'enthusiasm': 0.7, 'helpfulness': 0.9, 'playfulness': 0.6, 'formality': 0.3}
+2025-03-14 19:56:07 - backend.ai.companion - DEBUG - __init__.py:47 - process_companion_request - Creating request handler for request: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion - DEBUG - __init__.py:55 - process_companion_request - Handling request with request handler: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - INFO - request_handler.py:65 - handle_request - Handling request: e424ff4f-2c7f-4602-830c-c85f8d6d9452 - how do i get a ticket to odawara from here
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:69 - handle_request - Classifying request: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:124 - classify - Classifying request: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:138 - classify - Classified as: general_hint, moderate, tier_2, 0.5
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:73 - handle_request - Request classified in 0.001s as intent=GENERAL_HINT, complexity=MODERATE, tier=TIER_2, confidence=0.50: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:76 - handle_request - Creating classified request: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - INFO - request_handler.py:87 - handle_request - Request e424ff4f-2c7f-4602-830c-c85f8d6d9452 routed to TIER_2 processor with intent=GENERAL_HINT, complexity=MODERATE, confidence=0.50
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:90 - handle_request - Getting processor for tier TIER_2: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.processor_framework - INFO - processor_framework.py:331 - get_processor - Creating new TIER_2 processor
+2025-03-14 19:56:07 - backend.ai.companion.tier2.prompt_engineering - DEBUG - prompt_engineering.py:32 - __init__ - Initialized PromptEngineering
+2025-03-14 19:56:07 - backend.ai.companion.tier2.ollama_client - DEBUG - ollama_client.py:167 - __init__ - Initialized OllamaClient with base_url=http://localhost:11434, default_model=llama3
+2025-03-14 19:56:07 - backend.ai.companion.tier2.prompt_engineering - DEBUG - prompt_engineering.py:32 - __init__ - Initialized PromptEngineering
+2025-03-14 19:56:07 - backend.ai.companion.tier2.response_parser - DEBUG - response_parser.py:32 - __init__ - Initialized ResponseParser
+2025-03-14 19:56:07 - backend.ai.companion.tier2.tier2_processor - DEBUG - tier2_processor.py:54 - __init__ - Initialized Tier2Processor
+2025-03-14 19:56:07 - backend.ai.companion.core.processor_framework - DEBUG - processor_framework.py:349 - get_processor - Cached TIER_2 processor for future use
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:93 - handle_request - Using processor: Tier2Processor: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:96 - handle_request - Processing request with Tier2Processor: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:99 - handle_request - Processor.process is async: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:103 - handle_request - Awaiting async processor.process: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.tier2.tier2_processor - INFO - tier2_processor.py:66 - process - Processing request e424ff4f-2c7f-4602-830c-c85f8d6d9452 with Tier 2 processor
+2025-03-14 19:56:07 - backend.ai.companion.utils.monitoring - DEBUG - monitoring.py:71 - track_request - Tracked request to tier2: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.tier2.tier2_processor - INFO - tier2_processor.py:75 - process - Selected model llama3 for request e424ff4f-2c7f-4602-830c-c85f8d6d9452 with complexity moderate
+2025-03-14 19:56:07 - backend.ai.companion.tier2.prompt_engineering - DEBUG - prompt_engineering.py:67 - create_prompt - Created prompt for request e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:07 - backend.ai.companion.tier2.tier2_processor - INFO - tier2_processor.py:81 - process - Attempting to generate response for request e424ff4f-2c7f-4602-830c-c85f8d6d9452 with model llama3
+2025-03-14 19:56:25 - backend.ai.companion.tier2.ollama_client - DEBUG - ollama_client.py:457 - _save_to_cache - Saved response to cache for hash 0669f8e34dc13406951b700497f25e83
+2025-03-14 19:56:25 - backend.ai.companion.tier2.tier2_processor - DEBUG - tier2_processor.py:185 - _generate_with_retries - Generated response for request e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion.tier2.tier2_processor - INFO - tier2_processor.py:86 - process - Successfully generated response for request e424ff4f-2c7f-4602-830c-c85f8d6d9452 with model llama3
+2025-03-14 19:56:25 - backend.ai.companion.utils.monitoring - DEBUG - monitoring.py:132 - track_response_time - Tracked response time from tier2: 17747.715950012207ms
+2025-03-14 19:56:25 - backend.ai.companion.utils.monitoring - DEBUG - monitoring.py:147 - track_success - Tracked successful response from tier2
+2025-03-14 19:56:25 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:111 - handle_request - Request processed in 17.819s: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:114 - handle_request - Formatting response: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion.core.response_formatter - INFO - response_formatter.py:291 - _validate_response - Response too long (863 chars), truncating
+2025-03-14 19:56:25 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:121 - handle_request - Response formatted in 0.000s (length: 533): e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion.core.request_handler - INFO - request_handler.py:139 - handle_request - Request handled successfully in 17.820s: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion - DEBUG - __init__.py:57 - process_companion_request - Received response text from handler (length: 533): e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion - DEBUG - __init__.py:60 - process_companion_request - Classifying request: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:124 - classify - Classifying request: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:138 - classify - Classified as: general_hint, moderate, tier_2, 0.5
+2025-03-14 19:56:25 - backend.ai.companion - DEBUG - __init__.py:62 - process_companion_request - Request classified as intent=GENERAL_HINT, complexity=MODERATE, tier=TIER_2, confidence=0.5: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion - DEBUG - __init__.py:65 - process_companion_request - Creating CompanionResponse object: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.ai.companion - INFO - __init__.py:87 - process_companion_request - Successfully processed companion request: e424ff4f-2c7f-4602-830c-c85f8d6d9452
+2025-03-14 19:56:25 - backend.api.routers.companion - DEBUG - companion.py:64 - companion_assist - Successfully processed request with companion AI (request_id: 22bc2ca5-9860-4c0b-a2db-2a766f30fe96)
+2025-03-14 19:56:25 - backend.api.routers.companion - DEBUG - companion.py:97 - companion_assist - Getting response adapter for companion_assist (request_id: 22bc2ca5-9860-4c0b-a2db-2a766f30fe96)
+2025-03-14 19:56:25 - backend.api.routers.companion - DEBUG - companion.py:104 - companion_assist - Adapting internal response to API format (request_id: 22bc2ca5-9860-4c0b-a2db-2a766f30fe96)
+2025-03-14 19:56:25 - backend.api.routers.companion - INFO - companion.py:108 - companion_assist - Processed companion assist request for player test_player_123 (request_id: 22bc2ca5-9860-4c0b-a2db-2a766f30fe96)
+2025-03-14 19:56:25 - backend.api.routers.companion - DEBUG - companion.py:109 - companion_assist - Response details - dialogue length: 533, processing tier: rule
+2025-03-14 19:59:30 - backend.api.routers.companion - INFO - companion.py:41 - companion_assist - Received companion assist request for player test_player_123 (request_id: ef9dad26-9449-4e66-a3a6-125bec81dd4b)
+2025-03-14 19:59:30 - backend.api.routers.companion - DEBUG - companion.py:42 - companion_assist - Request details - type: vocabulary, text: how would i ask to buy the ticket in japanese?, location: station_entrance
+2025-03-14 19:59:30 - backend.api.routers.companion - DEBUG - companion.py:45 - companion_assist - Getting request adapter for companion_assist (request_id: ef9dad26-9449-4e66-a3a6-125bec81dd4b)
+2025-03-14 19:59:30 - backend.api.routers.companion - DEBUG - companion.py:52 - companion_assist - Adapting request to internal format (request_id: ef9dad26-9449-4e66-a3a6-125bec81dd4b)
+2025-03-14 19:59:30 - backend.api.routers.companion - DEBUG - companion.py:54 - companion_assist - Internal request created with ID: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.api.routers.companion - DEBUG - companion.py:61 - companion_assist - Attempting to process request with companion AI (request_id: ef9dad26-9449-4e66-a3a6-125bec81dd4b)
+2025-03-14 19:59:30 - backend.ai.companion - INFO - __init__.py:36 - process_companion_request - Processing companion request: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion - DEBUG - __init__.py:37 - process_companion_request - Request data: player_input='how would i ask to buy the ticket in japanese?', request_type='vocabulary'
+2025-03-14 19:59:30 - backend.ai.companion - DEBUG - __init__.py:41 - process_companion_request - Creating companion AI components for request: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.response_formatter - DEBUG - response_formatter.py:201 - __init__ - Initialized ResponseFormatter with personality: {'friendliness': 0.8, 'enthusiasm': 0.7, 'helpfulness': 0.9, 'playfulness': 0.6, 'formality': 0.3}
+2025-03-14 19:59:30 - backend.ai.companion - DEBUG - __init__.py:47 - process_companion_request - Creating request handler for request: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion - DEBUG - __init__.py:55 - process_companion_request - Handling request with request handler: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - INFO - request_handler.py:65 - handle_request - Handling request: f4754761-1e9b-4b85-972c-531cd0c3f8ab - how would i ask to buy the ticket in japanese?
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:69 - handle_request - Classifying request: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:124 - classify - Classifying request: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:138 - classify - Classified as: vocabulary_help, simple, tier_1, 0.8
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:73 - handle_request - Request classified in 0.000s as intent=VOCABULARY_HELP, complexity=SIMPLE, tier=TIER_1, confidence=0.80: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:76 - handle_request - Creating classified request: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - INFO - request_handler.py:87 - handle_request - Request f4754761-1e9b-4b85-972c-531cd0c3f8ab routed to TIER_1 processor with intent=VOCABULARY_HELP, complexity=SIMPLE, confidence=0.80
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:90 - handle_request - Getting processor for tier TIER_1: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.processor_framework - INFO - processor_framework.py:331 - get_processor - Creating new TIER_1 processor
+2025-03-14 19:59:30 - backend.ai.companion.tier1.template_system - DEBUG - template_system.py:90 - __init__ - Initialized TemplateSystem with 18 templates
+2025-03-14 19:59:30 - backend.ai.companion.tier1.pattern_matching - DEBUG - pattern_matching.py:167 - __init__ - Initialized PatternMatcher with 11 patterns
+2025-03-14 19:59:30 - backend.ai.companion.tier1.decision_trees - DEBUG - decision_trees.py:246 - __init__ - Initialized DecisionTreeManager
+2025-03-14 19:59:30 - backend.ai.companion.tier1.pattern_matching - DEBUG - pattern_matching.py:167 - __init__ - Initialized PatternMatcher with 11 patterns
+2025-03-14 19:59:30 - backend.ai.companion.tier1.decision_trees - DEBUG - decision_trees.py:368 - __init__ - Initialized DecisionTreeProcessor
+2025-03-14 19:59:30 - backend.ai.companion.tier1.decision_trees - DEBUG - decision_trees.py:54 - __init__ - Initialized DecisionTree: grammar_explanation
+2025-03-14 19:59:30 - backend.ai.companion.tier1.decision_trees - INFO - decision_trees.py:257 - load_tree - Loaded tree: grammar_explanation
+2025-03-14 19:59:30 - backend.ai.companion.tier1.decision_trees - INFO - decision_trees.py:270 - load_tree_from_file - Loaded tree from file: /Users/joeyb-mini/GenAI/tokyo-train-station-adventure/backend/ai/companion/core/../tier1/trees/grammar_explanation.json
+2025-03-14 19:59:30 - backend.ai.companion.core.processor_framework - INFO - processor_framework.py:167 - _load_default_trees - Loaded decision tree from /Users/joeyb-mini/GenAI/tokyo-train-station-adventure/backend/ai/companion/core/../tier1/trees/grammar_explanation.json
+2025-03-14 19:59:30 - backend.ai.companion.tier1.decision_trees - DEBUG - decision_trees.py:54 - __init__ - Initialized DecisionTree: vocabulary_help
+2025-03-14 19:59:30 - backend.ai.companion.tier1.decision_trees - INFO - decision_trees.py:257 - load_tree - Loaded tree: vocabulary_help
+2025-03-14 19:59:30 - backend.ai.companion.tier1.decision_trees - INFO - decision_trees.py:270 - load_tree_from_file - Loaded tree from file: /Users/joeyb-mini/GenAI/tokyo-train-station-adventure/backend/ai/companion/core/../tier1/trees/vocabulary_help.json
+2025-03-14 19:59:30 - backend.ai.companion.core.processor_framework - INFO - processor_framework.py:167 - _load_default_trees - Loaded decision tree from /Users/joeyb-mini/GenAI/tokyo-train-station-adventure/backend/ai/companion/core/../tier1/trees/vocabulary_help.json
+2025-03-14 19:59:30 - backend.ai.companion.core.processor_framework - DEBUG - processor_framework.py:349 - get_processor - Cached TIER_1 processor for future use
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:93 - handle_request - Using processor: Tier1Processor: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:96 - handle_request - Processing request with Tier1Processor: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:99 - handle_request - Processor.process is sync: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:107 - handle_request - Calling sync processor.process: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.processor_framework - INFO - processor_framework.py:83 - process - Processing request f4754761-1e9b-4b85-972c-531cd0c3f8ab with Tier 1 processor
+2025-03-14 19:59:30 - backend.ai.companion.tier1.pattern_matching - DEBUG - pattern_matching.py:279 - match - Matched patterns in text: how would i ask to buy the ticket in japanese?...
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:111 - handle_request - Request processed in 0.002s: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:114 - handle_request - Formatting response: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:121 - handle_request - Response formatted in 0.000s (length: 37): f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.request_handler - INFO - request_handler.py:139 - handle_request - Request handled successfully in 0.003s: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion - DEBUG - __init__.py:57 - process_companion_request - Received response text from handler (length: 37): f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion - DEBUG - __init__.py:60 - process_companion_request - Classifying request: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:124 - classify - Classifying request: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:138 - classify - Classified as: vocabulary_help, simple, tier_1, 0.8
+2025-03-14 19:59:30 - backend.ai.companion - DEBUG - __init__.py:62 - process_companion_request - Request classified as intent=VOCABULARY_HELP, complexity=SIMPLE, tier=TIER_1, confidence=0.8: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion - DEBUG - __init__.py:65 - process_companion_request - Creating CompanionResponse object: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.ai.companion - INFO - __init__.py:87 - process_companion_request - Successfully processed companion request: f4754761-1e9b-4b85-972c-531cd0c3f8ab
+2025-03-14 19:59:30 - backend.api.routers.companion - DEBUG - companion.py:64 - companion_assist - Successfully processed request with companion AI (request_id: ef9dad26-9449-4e66-a3a6-125bec81dd4b)
+2025-03-14 19:59:30 - backend.api.routers.companion - DEBUG - companion.py:97 - companion_assist - Getting response adapter for companion_assist (request_id: ef9dad26-9449-4e66-a3a6-125bec81dd4b)
+2025-03-14 19:59:30 - backend.api.routers.companion - DEBUG - companion.py:104 - companion_assist - Adapting internal response to API format (request_id: ef9dad26-9449-4e66-a3a6-125bec81dd4b)
+2025-03-14 19:59:30 - backend.api.routers.companion - INFO - companion.py:108 - companion_assist - Processed companion assist request for player test_player_123 (request_id: ef9dad26-9449-4e66-a3a6-125bec81dd4b)
+2025-03-14 19:59:30 - backend.api.routers.companion - DEBUG - companion.py:109 - companion_assist - Response details - dialogue length: 37, processing tier: rule
+2025-03-14 20:00:48 - backend.api.routers.companion - INFO - companion.py:41 - companion_assist - Received companion assist request for player test_player_123 (request_id: 3dd96c57-165b-4d5c-9276-51e27cc35bef)
+2025-03-14 20:00:48 - backend.api.routers.companion - DEBUG - companion.py:42 - companion_assist - Request details - type: translation, text: what do i ask?, location: station_entrance
+2025-03-14 20:00:48 - backend.api.routers.companion - DEBUG - companion.py:45 - companion_assist - Getting request adapter for companion_assist (request_id: 3dd96c57-165b-4d5c-9276-51e27cc35bef)
+2025-03-14 20:00:48 - backend.api.routers.companion - DEBUG - companion.py:52 - companion_assist - Adapting request to internal format (request_id: 3dd96c57-165b-4d5c-9276-51e27cc35bef)
+2025-03-14 20:00:48 - backend.api.routers.companion - DEBUG - companion.py:54 - companion_assist - Internal request created with ID: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.api.routers.companion - DEBUG - companion.py:61 - companion_assist - Attempting to process request with companion AI (request_id: 3dd96c57-165b-4d5c-9276-51e27cc35bef)
+2025-03-14 20:00:48 - backend.ai.companion - INFO - __init__.py:36 - process_companion_request - Processing companion request: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion - DEBUG - __init__.py:37 - process_companion_request - Request data: player_input='what do i ask?', request_type='translation'
+2025-03-14 20:00:48 - backend.ai.companion - DEBUG - __init__.py:41 - process_companion_request - Creating companion AI components for request: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.response_formatter - DEBUG - response_formatter.py:201 - __init__ - Initialized ResponseFormatter with personality: {'friendliness': 0.8, 'enthusiasm': 0.7, 'helpfulness': 0.9, 'playfulness': 0.6, 'formality': 0.3}
+2025-03-14 20:00:48 - backend.ai.companion - DEBUG - __init__.py:47 - process_companion_request - Creating request handler for request: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion - DEBUG - __init__.py:55 - process_companion_request - Handling request with request handler: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - INFO - request_handler.py:65 - handle_request - Handling request: 1ad5af3c-e75d-4530-bd9c-093b97c97855 - what do i ask?
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:69 - handle_request - Classifying request: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:124 - classify - Classifying request: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:138 - classify - Classified as: translation_confirmation, simple, tier_1, 0.8
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:73 - handle_request - Request classified in 0.000s as intent=TRANSLATION_CONFIRMATION, complexity=SIMPLE, tier=TIER_1, confidence=0.80: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:76 - handle_request - Creating classified request: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - INFO - request_handler.py:87 - handle_request - Request 1ad5af3c-e75d-4530-bd9c-093b97c97855 routed to TIER_1 processor with intent=TRANSLATION_CONFIRMATION, complexity=SIMPLE, confidence=0.80
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:90 - handle_request - Getting processor for tier TIER_1: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.processor_framework - DEBUG - processor_framework.py:327 - get_processor - Using cached TIER_1 processor
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:93 - handle_request - Using processor: Tier1Processor: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:96 - handle_request - Processing request with Tier1Processor: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:99 - handle_request - Processor.process is sync: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:107 - handle_request - Calling sync processor.process: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.processor_framework - INFO - processor_framework.py:83 - process - Processing request 1ad5af3c-e75d-4530-bd9c-093b97c97855 with Tier 1 processor
+2025-03-14 20:00:48 - backend.ai.companion.tier1.pattern_matching - DEBUG - pattern_matching.py:279 - match - Matched patterns in text: what do i ask?...
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:111 - handle_request - Request processed in 0.000s: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:114 - handle_request - Formatting response: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - DEBUG - request_handler.py:121 - handle_request - Response formatted in 0.000s (length: 30): 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.request_handler - INFO - request_handler.py:139 - handle_request - Request handled successfully in 0.001s: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion - DEBUG - __init__.py:57 - process_companion_request - Received response text from handler (length: 30): 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion - DEBUG - __init__.py:60 - process_companion_request - Classifying request: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:124 - classify - Classifying request: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion.core.intent_classifier - INFO - intent_classifier.py:138 - classify - Classified as: translation_confirmation, simple, tier_1, 0.8
+2025-03-14 20:00:48 - backend.ai.companion - DEBUG - __init__.py:62 - process_companion_request - Request classified as intent=TRANSLATION_CONFIRMATION, complexity=SIMPLE, tier=TIER_1, confidence=0.8: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion - DEBUG - __init__.py:65 - process_companion_request - Creating CompanionResponse object: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.ai.companion - INFO - __init__.py:87 - process_companion_request - Successfully processed companion request: 1ad5af3c-e75d-4530-bd9c-093b97c97855
+2025-03-14 20:00:48 - backend.api.routers.companion - DEBUG - companion.py:64 - companion_assist - Successfully processed request with companion AI (request_id: 3dd96c57-165b-4d5c-9276-51e27cc35bef)
+2025-03-14 20:00:48 - backend.api.routers.companion - DEBUG - companion.py:97 - companion_assist - Getting response adapter for companion_assist (request_id: 3dd96c57-165b-4d5c-9276-51e27cc35bef)
+2025-03-14 20:00:48 - backend.api.routers.companion - DEBUG - companion.py:104 - companion_assist - Adapting internal response to API format (request_id: 3dd96c57-165b-4d5c-9276-51e27cc35bef)
+2025-03-14 20:00:48 - backend.api.routers.companion - INFO - companion.py:108 - companion_assist - Processed companion assist request for player test_player_123 (request_id: 3dd96c57-165b-4d5c-9276-51e27cc35bef)
+2025-03-14 20:00:48 - backend.api.routers.companion - DEBUG - companion.py:109 - companion_assist - Response details - dialogue length: 30, processing tier: rule

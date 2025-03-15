@@ -258,7 +258,9 @@ Intent: {intent}
         
         # For quota errors, provide a specific message
         if isinstance(error, BedrockError) and error.error_type == BedrockError.QUOTA_ERROR:
+            self.logger.info(f"Tier3 quota exceeded for request {request.request_id}. Returning quota error message.")
             return "I'm sorry, but I've reached my limit for complex questions right now. Could you ask something simpler, or try again later?"
         
         # For other errors, provide a generic message
+        self.logger.info(f"Tier3 fallback for request {request.request_id} due to error: {str(error)}")
         return "I'm sorry, I'm having trouble understanding that right now. Could you rephrase your question or ask something else?" 

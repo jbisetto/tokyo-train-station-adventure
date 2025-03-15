@@ -295,8 +295,8 @@ class ProcessorFactory:
     """
     Factory for creating processors based on the processing tier.
     
-    This class implements the Singleton pattern to ensure that only one
-    instance of each processor is created.
+    This class is responsible for creating and caching processors for different tiers.
+    It ensures that only one instance of each processor type is created.
     """
     
     _instance = None
@@ -306,6 +306,7 @@ class ProcessorFactory:
         """Create a new instance of the factory if one doesn't exist."""
         if cls._instance is None:
             cls._instance = super(ProcessorFactory, cls).__new__(cls)
+            cls._instance.logger = logging.getLogger(__name__)
         return cls._instance
     
     def get_processor(self, tier: ProcessingTier) -> Processor:
@@ -323,9 +324,12 @@ class ProcessorFactory:
         """
         # Check if we already have a processor for this tier
         if tier in self._processors:
+            self.logger.debug(f"Using cached {tier.name} processor")
             return self._processors[tier]
         
         # Create a new processor based on the tier
+        self.logger.info(f"Creating new {tier.name} processor")
+        
         if tier == ProcessingTier.TIER_1:
             processor = Tier1Processor()
         elif tier == ProcessingTier.TIER_2:
@@ -337,9 +341,11 @@ class ProcessorFactory:
             from backend.ai.companion.tier3.tier3_processor import Tier3Processor as RealTier3Processor
             processor = RealTier3Processor()
         else:
+            self.logger.error(f"Unsupported processing tier: {tier.name}")
             raise ValueError(f"Unsupported processing tier: {tier.name}")
         
         # Cache the processor for future use
         self._processors[tier] = processor
+        self.logger.debug(f"Cached {tier.name} processor for future use")
         
         return processor 
