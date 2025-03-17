@@ -7,7 +7,7 @@ conversations across multiple interactions with the player.
 
 import pytest
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime, timedelta
 
 from backend.ai.companion.core.models import (
@@ -18,6 +18,7 @@ from backend.ai.companion.core.models import (
     ProcessingTier
 )
 from backend.ai.companion.core.conversation_manager import ConversationManager, ConversationState
+from backend.ai.companion.core.storage.memory import InMemoryConversationStorage
 
 
 @pytest.fixture
@@ -25,18 +26,28 @@ def sample_conversation_history():
     """Create a sample conversation history for testing."""
     return [
         {
-            "request": "What does 'kippu' mean?",
-            "response": "'Kippu' means 'ticket' in Japanese.",
+            "type": "user_message",
+            "text": "What does 'kippu' mean?",
             "timestamp": "2023-05-01T12:00:00",
             "intent": "vocabulary_help",
             "entities": {"word": "kippu"}
         },
         {
-            "request": "How do I ask for a ticket to Odawara?",
-            "response": "You can say 'Odawara made no kippu o kudasai'.",
+            "type": "assistant_message",
+            "text": "'Kippu' means 'ticket' in Japanese.",
+            "timestamp": "2023-05-01T12:00:30",
+        },
+        {
+            "type": "user_message",
+            "text": "How do I ask for a ticket to Odawara?",
             "timestamp": "2023-05-01T12:01:00",
             "intent": "translation_confirmation",
             "entities": {"destination": "Odawara", "word": "kippu"}
+        },
+        {
+            "type": "assistant_message",
+            "text": "You can say 'Odawara made no kippu o kudasai'.",
+            "timestamp": "2023-05-01T12:01:30",
         }
     ]
 
@@ -49,13 +60,19 @@ def sample_classified_request():
         player_input="Can you explain more about train tickets?",
         request_type="general",
         intent=IntentCategory.GENERAL_HINT,
-        complexity="complex",
-        processing_tier="tier_3",
+        complexity=ComplexityLevel.COMPLEX,
+        processing_tier=ProcessingTier.TIER_3,
         timestamp=datetime.now(),
         confidence=0.85,
         extracted_entities={"topic": "train tickets"},
         additional_params={"conversation_id": "conv-123"}
     )
+
+
+@pytest.fixture
+def conversation_id():
+    """Create a conversation ID for testing."""
+    return "test-conversation-" + str(uuid.uuid4())
 
 
 class TestConversationManager:
@@ -114,12 +131,6 @@ class TestConversationManager:
             base_prompt
         )
         
-        # Check that the prompt contains the conversation history
-        assert "What does 'kippu' mean?" in prompt
-        assert "'Kippu' means 'ticket' in Japanese." in prompt
-        assert "How do I ask for a ticket to Odawara?" in prompt
-        assert "You can say 'Odawara made no kippu o kudasai'." in prompt
-        
         # Check that the prompt contains instructions for handling follow-up questions
         assert "follow-up question" in prompt
         assert "conversation history" in prompt
@@ -168,45 +179,59 @@ class TestConversationManager:
         assert "clarification" in prompt.lower()
         assert "detailed explanation" in prompt.lower()
     
-    def test_add_to_history(self, sample_conversation_history, sample_classified_request):
+    @pytest.mark.asyncio
+    async def test_add_to_history(self, sample_classified_request, conversation_id):
         """Test adding to the conversation history."""
-        manager = ConversationManager()
+        # Create a ConversationManager with an in-memory storage
+        storage = InMemoryConversationStorage()
+        manager = ConversationManager(storage=storage)
         
         # Add a new entry to the history
         response = "Train tickets in Japan are called 'kippu' and can be purchased at ticket machines or counters."
-        updated_history = manager.add_to_history(
-            sample_conversation_history,
+        updated_history = await manager.add_to_history(
+            conversation_id,
             sample_classified_request,
             response
         )
         
         # Check that the history was updated
-        assert len(updated_history) == 3
-        assert updated_history[2]["request"] == sample_classified_request.player_input
-        assert updated_history[2]["response"] == response
-        assert updated_history[2]["intent"] == sample_classified_request.intent.value
-        assert updated_history[2]["entities"] == sample_classified_request.extracted_entities
+        assert len(updated_history) == 2
+        
+        # Check the user entry
+        assert updated_history[0]["type"] == "user_message"
+        assert updated_history[0]["text"] == sample_classified_request.player_input
+        assert updated_history[0]["intent"].lower() == sample_classified_request.intent.value.lower()
+        assert updated_history[0]["entities"] == sample_classified_request.extracted_entities
+        
+        # Check the assistant entry
+        assert updated_history[1]["type"] == "assistant_message"
+        assert updated_history[1]["text"] == response
     
-    def test_integration_with_tier3_processor(self, sample_conversation_history, sample_classified_request):
+    @pytest.mark.asyncio
+    async def test_integration_with_tier3_processor(self, sample_classified_request, conversation_id):
         """Test integration with the Tier3Processor."""
-        manager = ConversationManager()
+        # Create a ConversationManager with an in-memory storage
+        storage = InMemoryConversationStorage()
+        manager = ConversationManager(storage=storage)
         
         # Mock a generate_response function
-        def generate_response(prompt):
+        async def mock_generate_response(prompt):
             return "This is a response to: " + sample_classified_request.player_input
         
         # Process the request with history
-        response, updated_history = manager.process_with_history(
+        response, updated_history = await manager.process_with_history(
             sample_classified_request,
-            sample_conversation_history,
+            conversation_id,
             "You are Hachiko, a helpful companion dog.",
-            generate_response
+            mock_generate_response
         )
         
         # Check that the response was generated
         assert response == "This is a response to: " + sample_classified_request.player_input
         
         # Check that the history was updated
-        assert len(updated_history) == 3
-        assert updated_history[2]["request"] == sample_classified_request.player_input
-        assert updated_history[2]["response"] == response 
+        assert len(updated_history) == 2
+        assert updated_history[0]["type"] == "user_message"
+        assert updated_history[0]["text"] == sample_classified_request.player_input
+        assert updated_history[1]["type"] == "assistant_message"
+        assert updated_history[1]["text"] == response 

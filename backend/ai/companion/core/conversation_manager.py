@@ -10,8 +10,11 @@ import re
 import logging
 import enum
 from typing import Optional, List, Dict, Any, Tuple
+from datetime import datetime
 
 from backend.ai.companion.core.models import ClassifiedRequest
+from backend.ai.companion.core.storage.factory import default_storage_factory
+from backend.ai.companion.core.storage.base import ConversationStorage
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +37,18 @@ class ConversationManager:
     conversation flows.
     """
     
-    def __init__(self, tier_specific_config: Optional[Dict[str, Any]] = None):
+    def __init__(self, tier_specific_config: Optional[Dict[str, Any]] = None, storage: Optional[ConversationStorage] = None):
         """
         Initialize the conversation manager.
         
         Args:
             tier_specific_config: Optional configuration specific to the tier
+            storage: Optional storage implementation to use
         """
         self.tier_specific_config = tier_specific_config or {}
+        
+        # Get a storage instance
+        self.storage = storage or default_storage_factory.get_storage()
         
         # Patterns for detecting follow-up questions
         self.follow_up_patterns = [
@@ -70,6 +77,70 @@ class ConversationManager:
         ]
         
         logger.debug("Initialized ConversationManager with config: %s", self.tier_specific_config)
+    
+    async def get_or_create_context(self, conversation_id: str) -> Dict[str, Any]:
+        """
+        Get an existing conversation context or create a new one.
+        
+        Args:
+            conversation_id: The ID of the conversation
+            
+        Returns:
+            The conversation context
+        """
+        # Try to get the context from storage
+        context = await self.storage.get_context(conversation_id)
+        
+        if not context:
+            # Create a new context
+            context = {
+                "conversation_id": conversation_id,
+                "timestamp": datetime.now().isoformat(),
+                "entries": []
+            }
+            
+            # Save the new context
+            await self.storage.save_context(conversation_id, context)
+        
+        return context
+    
+    async def add_entry(self, conversation_id: str, entry: Dict[str, Any]) -> None:
+        """
+        Add an entry to a conversation context.
+        
+        Args:
+            conversation_id: The ID of the conversation
+            entry: The entry to add
+        """
+        context = await self.get_or_create_context(conversation_id)
+        
+        # Add timestamp if not present
+        if "timestamp" not in entry:
+            entry["timestamp"] = datetime.now().isoformat()
+        
+        # Add the entry
+        context["entries"].append(entry)
+        
+        # Trim history if it exceeds the maximum size
+        max_history = self.tier_specific_config.get("max_history_size", 10)
+        if len(context["entries"]) > max_history:
+            context["entries"] = context["entries"][-max_history:]
+        
+        # Update the context in storage
+        await self.storage.save_context(conversation_id, context)
+    
+    async def get_entries(self, conversation_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all entries for a conversation.
+        
+        Args:
+            conversation_id: The ID of the conversation
+            
+        Returns:
+            The entries for the conversation
+        """
+        context = await self.get_or_create_context(conversation_id)
+        return context.get("entries", [])
     
     def detect_conversation_state(
         self,
@@ -161,9 +232,9 @@ class ConversationManager:
         
         return prompt
     
-    def add_to_history(
+    async def add_to_history(
         self,
-        conversation_history: List[Dict[str, Any]],
+        conversation_id: str,
         request: ClassifiedRequest,
         response: str
     ) -> List[Dict[str, Any]]:
@@ -171,36 +242,54 @@ class ConversationManager:
         Add a request-response pair to the conversation history.
         
         Args:
-            conversation_history: The existing conversation history
+            conversation_id: The conversation ID
             request: The current request
             response: The response to the request
             
         Returns:
             The updated conversation history
         """
+        # Get the current conversation context
+        context = await self.get_or_create_context(conversation_id)
+        conversation_history = context.get("entries", [])
+        
         # Create a new history entry
         entry = {
-            "request": request.player_input,
-            "response": response,
-            "timestamp": request.timestamp.isoformat() if hasattr(request, 'timestamp') else None,
+            "type": "user_message",
+            "text": request.player_input,
+            "timestamp": request.timestamp.isoformat() if hasattr(request, 'timestamp') else datetime.now().isoformat(),
             "intent": request.intent.value if hasattr(request, 'intent') else None,
             "entities": request.extracted_entities if hasattr(request, 'extracted_entities') else {}
         }
         
-        # Add the entry to the history
+        # Add the user's request to the history
         conversation_history.append(entry)
+        
+        # Create the assistant's response entry
+        response_entry = {
+            "type": "assistant_message",
+            "text": response,
+            "timestamp": datetime.now().isoformat(),
+        }
+        
+        # Add the response to the history
+        conversation_history.append(response_entry)
         
         # Limit the history size if specified in the config
         max_history = self.tier_specific_config.get('max_history_size', 10)
         if len(conversation_history) > max_history:
             conversation_history = conversation_history[-max_history:]
         
+        # Update the context with the new history
+        context["entries"] = conversation_history
+        await self.storage.save_context(conversation_id, context)
+        
         return conversation_history
     
-    def process_with_history(
+    async def process_with_history(
         self,
         request: ClassifiedRequest,
-        conversation_history: List[Dict[str, Any]],
+        conversation_id: str,
         base_prompt: str,
         generate_response_func
     ) -> Tuple[str, List[Dict[str, Any]]]:
@@ -209,13 +298,17 @@ class ConversationManager:
         
         Args:
             request: The current request
-            conversation_history: The conversation history
+            conversation_id: The conversation ID
             base_prompt: The base prompt to build upon
             generate_response_func: Function to generate a response
             
         Returns:
             A tuple of (response, updated_history)
         """
+        # Get the conversation history
+        context = await self.get_or_create_context(conversation_id)
+        conversation_history = context.get("entries", [])
+        
         # Detect the conversation state
         state = self.detect_conversation_state(request, conversation_history)
         
@@ -228,13 +321,25 @@ class ConversationManager:
         )
         
         # Generate a response using the provided function
-        response = generate_response_func(prompt)
+        response = await generate_response_func(prompt)
         
         # Add the request-response pair to the history
-        updated_history = self.add_to_history(
-            conversation_history,
+        updated_history = await self.add_to_history(
+            conversation_id,
             request,
             response
         )
         
-        return response, updated_history 
+        return response, updated_history
+    
+    async def cleanup_old_conversations(self, max_age_days: int = 30) -> int:
+        """
+        Delete conversation contexts older than the specified age.
+        
+        Args:
+            max_age_days: The maximum age of contexts to keep, in days
+            
+        Returns:
+            The number of contexts deleted
+        """
+        return await self.storage.cleanup_old_contexts(max_age_days) 
