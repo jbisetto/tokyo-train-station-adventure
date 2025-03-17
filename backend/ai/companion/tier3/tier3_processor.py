@@ -7,7 +7,7 @@ which uses Amazon Bedrock for generating responses to complex requests.
 
 import logging
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from backend.ai.companion.core.models import (
     ClassifiedRequest,
@@ -18,8 +18,9 @@ from backend.ai.companion.core.models import (
 from backend.ai.companion.core.processor_framework import Processor
 from backend.ai.companion.tier3.bedrock_client import BedrockClient, BedrockError
 from backend.ai.companion.tier3.usage_tracker import UsageTracker, default_tracker
-from backend.ai.companion.tier3.context_manager import ContextManager, default_context_manager
-from backend.ai.companion.tier3.conversation_manager import ConversationManager
+from backend.ai.companion.core.context_manager import ContextManager, default_context_manager
+from backend.ai.companion.core.conversation_manager import ConversationManager
+from backend.ai.companion.core.prompt_manager import PromptManager
 from backend.ai.companion.tier3.scenario_detection import ScenarioDetector, ScenarioType
 from backend.ai.companion.config import CLOUD_API_CONFIG
 
@@ -47,10 +48,32 @@ class Tier3Processor(Processor):
         """
         self.logger = logging.getLogger(__name__)
         self.client = self._create_bedrock_client(usage_tracker)
+        
+        # Use the common ContextManager
         self.context_manager = context_manager or default_context_manager
-        self.conversation_manager = ConversationManager()
+        
+        # Use the common ConversationManager with tier3-specific config
+        tier3_conversation_config = {
+            'max_history_size': 10  # Tier3 can handle more history
+        }
+        self.conversation_manager = ConversationManager(tier_specific_config=tier3_conversation_config)
+        
+        # Use the common PromptManager with tier3-specific config
+        tier3_prompt_config = {
+            'format_for_model': 'bedrock',
+            'optimize_prompt': True,
+            'max_prompt_tokens': 1000,
+            'additional_instructions': "\nPlease provide a detailed and helpful response."
+        }
+        self.prompt_manager = PromptManager(tier_specific_config=tier3_prompt_config)
+        
+        # Keep the scenario detector for tier3-specific functionality
         self.scenario_detector = ScenarioDetector()
-        self.logger.info("Tier 3 processor initialized with Bedrock client")
+        
+        # Initialize conversation history storage
+        self.conversation_histories = {}
+        
+        self.logger.info("Tier 3 processor initialized with Bedrock client and common components")
     
     def _create_bedrock_client(self, usage_tracker: Optional[UsageTracker] = None) -> BedrockClient:
         """
@@ -93,15 +116,18 @@ class Tier3Processor(Processor):
         )
         
         try:
-            # First, try to detect and handle specific scenarios
+            # Get or create conversation history
+            conversation_id = request.additional_params.get("conversation_id", request.request_id)
+            if conversation_id not in self.conversation_histories:
+                self.conversation_histories[conversation_id] = []
+            conversation_history = self.conversation_histories[conversation_id]
+            
+            # First, try to detect and handle specific scenarios for complex requests
             if request.complexity == ComplexityLevel.COMPLEX:
-                # Check if we have a conversation_id
-                conversation_id = request.additional_params.get("conversation_id", "")
-                
                 # Only attempt scenario detection if we have a conversation_id
-                if conversation_id:
+                if "conversation_id" in request.additional_params:
                     # Get the context
-                    context = self.context_manager.get_context(conversation_id)
+                    context = self.context_manager.get_context(request.additional_params["conversation_id"])
                     
                     # Only proceed with scenario detection if we have a valid context
                     if context:
@@ -118,27 +144,72 @@ class Tier3Processor(Processor):
                                 self.client
                             )
                             
+                            # Update conversation history
+                            self.conversation_histories[conversation_id] = self.conversation_manager.add_to_history(
+                                conversation_history,
+                                request,
+                                response
+                            )
+                            
+                            # Update context
+                            self.context_manager.update_context(
+                                request.additional_params["conversation_id"],
+                                request,
+                                response
+                            )
+                            
                             self.logger.info(f"Generated response for scenario {scenario_type.value}")
                             return response
             
-            # For complex requests that don't match a specific scenario, use the conversation manager
-            if request.complexity == ComplexityLevel.COMPLEX and "conversation_id" in request.additional_params:
-                self.logger.debug(f"Using conversation manager for complex request {request.request_id}")
-                response = self.conversation_manager.process(
-                    request,
-                    self.context_manager,
-                    self.client
-                )
-                self.logger.info(f"Generated response for complex request {request.request_id}")
-                return response
+            # For requests that don't match a specific scenario, use the common components
             
-            # For other requests, use the standard processing flow
+            # Create a base prompt using the common prompt manager
+            base_prompt = self.prompt_manager.create_prompt(request)
+            
+            # Detect conversation state and generate contextual prompt
+            state = self.conversation_manager.detect_conversation_state(request, conversation_history)
+            prompt = self.conversation_manager.generate_contextual_prompt(
+                request, 
+                conversation_history, 
+                state, 
+                base_prompt
+            )
+            
+            # Generate a response using the Bedrock client
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            response = loop.run_until_complete(
-                self._generate_response(companion_request, request)
-            )
+            
+            # Define a function to generate a response
+            async def generate_response():
+                return await self.client.generate(
+                    request=companion_request,
+                    model_id=CLOUD_API_CONFIG.get("model", "amazon.nova-micro-v1:0"),
+                    temperature=CLOUD_API_CONFIG.get("temperature", 0.7),
+                    max_tokens=CLOUD_API_CONFIG.get("max_tokens", 512),
+                    prompt=prompt
+                )
+            
+            # Generate the response
+            response = loop.run_until_complete(generate_response())
             loop.close()
+            
+            # Parse and clean the response
+            response = self._parse_response(response)
+            
+            # Update conversation history
+            self.conversation_histories[conversation_id] = self.conversation_manager.add_to_history(
+                conversation_history,
+                request,
+                response
+            )
+            
+            # Update context if we have a conversation_id in additional_params
+            if "conversation_id" in request.additional_params:
+                self.context_manager.update_context(
+                    request.additional_params["conversation_id"],
+                    request,
+                    response
+                )
             
             self.logger.info(f"Generated response for request {request.request_id}")
             return response
@@ -150,77 +221,6 @@ class Tier3Processor(Processor):
         except Exception as e:
             self.logger.error(f"Unexpected error in Tier 3 processor: {str(e)}")
             return f"I'm sorry, I encountered an unexpected error: {str(e)}"
-    
-    async def _generate_response(self, companion_request: CompanionRequest, classified_request: ClassifiedRequest) -> str:
-        """
-        Generate a response using the Bedrock client.
-        
-        Args:
-            companion_request: The companion request
-            classified_request: The classified request with intent information
-            
-        Returns:
-            The generated response
-            
-        Raises:
-            BedrockError: If there is an error generating the response
-        """
-        # Create a custom prompt that includes the intent and entities
-        prompt = self._create_custom_prompt(classified_request)
-        
-        # Generate a response using the Bedrock client
-        response = await self.client.generate(
-            request=companion_request,
-            model_id=CLOUD_API_CONFIG.get("model", "amazon.nova-micro-v1:0"),
-            temperature=CLOUD_API_CONFIG.get("temperature", 0.7),
-            max_tokens=CLOUD_API_CONFIG.get("max_tokens", 512),
-            prompt=prompt
-        )
-        
-        # Parse and clean the response
-        return self._parse_response(response)
-    
-    def _create_custom_prompt(self, request: ClassifiedRequest) -> str:
-        """
-        Create a custom prompt that includes intent and entity information.
-        
-        Args:
-            request: The classified request
-            
-        Returns:
-            A prompt string
-        """
-        # Extract relevant information from the request
-        intent = request.intent.value
-        player_input = request.player_input
-        entities = request.extracted_entities
-        
-        # Create a prompt based on the intent and entities
-        prompt = f"""<s>
-You are a helpful bilingual dog companion in a Japanese train station.
-You are assisting an English-speaking player who is learning Japanese.
-Provide accurate, helpful responses about Japanese language and culture.
-
-Your response should be concise, friendly, and appropriate for a dog character.
-</s>
-
-<user>
-{player_input}
-</user>
-
-<context>
-Intent: {intent}
-"""
-        
-        # Add entity-specific information to the prompt
-        if entities:
-            prompt += "Entities:\n"
-            for key, value in entities.items():
-                prompt += f"- {key}: {value}\n"
-        
-        prompt += "</context>"
-        
-        return prompt
     
     def _parse_response(self, response: str) -> str:
         """
