@@ -1,5 +1,5 @@
 """
-Tests for multi-turn conversation management in Tier 3.
+Tests for multi-turn conversation management.
 
 These tests verify that the companion AI can maintain coherent
 conversations across multiple interactions with the player.
@@ -17,59 +17,43 @@ from backend.ai.companion.core.models import (
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.tier3.context_manager import (
-    ConversationContext,
-    ContextManager,
-    ContextEntry
-)
+from backend.ai.companion.core.conversation_manager import ConversationManager, ConversationState
 
 
 @pytest.fixture
-def sample_context():
-    """Create a sample conversation context for testing."""
-    context = ConversationContext(
-        conversation_id="conv-123",
-        player_id="player-456",
-        player_language_level="N5",
-        current_location="ticket_counter",
-        created_at=datetime.now() - timedelta(minutes=10),
-        updated_at=datetime.now() - timedelta(minutes=5)
-    )
-    
-    # Add some entries to the context
-    context.entries = [
-        ContextEntry(
-            request="What does 'kippu' mean?",
-            response="'Kippu' means 'ticket' in Japanese.",
-            timestamp=datetime.now() - timedelta(minutes=5),
-            intent=IntentCategory.VOCABULARY_HELP,
-            entities={"word": "kippu"}
-        ),
-        ContextEntry(
-            request="How do I ask for a ticket to Odawara?",
-            response="You can say 'Odawara made no kippu o kudasai'.",
-            timestamp=datetime.now() - timedelta(minutes=3),
-            intent=IntentCategory.TRANSLATION_CONFIRMATION,
-            entities={"destination": "Odawara"}
-        )
+def sample_conversation_history():
+    """Create a sample conversation history for testing."""
+    return [
+        {
+            "request": "What does 'kippu' mean?",
+            "response": "'Kippu' means 'ticket' in Japanese.",
+            "timestamp": "2023-05-01T12:00:00",
+            "intent": "vocabulary_help",
+            "entities": {"word": "kippu"}
+        },
+        {
+            "request": "How do I ask for a ticket to Odawara?",
+            "response": "You can say 'Odawara made no kippu o kudasai'.",
+            "timestamp": "2023-05-01T12:01:00",
+            "intent": "translation_confirmation",
+            "entities": {"destination": "Odawara", "word": "kippu"}
+        }
     ]
-    
-    return context
 
 
 @pytest.fixture
 def sample_classified_request():
     """Create a sample classified request for testing."""
     return ClassifiedRequest(
-        request_id=str(uuid.uuid4()),
-        player_input="What does 'kudasai' mean?",
-        request_type="vocabulary",
+        request_id="test-123",
+        player_input="Can you explain more about train tickets?",
+        request_type="general",
+        intent=IntentCategory.GENERAL_HINT,
+        complexity="complex",
+        processing_tier="tier_3",
         timestamp=datetime.now(),
-        intent=IntentCategory.VOCABULARY_HELP,
-        complexity=ComplexityLevel.COMPLEX,
-        processing_tier=ProcessingTier.TIER_3,
-        confidence=0.9,
-        extracted_entities={"word": "kudasai"},
+        confidence=0.85,
+        extracted_entities={"topic": "train tickets"},
         additional_params={"conversation_id": "conv-123"}
     )
 
@@ -78,166 +62,151 @@ class TestConversationManager:
     """Tests for the ConversationManager class."""
     
     def test_conversation_manager_creation(self):
-        """Test that a ConversationManager can be created."""
-        from backend.ai.companion.tier3.conversation_manager import ConversationManager
-        
+        """Test creating a ConversationManager."""
         manager = ConversationManager()
         
         assert manager is not None
         assert hasattr(manager, 'detect_conversation_state')
         assert hasattr(manager, 'generate_contextual_prompt')
-        assert hasattr(manager, 'handle_follow_up_question')
+        assert hasattr(manager, 'add_to_history')
     
-    def test_detect_conversation_state(self, sample_context, sample_classified_request):
-        """Test detecting the state of a conversation."""
-        from backend.ai.companion.tier3.conversation_manager import (
-            ConversationManager,
-            ConversationState
-        )
-        
+    def test_detect_conversation_state(self, sample_conversation_history, sample_classified_request):
+        """Test detecting the conversation state."""
         manager = ConversationManager()
         
-        # Test with a follow-up question
-        sample_classified_request.player_input = "What does 'kudasai' mean in that sentence?"
-        state = manager.detect_conversation_state(sample_classified_request, sample_context)
+        # Test with a follow-up question that matches one of the patterns
+        sample_classified_request.player_input = "tell me more about train tickets"
+        state = manager.detect_conversation_state(sample_classified_request, sample_conversation_history)
         
         assert state == ConversationState.FOLLOW_UP
         
+        # Test with a clarification request
+        sample_classified_request.player_input = "I don't understand what you mean"
+        state = manager.detect_conversation_state(sample_classified_request, sample_conversation_history)
+        
+        assert state == ConversationState.CLARIFICATION
+        
         # Test with a new topic
-        sample_classified_request.player_input = "How do I get to Shinjuku station?"
-        state = manager.detect_conversation_state(sample_classified_request, sample_context)
+        sample_classified_request.player_input = "What time does the train to Tokyo leave?"
+        state = manager.detect_conversation_state(sample_classified_request, sample_conversation_history)
         
         assert state == ConversationState.NEW_TOPIC
         
-        # Test with a clarification request
-        sample_classified_request.player_input = "Can you explain that again?"
-        state = manager.detect_conversation_state(sample_classified_request, sample_context)
+        # Test with a reference to a previous entity
+        sample_classified_request.player_input = "How much does a kippu cost?"
+        state = manager.detect_conversation_state(sample_classified_request, sample_conversation_history)
         
-        assert state == ConversationState.CLARIFICATION
+        assert state == ConversationState.FOLLOW_UP
     
-    def test_generate_contextual_prompt(self, sample_context, sample_classified_request):
-        """Test generating a contextual prompt based on conversation history."""
-        from backend.ai.companion.tier3.conversation_manager import (
-            ConversationManager,
-            ConversationState
-        )
-        
+    def test_generate_contextual_prompt(self, sample_conversation_history, sample_classified_request):
+        """Test generating a contextual prompt."""
         manager = ConversationManager()
         
         # Test with a follow-up question
-        sample_classified_request.player_input = "What does 'kudasai' mean in that sentence?"
+        sample_classified_request.player_input = "tell me more about train tickets"
+        state = manager.detect_conversation_state(sample_classified_request, sample_conversation_history)
+        base_prompt = "You are Hachiko, a helpful companion dog."
+        
         prompt = manager.generate_contextual_prompt(
             sample_classified_request,
-            sample_context,
-            ConversationState.FOLLOW_UP
+            sample_conversation_history,
+            state,
+            base_prompt
         )
         
-        assert "previous exchanges" in prompt
+        # Check that the prompt contains the conversation history
         assert "What does 'kippu' mean?" in prompt
         assert "'Kippu' means 'ticket' in Japanese." in prompt
         assert "How do I ask for a ticket to Odawara?" in prompt
         assert "You can say 'Odawara made no kippu o kudasai'." in prompt
+        
+        # Check that the prompt contains instructions for handling follow-up questions
         assert "follow-up question" in prompt
-        assert "kudasai" in prompt
+        assert "conversation history" in prompt
     
-    def test_handle_follow_up_question(self, sample_context, sample_classified_request):
+    def test_handle_follow_up_question(self, sample_conversation_history, sample_classified_request):
         """Test handling a follow-up question."""
-        from backend.ai.companion.tier3.conversation_manager import ConversationManager
-        
         manager = ConversationManager()
-        context_manager = MagicMock()
-        context_manager.get_context.return_value = sample_context
         
-        # Mock the bedrock client
-        bedrock_client = MagicMock()
-        bedrock_client.generate_text.return_value = "'Kudasai' means 'please' in Japanese."
+        # Set up a follow-up question
+        sample_classified_request.player_input = "tell me more about train tickets"
         
-        # Test handling a follow-up question
-        sample_classified_request.player_input = "What does 'kudasai' mean in that sentence?"
-        response = manager.handle_follow_up_question(
+        # Generate a prompt for the follow-up question
+        state = manager.detect_conversation_state(sample_classified_request, sample_conversation_history)
+        base_prompt = "You are Hachiko, a helpful companion dog."
+        
+        prompt = manager.generate_contextual_prompt(
             sample_classified_request,
-            context_manager,
-            bedrock_client
+            sample_conversation_history,
+            state,
+            base_prompt
         )
         
-        assert response is not None
-        assert "please" in response
-        
-        # Verify that the bedrock client was called with a prompt containing context
-        call_args = bedrock_client.generate_text.call_args[0]
-        prompt = call_args[0]
-        assert "previous exchanges" in prompt
-        assert "What does 'kippu' mean?" in prompt
-        assert "'Kippu' means 'ticket' in Japanese." in prompt
-        assert "How do I ask for a ticket to Odawara?" in prompt
-        assert "You can say 'Odawara made no kippu o kudasai'." in prompt
+        # Check that the prompt contains instructions for handling follow-up questions
+        assert "follow-up" in prompt.lower()
+        assert "conversation history" in prompt.lower()
     
-    def test_handle_clarification(self, sample_context, sample_classified_request):
+    def test_handle_clarification(self, sample_conversation_history, sample_classified_request):
         """Test handling a clarification request."""
-        from backend.ai.companion.tier3.conversation_manager import ConversationManager
-        
         manager = ConversationManager()
-        context_manager = MagicMock()
-        context_manager.get_context.return_value = sample_context
         
-        # Mock the bedrock client
-        bedrock_client = MagicMock()
-        bedrock_client.generate_text.return_value = "To ask for a ticket to Odawara, you can say 'Odawara made no kippu o kudasai'. 'Made' means 'to', 'no' is a possessive particle, 'kippu' means 'ticket', and 'kudasai' means 'please'."
+        # Set up a clarification request
+        sample_classified_request.player_input = "I don't understand what you mean"
         
-        # Test handling a clarification request
-        sample_classified_request.player_input = "Can you explain that again?"
-        response = manager.handle_clarification(
+        # Generate a prompt for the clarification request
+        state = manager.detect_conversation_state(sample_classified_request, sample_conversation_history)
+        base_prompt = "You are Hachiko, a helpful companion dog."
+        
+        prompt = manager.generate_contextual_prompt(
             sample_classified_request,
-            context_manager,
-            bedrock_client
+            sample_conversation_history,
+            state,
+            base_prompt
         )
         
-        assert response is not None
-        assert "Odawara" in response
-        assert "kudasai" in response
-        
-        # Verify that the bedrock client was called with a prompt containing context
-        call_args = bedrock_client.generate_text.call_args[0]
-        prompt = call_args[0]
-        assert "previous exchanges" in prompt
-        assert "clarification" in prompt
-        assert "How do I ask for a ticket to Odawara?" in prompt
-        assert "You can say 'Odawara made no kippu o kudasai'." in prompt
+        # Check that the prompt contains instructions for handling clarification requests
+        assert "clarification" in prompt.lower()
+        assert "detailed explanation" in prompt.lower()
     
-    def test_integration_with_tier3_processor(self, sample_classified_request):
-        """Test integration with the Tier3Processor."""
-        from backend.ai.companion.tier3.conversation_manager import (
-            ConversationManager,
-            ConversationState
+    def test_add_to_history(self, sample_conversation_history, sample_classified_request):
+        """Test adding to the conversation history."""
+        manager = ConversationManager()
+        
+        # Add a new entry to the history
+        response = "Train tickets in Japan are called 'kippu' and can be purchased at ticket machines or counters."
+        updated_history = manager.add_to_history(
+            sample_conversation_history,
+            sample_classified_request,
+            response
         )
         
-        # Mock the necessary components
-        context_manager = MagicMock()
-        bedrock_client = MagicMock()
-        conversation_manager = ConversationManager()
+        # Check that the history was updated
+        assert len(updated_history) == 3
+        assert updated_history[2]["request"] == sample_classified_request.player_input
+        assert updated_history[2]["response"] == response
+        assert updated_history[2]["intent"] == sample_classified_request.intent.value
+        assert updated_history[2]["entities"] == sample_classified_request.extracted_entities
+    
+    def test_integration_with_tier3_processor(self, sample_conversation_history, sample_classified_request):
+        """Test integration with the Tier3Processor."""
+        manager = ConversationManager()
         
-        # Mock the context
-        sample_context = MagicMock()
-        context_manager.get_context.return_value = sample_context
+        # Mock a generate_response function
+        def generate_response(prompt):
+            return "This is a response to: " + sample_classified_request.player_input
         
-        # Mock the conversation state detection
-        with patch.object(
-            conversation_manager,
-            'detect_conversation_state',
-            return_value=ConversationState.FOLLOW_UP
-        ):
-            # Mock the follow-up handling
-            with patch.object(
-                conversation_manager,
-                'handle_follow_up_question',
-                return_value="'Kudasai' means 'please' in Japanese."
-            ):
-                # Test the process method
-                response = conversation_manager.process(
-                    sample_classified_request,
-                    context_manager,
-                    bedrock_client
-                )
-                
-                assert response is not None
-                assert "please" in response 
+        # Process the request with history
+        response, updated_history = manager.process_with_history(
+            sample_classified_request,
+            sample_conversation_history,
+            "You are Hachiko, a helpful companion dog.",
+            generate_response
+        )
+        
+        # Check that the response was generated
+        assert response == "This is a response to: " + sample_classified_request.player_input
+        
+        # Check that the history was updated
+        assert len(updated_history) == 3
+        assert updated_history[2]["request"] == sample_classified_request.player_input
+        assert updated_history[2]["response"] == response 

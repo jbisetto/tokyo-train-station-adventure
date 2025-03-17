@@ -66,25 +66,25 @@ def sample_request_with_context():
     )
 
 
-class TestPromptEngineering:
-    """Tests for the PromptEngineering class."""
+class TestPromptManager:
+    """Tests for the PromptManager class."""
     
     def test_initialization(self):
-        """Test that the PromptEngineering can be initialized."""
-        from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
+        """Test that the PromptManager can be initialized."""
+        from backend.ai.companion.core.prompt_manager import PromptManager
         
-        prompt_engineering = PromptEngineering()
+        prompt_manager = PromptManager()
         
-        assert prompt_engineering is not None
-        assert hasattr(prompt_engineering, 'create_prompt')
+        assert prompt_manager is not None
+        assert hasattr(prompt_manager, 'create_prompt')
     
     def test_create_prompt_basic(self, sample_request):
         """Test creating a basic prompt."""
-        from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
+        from backend.ai.companion.core.prompt_manager import PromptManager
         
-        prompt_engineering = PromptEngineering()
+        prompt_manager = PromptManager()
         
-        prompt = prompt_engineering.create_prompt(sample_request)
+        prompt = prompt_manager.create_prompt(sample_request)
         
         # Check that the prompt contains the necessary information
         assert "Hachiko" in prompt
@@ -100,11 +100,11 @@ class TestPromptEngineering:
     
     def test_create_prompt_with_context(self, sample_request_with_context):
         """Test creating a prompt with game context."""
-        from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
+        from backend.ai.companion.core.prompt_manager import PromptManager
         
-        prompt_engineering = PromptEngineering()
+        prompt_manager = PromptManager()
         
-        prompt = prompt_engineering.create_prompt(sample_request_with_context)
+        prompt = prompt_manager.create_prompt(sample_request_with_context)
         
         # Check that the prompt contains the game context
         assert "Tokyo Station" in prompt
@@ -114,14 +114,14 @@ class TestPromptEngineering:
     
     def test_create_prompt_with_intent(self, sample_request):
         """Test creating a prompt with intent information."""
-        from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
+        from backend.ai.companion.core.prompt_manager import PromptManager
         
-        prompt_engineering = PromptEngineering()
+        prompt_manager = PromptManager()
         
         # Change the intent
         sample_request.intent = IntentCategory.VOCABULARY_HELP
         
-        prompt = prompt_engineering.create_prompt(sample_request)
+        prompt = prompt_manager.create_prompt(sample_request)
         
         # Check that the prompt contains the intent information
         assert "vocabulary_help" in prompt
@@ -129,16 +129,16 @@ class TestPromptEngineering:
     
     def test_create_prompt_with_complexity(self, sample_request):
         """Test creating a prompt with complexity information."""
-        from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
+        from backend.ai.companion.core.prompt_manager import PromptManager
         
-        prompt_engineering = PromptEngineering()
+        prompt_manager = PromptManager()
         
         # Test with different complexity levels
         sample_request.complexity = ComplexityLevel.SIMPLE
-        simple_prompt = prompt_engineering.create_prompt(sample_request)
+        simple_prompt = prompt_manager.create_prompt(sample_request)
         
         sample_request.complexity = ComplexityLevel.COMPLEX
-        complex_prompt = prompt_engineering.create_prompt(sample_request)
+        complex_prompt = prompt_manager.create_prompt(sample_request)
         
         # Check that the prompts reflect the complexity
         assert "simple" in simple_prompt.lower()
@@ -147,9 +147,9 @@ class TestPromptEngineering:
     
     def test_create_prompt_with_entities(self, sample_request):
         """Test creating a prompt with extracted entities."""
-        from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
+        from backend.ai.companion.core.prompt_manager import PromptManager
         
-        prompt_engineering = PromptEngineering()
+        prompt_manager = PromptManager()
         
         # Add more extracted entities
         sample_request.extracted_entities.update({
@@ -157,7 +157,7 @@ class TestPromptEngineering:
             "language": "Japanese"
         })
         
-        prompt = prompt_engineering.create_prompt(sample_request)
+        prompt = prompt_manager.create_prompt(sample_request)
         
         # Check that the prompt contains the extracted entities
         assert "destination: Tokyo" in prompt
@@ -166,10 +166,10 @@ class TestPromptEngineering:
     
     def test_create_prompt_for_different_request_types(self):
         """Test creating prompts for different request types."""
-        from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
+        from backend.ai.companion.core.prompt_manager import PromptManager
         from backend.ai.companion.core.models import CompanionRequest, ClassifiedRequest
         
-        prompt_engineering = PromptEngineering()
+        prompt_manager = PromptManager()
         
         # Create requests with different types
         translation_request = ClassifiedRequest.from_companion_request(
@@ -217,10 +217,10 @@ class TestPromptEngineering:
         )
         
         # Generate prompts for each request type
-        translation_prompt = prompt_engineering.create_prompt(translation_request)
-        vocabulary_prompt = prompt_engineering.create_prompt(vocabulary_request)
-        grammar_prompt = prompt_engineering.create_prompt(grammar_request)
-        culture_prompt = prompt_engineering.create_prompt(culture_request)
+        translation_prompt = prompt_manager.create_prompt(translation_request)
+        vocabulary_prompt = prompt_manager.create_prompt(vocabulary_request)
+        grammar_prompt = prompt_manager.create_prompt(grammar_request)
+        culture_prompt = prompt_manager.create_prompt(culture_request)
         
         # Check that each prompt contains type-specific instructions
         assert "translation" in translation_prompt
