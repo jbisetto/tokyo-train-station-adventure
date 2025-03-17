@@ -8,6 +8,7 @@ model-specific optimizations.
 
 import logging
 import re
+import json
 from typing import Dict, Any, Optional, List
 
 from backend.ai.companion.core.models import (
@@ -15,6 +16,9 @@ from backend.ai.companion.core.models import (
     IntentCategory,
     ComplexityLevel
 )
+
+# Import the ConversationManager and ConversationState
+from backend.ai.companion.core.conversation_manager import ConversationManager, ConversationState
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +32,11 @@ class PromptManager:
     extracted entities, while allowing for tier-specific optimizations.
     """
     
-    def __init__(self, tier_specific_config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, 
+        tier_specific_config: Optional[Dict[str, Any]] = None,
+        conversation_manager: Optional[ConversationManager] = None
+    ):
         """
         Initialize the prompt manager.
         
@@ -39,8 +47,10 @@ class PromptManager:
                 - max_prompt_tokens: Maximum tokens for the prompt
                 - format_for_model: Specific formatting for the model (e.g., "bedrock", "ollama")
                 - additional_instructions: Any additional instructions to add to the prompt
+            conversation_manager: Optional conversation manager for handling conversation history
         """
         self.tier_specific_config = tier_specific_config or {}
+        self.conversation_manager = conversation_manager
         logger.debug("Initialized PromptManager with config: %s", self.tier_specific_config)
     
     def create_prompt(self, request: ClassifiedRequest) -> str:
@@ -375,4 +385,73 @@ class PromptManager:
             return prompt
         
         # Default: return the original prompt
+        return prompt
+
+    async def create_contextual_prompt(
+        self, 
+        request: ClassifiedRequest, 
+        conversation_id: str
+    ) -> str:
+        """
+        Create a prompt that includes conversation history when appropriate.
+        
+        Args:
+            request: The classified request
+            conversation_id: The conversation ID
+            
+        Returns:
+            A prompt string for the language model with conversation history if relevant
+        """
+        # Start with the base prompt
+        prompt = self.create_prompt(request)
+        
+        # If no conversation manager is provided, return the base prompt
+        if not self.conversation_manager:
+            return prompt
+        
+        # Get the conversation context
+        context = await self.conversation_manager.get_or_create_context(conversation_id)
+        conversation_history = context.get("entries", [])
+        
+        # Detect the conversation state
+        state = self.conversation_manager.detect_conversation_state(request, conversation_history)
+        
+        # If this is a new topic, return the base prompt without history
+        if state == ConversationState.NEW_TOPIC:
+            return prompt
+        
+        # Add conversation history if it's a follow-up or clarification (in OpenAI format)
+        if conversation_history and (state == ConversationState.FOLLOW_UP or state == ConversationState.CLARIFICATION):
+            prompt += "\nPrevious conversation (in OpenAI conversation format):\n"
+            
+            # Get the most recent entries (up to 6 entries = 3 exchanges)
+            recent_history = conversation_history[-6:]
+            
+            # Format conversation history in OpenAI format
+            openai_messages = []
+            
+            for entry in recent_history:
+                if entry.get("type") == "user_message":
+                    openai_messages.append({
+                        "role": "user",
+                        "content": entry.get("text", "")
+                    })
+                elif entry.get("type") == "assistant_message":
+                    openai_messages.append({
+                        "role": "assistant",
+                        "content": entry.get("text", "")
+                    })
+            
+            # Add the formatted history to the prompt
+            prompt += json.dumps(openai_messages, indent=2)
+            prompt += "\n"
+            
+            # Add specific instructions based on the conversation state
+            if state == ConversationState.FOLLOW_UP:
+                prompt += "\nThe player is asking a follow-up question related to the previous exchanges.\n"
+                prompt += "Please provide a response that takes into account the conversation history.\n"
+            elif state == ConversationState.CLARIFICATION:
+                prompt += "\nThe player is asking for clarification about something in the previous exchanges.\n"
+                prompt += "Please provide a more detailed explanation of the most recent topic.\n"
+        
         return prompt 

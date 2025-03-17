@@ -209,18 +209,27 @@ class ConversationManager:
         # Start with the base prompt
         prompt = base_prompt
         
-        # Add conversation history if available
+        # Add conversation history if available (in OpenAI conversation format)
         if conversation_history and (state == ConversationState.FOLLOW_UP or state == ConversationState.CLARIFICATION):
-            history_str = "\nPrevious conversation:\n"
+            prompt += "\nPrevious conversation (in OpenAI conversation format):\n"
             
-            # Get the most recent entries (up to 3)
-            recent_history = conversation_history[-3:]
+            # Get the most recent entries (up to 6 entries = 3 exchanges)
+            recent_history = conversation_history[-6:]
+            
+            # Format in OpenAI conversation format
+            prompt += "[\n"
             
             for entry in recent_history:
-                history_str += f"Player: {entry.get('request', '')}\n"
-                history_str += f"Companion: {entry.get('response', '')}\n\n"
+                if entry.get("type") == "user_message":
+                    prompt += f'  {{"role": "user", "content": "{entry.get("text", "").replace("\"", "\\\"")}"}},'
+                elif entry.get("type") == "assistant_message":
+                    prompt += f'  {{"role": "assistant", "content": "{entry.get("text", "").replace("\"", "\\\"")}"}},'
+                prompt += "\n"
             
-            prompt += history_str
+            # Remove trailing comma and close the array
+            if recent_history:
+                prompt = prompt.rstrip(",\n") + "\n"
+            prompt += "]\n"
         
         # Add specific instructions based on the conversation state
         if state == ConversationState.FOLLOW_UP:
