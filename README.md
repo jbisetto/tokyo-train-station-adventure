@@ -15,6 +15,7 @@ The Tokyo Train Station Adventure is designed to make Japanese language learning
 - **Bilingual Dog Companion**: Get assistance and translations from your companion
 - **Tiered AI Approach**: Optimized for performance and cost with local-first processing
 - **Progress Tracking**: Monitor your Japanese language acquisition
+- **Context-Aware AI Responses**: Vector database for relevant game world knowledge
 
 ## Technical Architecture
 
@@ -27,6 +28,10 @@ The Tokyo Train Station Adventure is designed to make Japanese language learning
     - Japanese language correction features
   - Amazon Bedrock APIs for complex scenarios (10% of interactions)
   - Scenario detection system for specialized handling of common player requests
+- **Knowledge Management**:
+  - ChromaDB vector database for semantic search of game world knowledge
+  - Conversation history tracking for contextual responses
+  - Integration of conversation context and world knowledge in AI prompts
 - **Data Storage**: SQLite with Google/Facebook OAuth integration
 - **Communication**: Event-based architecture with domain events
 - **API**: RESTful API with comprehensive endpoints for game functionality
@@ -37,12 +42,29 @@ The Tokyo Train Station Adventure is designed to make Japanese language learning
 tokyo-train-station-adventure/
 ├── frontend/                         # Phaser.js frontend
 ├── backend/                          # Python backend
+│   ├── ai/                           # AI components
+│   │   ├── companion/                # Companion dog AI
+│   │   │   ├── core/                 # Core AI components
+│   │   │   │   ├── vector/           # Vector database integration
+│   │   │   │   ├── storage/          # Conversation storage
+│   │   │   │   └── models/           # Data models
 ├── shared/                           # Shared code/types
 ├── assets/                           # Raw game assets
 ├── tools/                            # Development and build tools
 ├── infrastructure/                   # Deployment configurations
 └── docs/                             # Project documentation
 ```
+
+## AI Companion System
+
+The game's companion dog uses a sophisticated AI system to provide context-aware assistance:
+
+1. **Tiered Processing**: Requests are classified by complexity and routed to appropriate AI tiers
+2. **Conversation Management**: Tracks conversation history to provide coherent multi-turn responses
+3. **Vector Knowledge Store**: Uses ChromaDB to retrieve relevant game world information
+4. **Contextual Prompting**: Combines conversation context and knowledge base data for accurate responses
+
+The system is designed to be efficient, using local models where possible and only calling cloud APIs for complex interactions.
 
 ## API Documentation
 
@@ -64,6 +86,7 @@ Full API documentation is available at `/api/docs` when running the server.
 2. **Phase 2**: Core game mechanics and station environment
 3. **Phase 3**: Companion assistance features
 4. **Phase 4**: Learning progress analytics and achievements
+5. **Phase 5**: Vector database integration for context-aware responses
 
 ## Getting Started
 
@@ -72,6 +95,8 @@ Full API documentation is available at `/api/docs` when running the server.
 - Python 3.10+
 - Node.js 16+
 - SQLite
+- Sentence Transformers (for vector embeddings)
+- ChromaDB
 
 ### Backend Setup
 
@@ -107,6 +132,9 @@ python -m pytest
 
 # Run specific test file
 python -m pytest tests/backend/api/test_deepseek_parameters.py
+
+# Run vector database tests
+python -m pytest tests/backend/ai/companion/core/vector/
 
 # Run with verbose output
 python -m pytest -v

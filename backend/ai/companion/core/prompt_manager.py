@@ -35,7 +35,9 @@ class PromptManager:
     def __init__(
         self, 
         tier_specific_config: Optional[Dict[str, Any]] = None,
-        conversation_manager: Optional[ConversationManager] = None
+        conversation_manager: Optional[ConversationManager] = None,
+        vector_store: Optional[Any] = None,
+        tokyo_knowledge_base_path: Optional[str] = None
     ):
         """
         Initialize the prompt manager.
@@ -48,9 +50,23 @@ class PromptManager:
                 - format_for_model: Specific formatting for the model (e.g., "bedrock", "ollama")
                 - additional_instructions: Any additional instructions to add to the prompt
             conversation_manager: Optional conversation manager for handling conversation history
+            vector_store: Optional vector store for game world context
+            tokyo_knowledge_base_path: Optional path to tokyo-train-knowledge-base.json
         """
         self.tier_specific_config = tier_specific_config or {}
         self.conversation_manager = conversation_manager
+        
+        # Initialize vector store either from provided one or from knowledge base file
+        self.vector_store = None
+        if vector_store:
+            self.vector_store = vector_store
+            logger.debug("Using provided vector store")
+        elif tokyo_knowledge_base_path:
+            # Import here to avoid circular imports
+            from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+            self.vector_store = TokyoKnowledgeStore.from_file(tokyo_knowledge_base_path)
+            logger.debug(f"Created vector store from file: {tokyo_knowledge_base_path}")
+        
         logger.debug("Initialized PromptManager with config: %s", self.tier_specific_config)
     
     def create_prompt(self, request: ClassifiedRequest) -> str:
@@ -82,6 +98,10 @@ class PromptManager:
         # Add extracted entities
         if request.extracted_entities:
             prompt += self._add_extracted_entities(request)
+        
+        # Add relevant world context from vector store if available
+        if self.vector_store:
+            prompt += self._get_relevant_world_context(request)
         
         # Add final instructions
         prompt += self._add_final_instructions(request)
@@ -165,6 +185,82 @@ class PromptManager:
                 context_str += f"  - {lang}: {level}\n"
         
         return context_str + "\n"
+    
+    def _get_relevant_world_context(self, request: ClassifiedRequest) -> str:
+        """
+        Retrieve relevant game world context from the vector store.
+        
+        Args:
+            request: The classified request
+            
+        Returns:
+            String with relevant game world context
+        """
+        if not self.vector_store:
+            return ""
+        
+        try:
+            # Get contextually relevant documents
+            results = self.vector_store.contextual_search(request, top_k=3)
+            
+            if not results:
+                return ""
+            
+            # Format the context
+            context_str = "\nRelevant Game World Information:\n"
+            
+            for idx, result in enumerate(results):
+                doc = result["document"]
+                metadata = result["metadata"]
+                
+                context_str += f"{idx+1}. {metadata.get('title', 'Information')} "
+                context_str += f"(Relevance: {result['score']:.2f}):\n"
+                
+                # Format the content based on document type
+                if metadata.get("type") == "language_learning":
+                    # For language learning entries, highlight vocabulary
+                    context_str += f"   {doc}\n"
+                    
+                elif metadata.get("type") == "character":
+                    # For NPC information
+                    context_str += "   Character information:\n"
+                    if "personality" in metadata:
+                        # Handle string representation of lists
+                        personality = metadata["personality"]
+                        if isinstance(personality, str) and personality.startswith("["):
+                            try:
+                                personality = json.loads(personality)
+                                personality = ", ".join(personality)
+                            except:
+                                pass
+                        context_str += f"   Personality: {personality}\n"
+                        
+                    if "key_vocabulary" in metadata:
+                        # Handle string representation of lists
+                        vocab = metadata["key_vocabulary"]
+                        if isinstance(vocab, str) and vocab.startswith("["):
+                            try:
+                                vocab = json.loads(vocab)
+                                vocab = ", ".join(vocab)
+                            except:
+                                pass
+                        context_str += f"   Key vocabulary: {vocab}\n"
+                        
+                    context_str += f"   Description: {doc}\n"
+                    
+                else:
+                    # Default formatting with excerpt
+                    content_excerpt = doc
+                    # Limit excerpt length for very long content
+                    if len(content_excerpt) > 500:
+                        content_excerpt = content_excerpt[:500] + "..."
+                    context_str += f"   {content_excerpt}\n"
+            
+            return context_str
+            
+        except Exception as e:
+            logger.error(f"Error retrieving context from vector store: {e}")
+            return ""
     
     def _add_intent_instructions(self, request: ClassifiedRequest) -> str:
         """Add intent-specific instructions to the prompt."""
@@ -393,19 +489,19 @@ class PromptManager:
         conversation_id: str
     ) -> str:
         """
-        Create a prompt that includes conversation history when appropriate.
+        Create a prompt that includes conversation history and game world context when appropriate.
         
         Args:
             request: The classified request
             conversation_id: The conversation ID
             
         Returns:
-            A prompt string for the language model with conversation history if relevant
+            A prompt string for the language model with context
         """
         # Start with the base prompt
         prompt = self.create_prompt(request)
         
-        # If no conversation manager is provided, return the base prompt
+        # If no conversation manager is provided, return the base prompt (with world context)
         if not self.conversation_manager:
             return prompt
         
@@ -416,7 +512,8 @@ class PromptManager:
         # Detect the conversation state
         state = self.conversation_manager.detect_conversation_state(request, conversation_history)
         
-        # If this is a new topic, return the base prompt without history
+        # If this is a new topic, return the base prompt without conversation history
+        # (but still with world context added in create_prompt)
         if state == ConversationState.NEW_TOPIC:
             return prompt
         
