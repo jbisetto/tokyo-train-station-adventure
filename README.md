@@ -22,11 +22,20 @@ The Tokyo Train Station Adventure is designed to make Japanese language learning
 - **Frontend**: Phaser.js running on HTML5 Canvas for pixel art rendering
 - **Backend**: Python with FastAPI for game logic and AI integration
 - **AI Processing**: 
-  - Rule-based systems (70% of interactions)
-  - Local Ollama with DeepSeek 7B model (20% of interactions)
-    - Configurable parameters via API for temperature, top_p, etc.
-    - Japanese language correction features
-  - Amazon Bedrock APIs for complex scenarios (10% of interactions)
+  - Three-tier processing system with full configurability:
+    - **Tier 1**: Rule-based systems (Default: handles 70% of interactions)
+    - **Tier 2**: Local Ollama with DeepSeek 7B model (Default: handles 20% of interactions)
+      - Configurable parameters via API for temperature, top_p, etc.
+      - Japanese language correction features
+    - **Tier 3**: Amazon Bedrock APIs (Default: handles 10% of complex scenarios)
+  - Individual tiers can be enabled/disabled via configuration
+  - System can be set to exclusively use a single tier
+  - Default behavior uses automatic routing based on request complexity
+  - Runtime tier selection API for development and testing purposes
+  - Strict topic guardrails to ensure responses stay on-topic:
+    - Limited to Japanese language (JLPT N5), station navigation, and game mechanics
+    - Automatic redirection of off-topic questions back to game-relevant topics
+    - Character-appropriate boundary enforcement that maintains immersion
   - Scenario detection system for specialized handling of common player requests
 - **Knowledge Management**:
   - ChromaDB vector database for semantic search of game world knowledge
@@ -62,9 +71,9 @@ The game's companion dog uses a sophisticated AI system to provide context-aware
 1. **Tiered Processing**: Requests are classified by complexity and routed to appropriate AI tiers
 2. **Conversation Management**: Tracks conversation history to provide coherent multi-turn responses
 3. **Vector Knowledge Store**: Uses ChromaDB to retrieve relevant game world information
-4. **Contextual Prompting**: Combines conversation context and knowledge base data for accurate responses
+4. **Contextual Prompting**: Combines conversation context and knowledge base data for accurate responses, with strict topic guardrails that keep interactions focused on game-relevant topics
 
-The system is designed to be efficient, using local models where possible and only calling cloud APIs for complex interactions.
+The system is designed to be efficient, using local models where possible and only calling cloud APIs for complex interactions. Content guardrails ensure all interactions remain focused on language learning, station navigation, and game mechanics, redirecting off-topic questions in a character-appropriate way that enhances rather than breaks immersion.
 
 ## API Documentation
 
