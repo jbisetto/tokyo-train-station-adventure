@@ -41,27 +41,52 @@ The Tokyo Train Station Adventure is designed to make Japanese language learning
   - ChromaDB vector database for semantic search of game world knowledge
   - Conversation history tracking for contextual responses
   - Integration of conversation context and world knowledge in AI prompts
-- **Data Storage**: SQLite with Google/Facebook OAuth integration
-- **Communication**: Event-based architecture with domain events
-- **API**: RESTful API with comprehensive endpoints for game functionality
+- **Data Storage**: 
+  - Current: In-memory dictionaries for development and testing
+  - Planned: SQLite with Google/Facebook OAuth integration
+- **Communication**: 
+  - Planned: Event-based architecture with domain events
+  - Current: Direct function calls between components
+- **API**: RESTful API with comprehensive endpoints (mock implementations)
 
 ## Repository Structure
 
+Current project structure:
+
 ```
 tokyo-train-station-adventure/
-├── frontend/                         # Phaser.js frontend
-├── backend/                          # Python backend
-│   ├── ai/                           # AI components
-│   │   ├── companion/                # Companion dog AI
-│   │   │   ├── core/                 # Core AI components
-│   │   │   │   ├── vector/           # Vector database integration
-│   │   │   │   ├── storage/          # Conversation storage
-│   │   │   │   └── models/           # Data models
+├── frontend/                         # Phaser.js frontend (in development)
+├── backend/                          # Python backend 
+│   ├── ai/                           # AI components (fully implemented)
+│   │   └── companion/                # Companion dog AI
+│   │       └── core/                 # Core AI components
+│   │           ├── vector/           # Vector database integration
+│   │           ├── storage/          # Conversation storage
+│   │           └── models/           # Data models
+│   ├── api/                          # API endpoints (mock implementations)
+│   │   └── routers/                  # API routes for game functionality
+│   ├── data/                         # Data access layer (in-memory implementations)
+│   ├── game_core/                    # Game mechanics (planned implementation)
+│   └── domain/                       # Domain models and business logic (planned)
+└── docs/                             # Project documentation
+    ├── design/                       # Design documents
+    ├── pm/                           # Project management docs
+    └── ui/                           # UI documentation
+```
+
+**Implementation Notes:**
+- AI components are fully implemented with functioning vector database integration
+- API endpoints are defined but currently use mock implementations
+- Game logic is currently placeholder with planned future implementation
+- Data is stored in-memory with database integration planned for later phases
+
+**Planned Future Components:**
+```
+tokyo-train-station-adventure/
 ├── shared/                           # Shared code/types
 ├── assets/                           # Raw game assets
 ├── tools/                            # Development and build tools
-├── infrastructure/                   # Deployment configurations
-└── docs/                             # Project documentation
+└── infrastructure/                   # Deployment configurations
 ```
 
 ## AI Companion System
@@ -91,21 +116,33 @@ Full API documentation is available at `/api/docs` when running the server.
 
 ## Development Plan
 
-1. **Phase 1**: Japanese language processing prototype with DeepSeek 7B
+1. **Phase 1**: Japanese language processing prototype with vector database integration
 2. **Phase 2**: Core game mechanics and station environment
 3. **Phase 3**: Companion assistance features
 4. **Phase 4**: Learning progress analytics and achievements
 5. **Phase 5**: Vector database integration for context-aware responses
+
+## Current Development Status
+
+- ✅ **Phase 1**: Japanese language processing prototype with vector database integration
+- ✅ **Phase 5**: Vector database integration for context-aware responses is complete
+- 🔄 **Phase 3**: Companion assistance features are under active development
+- 🔄 **API Layer**: Mock endpoints are in place for future game functionality
+- 📋 **Phase 2**: Core game mechanics and station environment are planned
+- 📋 **Phase 4**: Learning progress analytics and achievements are planned
 
 ## Getting Started
 
 ### Prerequisites
 
 - Python 3.10+
-- Node.js 16+
-- SQLite
 - Sentence Transformers (for vector embeddings)
 - ChromaDB
+- FastAPI and Uvicorn (for API server)
+
+Optional for full development:
+- Node.js 16+ (for frontend development, when implemented)
+- SQLite (for persistent storage, when implemented)
 
 ### Backend Setup
 
@@ -149,7 +186,29 @@ python -m pytest tests/backend/ai/companion/core/vector/
 python -m pytest -v
 ```
 
-For more detailed testing information, see the [Testing README](tests/README.md).
+### AI Companion Simulator
+
+To test the AI companion functionality without running the full game, you can use the Gradio-based simulator:
+
+```bash
+# Install Gradio if you haven't already
+pip install gradio httpx python-dotenv
+
+# Run the companion simulator
+cd simulator
+python app.py
+```
+
+The simulator provides a web interface to interact with the AI companion directly. This allows you to:
+
+- Test various conversation patterns and contextual awareness
+- Evaluate the effectiveness of topic guardrails
+- Test Japanese language responses
+- Debug AI behavior in isolation
+
+The simulator provides options to configure different game contexts such as player location, current quest, and request type, giving you control over the testing environment.
+
+For more detailed testing information, see the [Testing README](tests/README.md) and the [Simulator README](simulator/README.md).
 
 ## License
 
