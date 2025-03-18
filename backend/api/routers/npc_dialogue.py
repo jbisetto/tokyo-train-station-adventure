@@ -84,11 +84,11 @@ async def process_npc_dialogue(request: NPCDialogueRequest):
         
         # Process the dialogue
         response_data, game_state_changes = process_dialogue(
-            player_context=request.playerContext.dict(),
-            game_context=request.gameContext.dict(),
             npc_id=request.npcId,
-            player_input=request.playerInput.dict(),
-            conversation_context=request.conversationContext.dict()
+            player_context=request.playerContext.model_dump(),
+            game_context=request.gameContext.model_dump(),
+            player_input=request.playerInput.model_dump(),
+            conversation_context=request.conversationContext.model_dump()
         )
         
         # Adapt the response

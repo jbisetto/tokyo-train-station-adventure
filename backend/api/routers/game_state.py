@@ -68,7 +68,7 @@ async def save_game(
         request_adapter = AdapterFactory.get_request_adapter("game_state_save")
         
         # Transform request to internal format
-        internal_request = request_adapter.adapt(request.dict())
+        internal_request = request_adapter.adapt(request.model_dump())
         
         # Save the game state
         result = save_game_state(internal_request)

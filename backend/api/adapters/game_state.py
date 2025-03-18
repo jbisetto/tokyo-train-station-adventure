@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 from typing import Dict, Any
 
@@ -174,10 +174,10 @@ class GameStateSaveResponseAdapter(ResponseAdapter):
         api_data = SaveGameStateResponse(
             success=internal_data.get("success", True),
             saveId=internal_data.get("save_id", str(uuid.uuid4())),
-            timestamp=internal_data.get("timestamp", datetime.utcnow())
+            timestamp=internal_data.get("timestamp", datetime.now(UTC))
         )
         
-        return api_data.dict()
+        return api_data.model_dump()
 
 
 class GameStateLoadResponseAdapter(ResponseAdapter):
@@ -242,7 +242,7 @@ class GameStateLoadResponseAdapter(ResponseAdapter):
             }
         )
         
-        return api_data.dict()
+        return api_data.model_dump()
 
 
 class GameStateListResponseAdapter(ResponseAdapter):
@@ -287,4 +287,4 @@ class GameStateListResponseAdapter(ResponseAdapter):
             saves=saves
         )
         
-        return api_data.dict() 
+        return api_data.model_dump() 

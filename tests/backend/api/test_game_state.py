@@ -3,7 +3,7 @@ Tests for the Game State API.
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi.testclient import TestClient
 
 from backend.api import create_app
@@ -23,7 +23,7 @@ def sample_game_state():
     return {
         "playerId": "test_player",
         "sessionId": "test_session",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "location": {
             "area": "test_area",
             "position": {
