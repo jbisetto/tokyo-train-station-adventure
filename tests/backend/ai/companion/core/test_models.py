@@ -168,6 +168,56 @@ class TestClassifiedRequest:
         assert classified_request.confidence == 0.95
         assert classified_request.extracted_entities["word"] == "ticket"
 
+    def test_classified_request_profile_id(self):
+        """Test that the ClassifiedRequest can include a profile_id."""
+        # Create a request with a profile_id
+        request = ClassifiedRequest(
+            request_id="test-123",
+            player_input="Hello",
+            request_type="greeting",
+            intent=IntentCategory.GENERAL_HINT,
+            complexity=ComplexityLevel.SIMPLE,
+            processing_tier=ProcessingTier.TIER_1,
+            profile_id="station_attendant"
+        )
+        
+        # Check that the profile_id is set correctly
+        assert request.profile_id == "station_attendant"
+        
+        # Create a request without a profile_id (should default to None)
+        request_without_profile = ClassifiedRequest(
+            request_id="test-456",
+            player_input="Help",
+            request_type="assistance",
+            intent=IntentCategory.DIRECTION_GUIDANCE,
+            complexity=ComplexityLevel.MODERATE,
+            processing_tier=ProcessingTier.TIER_2
+        )
+        
+        # Check that the profile_id is None
+        assert request_without_profile.profile_id is None
+
+    def test_classified_request_from_companion_request_with_profile(self):
+        """Test creating a ClassifiedRequest from a CompanionRequest with a profile_id."""
+        # Create a CompanionRequest
+        companion_request = CompanionRequest(
+            request_id="test-123",
+            player_input="Hello",
+            request_type="greeting",
+            additional_params={"profile_id": "shop_clerk"}
+        )
+        
+        # Create a ClassifiedRequest from the CompanionRequest
+        classified_request = ClassifiedRequest.from_companion_request(
+            request=companion_request,
+            intent=IntentCategory.GENERAL_HINT,
+            complexity=ComplexityLevel.SIMPLE,
+            processing_tier=ProcessingTier.TIER_1
+        )
+        
+        # Check that the profile_id is transferred from additional_params
+        assert classified_request.profile_id == "shop_clerk"
+
 
 class TestCompanionResponse:
     """Tests for the CompanionResponse class."""

@@ -73,12 +73,16 @@ class ClassifiedRequest:
     additional_params: Dict[str, Any] = field(default_factory=dict)
     confidence: float = 0.0
     extracted_entities: Dict[str, Any] = field(default_factory=dict)
+    profile_id: Optional[str] = None
     
     @classmethod
     def from_companion_request(cls, request: CompanionRequest, intent: IntentCategory, 
                               complexity: ComplexityLevel, processing_tier: ProcessingTier,
                               confidence: float = 0.0, extracted_entities: Dict[str, Any] = None):
         """Create a ClassifiedRequest from a CompanionRequest."""
+        # Check if profile_id is in additional_params
+        profile_id = request.additional_params.get("profile_id")
+        
         return cls(
             request_id=request.request_id,
             player_input=request.player_input,
@@ -90,7 +94,8 @@ class ClassifiedRequest:
             complexity=complexity,
             processing_tier=processing_tier,
             confidence=confidence,
-            extracted_entities=extracted_entities or {}
+            extracted_entities=extracted_entities or {},
+            profile_id=profile_id
         )
 
 

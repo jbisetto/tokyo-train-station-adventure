@@ -37,7 +37,8 @@ class PromptManager:
         tier_specific_config: Optional[Dict[str, Any]] = None,
         conversation_manager: Optional[ConversationManager] = None,
         vector_store: Optional[Any] = None,
-        tokyo_knowledge_base_path: Optional[str] = None
+        tokyo_knowledge_base_path: Optional[str] = None,
+        profile_registry: Optional[Any] = None
     ):
         """
         Initialize the prompt manager.
@@ -52,9 +53,11 @@ class PromptManager:
             conversation_manager: Optional conversation manager for handling conversation history
             vector_store: Optional vector store for game world context
             tokyo_knowledge_base_path: Optional path to tokyo-train-knowledge-base.json
+            profile_registry: Optional registry for NPC personality profiles
         """
         self.tier_specific_config = tier_specific_config or {}
         self.conversation_manager = conversation_manager
+        self.profile_registry = profile_registry
         
         # Initialize vector store either from provided one or from knowledge base file
         self.vector_store = None
@@ -74,211 +77,134 @@ class PromptManager:
         Create a prompt for a language model based on the request.
         
         Args:
-            request: The classified request
+            request: A classified request with intent and complexity
             
         Returns:
-            A prompt string for the language model
+            A prompt string for the model
         """
-        # Start with the base prompt
-        prompt = self._create_base_prompt(request)
+        # Get the intent-specific prompt template
+        intent_prompt = self._get_base_prompt(request.intent)
         
-        # Add context information if available
-        if request.game_context:
-            prompt += self._add_game_context(request)
+        # Get NPC profile if available and add specific personality context
+        profile_context = self._get_profile_context(request)
         
-        # Add intent-specific instructions
-        prompt += self._add_intent_instructions(request)
+        # Get request context including the question/input
+        request_context = self._get_request_context(request)
         
-        # Add complexity-specific instructions
-        prompt += self._add_complexity_instructions(request)
+        # Get relevant world context from vector store if available
+        world_context = self._get_relevant_world_context(request)
         
-        # Add request type-specific instructions
-        prompt += self._add_request_type_instructions(request)
+        # Get instructions for desired response
+        response_instructions = self._get_response_instructions(request)
         
-        # Add extracted entities
-        if request.extracted_entities:
-            prompt += self._add_extracted_entities(request)
+        # Apply tier-specific optimizations
+        if self.tier_specific_config.get("optimize_prompt", False):
+            intent_prompt = self._optimize_prompt_for_token_efficiency(intent_prompt)
         
-        # Add relevant world context from vector store if available
-        if self.vector_store:
-            prompt += self._get_relevant_world_context(request)
+        # Add tier-specific instructions if provided
+        additional_instructions = self.tier_specific_config.get("additional_instructions", "")
         
-        # Add final instructions
-        prompt += self._add_final_instructions(request)
-        
-        # Add any additional tier-specific instructions
-        if self.tier_specific_config.get('additional_instructions'):
-            prompt += self.tier_specific_config['additional_instructions']
-        
-        # Apply tier-specific optimizations if needed
-        if self.tier_specific_config.get('optimize_prompt'):
-            prompt = self._optimize_prompt(prompt, request)
-        
-        # Apply model-specific formatting if needed
-        if self.tier_specific_config.get('format_for_model'):
-            prompt = self._format_for_model(prompt, request)
-        
-        logger.debug(f"Created prompt for request {request.request_id}")
-        return prompt
-    
-    def _create_base_prompt(self, request: ClassifiedRequest) -> str:
-        """Create the base prompt with character and task information."""
-        return f"""You are Hachiko, a helpful companion in the Tokyo Train Station Adventure, helping tourists learn basic Japanese (JLPT N5 level).
+        # Combine all the parts into a single prompt
+        full_prompt = f"""
+{intent_prompt}
 
-        CRITICAL RESPONSE CONSTRAINTS:
-        1. Length: Keep responses under 3 sentences
-        2. Language Level: Strictly JLPT N5 vocabulary and grammar only
-        3. Format: Always include both Japanese and English
-        4. Style: Simple, friendly, and encouraging
-        
-        JLPT N5 GUIDELINES:
-        - Use only basic particles: は, が, を, に, で, へ
-        - Basic verbs: います, あります, いきます, みます
-        - Simple adjectives: いい, おおきい, ちいさい
-        - Common nouns: でんしゃ, えき, きっぷ
-        - Basic greetings: こんにちは, すみません
-        
-        STRICT TOPIC BOUNDARIES:
-        - ONLY respond to questions about Japanese language (JLPT N5 level)
-        - ONLY respond to questions about train station navigation in Tokyo
-        - ONLY respond to questions about basic cultural aspects of Japanese train travel
-        - ONLY respond to questions about how to play the game
-        - If asked about ANY other topic, politely redirect to game-relevant topics
-        - Never discuss politics, world events, controversial subjects, or advanced topics unrelated to the game
-        
-        REDIRECTION EXAMPLES:
-        - If asked about world news: "Woof! I'm just a station dog. I can help with basic Japanese or finding your way in the station. Would you like to learn about train tickets?"
-        - If asked about complex topics: "I'm not sure about that. As your companion, I focus on helping you navigate the station and learn simple Japanese. Can I help you find a ticket counter?"
-        - If asked to write code or other unrelated tasks: "I'm trained to help with simple Japanese phrases and station navigation. Let's focus on your journey through Tokyo Station!"
-        
-        GAME INTERACTION RULES:
-        1. Focus on immediate, practical responses
-        2. One new Japanese concept per response
-        3. Always write Japanese in hiragana (no kanji)
-        4. Include basic pronunciation hints
-        5. Relate to station navigation or tickets
-        
-        RESPONSE STRUCTURE:
-        1. English answer (1 sentence)
-        2. Japanese phrase (with hiragana)
-        3. Quick pronunciation guide
-        
-        Example Response:
-        "The ticket gate is on your right. In Japanese: きっぷうりば は みぎ です。(kippu-uriba wa migi desu)"
+{profile_context}
 
-        The player has asked: "{request.player_input}"
+{world_context}
 
-        This is a {request.request_type} request with intent: {request.intent.value}.
+{request_context}
+
+{response_instructions}
+
+{additional_instructions}
+"""
         
-        Remember to be helpful and concise in your responses."""
-    
-    def _add_game_context(self, request: ClassifiedRequest) -> str:
-        """Add game context information to the prompt."""
-        context = request.game_context
-        context_str = "Current game context:\n"
+        # Trim whitespace and remove extra newlines
+        full_prompt = "\n".join(line for line in full_prompt.split("\n") if line.strip())
         
-        if context.player_location:
-            context_str += f"- Player location: {context.player_location}\n"
-        
-        if context.current_objective:
-            context_str += f"- Current objective: {context.current_objective}\n"
-        
-        if context.nearby_npcs:
-            context_str += f"- Nearby NPCs: {', '.join(context.nearby_npcs)}\n"
-        
-        if context.nearby_objects:
-            context_str += f"- Nearby objects: {', '.join(context.nearby_objects)}\n"
-        
-        if context.player_inventory:
-            context_str += f"- Player inventory: {', '.join(context.player_inventory)}\n"
-        
-        if context.language_proficiency:
-            context_str += "- Language proficiency:\n"
-            for lang, level in context.language_proficiency.items():
-                context_str += f"  - {lang}: {level}\n"
-        
-        return context_str + "\n"
+        logger.debug("Generated prompt with length %d characters", len(full_prompt))
+        return full_prompt
     
     def _get_relevant_world_context(self, request: ClassifiedRequest) -> str:
         """
-        Retrieve relevant game world context from the vector store.
+        Get relevant world context from vector store based on the request.
         
         Args:
             request: The classified request
             
         Returns:
-            String with relevant game world context
+            A string with relevant world context, or empty string if none is found
         """
         if not self.vector_store:
             return ""
         
         try:
-            # Get contextually relevant documents
-            results = self.vector_store.contextual_search(request, top_k=3)
+            # Search the vector store with the entire request object
+            results = self.vector_store.contextual_search(
+                request,
+                top_k=3
+            )
             
             if not results:
                 return ""
             
-            # Format the context
-            context_str = "\nRelevant Game World Information:\n"
+            # Format the results
+            context_parts = ["Relevant Game World Information:"]
             
             for idx, result in enumerate(results):
-                doc = result["document"]
-                metadata = result["metadata"]
+                text = result.get("document", result.get("text", ""))
+                metadata = result.get("metadata", {})
+                context_type = metadata.get("type", "Information")
                 
-                context_str += f"{idx+1}. {metadata.get('title', 'Information')} "
-                context_str += f"(Relevance: {result['score']:.2f}):\n"
-                
-                # Format the content based on document type
-                if metadata.get("type") == "language_learning":
-                    # For language learning entries, highlight vocabulary
-                    context_str += f"   {doc}\n"
-                    
-                elif metadata.get("type") == "character":
-                    # For NPC information
-                    context_str += "   Character information:\n"
-                    if "personality" in metadata:
-                        # Handle string representation of lists
-                        personality = metadata["personality"]
-                        if isinstance(personality, str) and personality.startswith("["):
-                            try:
-                                personality = json.loads(personality)
-                                personality = ", ".join(personality)
-                            except:
-                                pass
-                        context_str += f"   Personality: {personality}\n"
-                        
-                    if "key_vocabulary" in metadata:
-                        # Handle string representation of lists
-                        vocab = metadata["key_vocabulary"]
-                        if isinstance(vocab, str) and vocab.startswith("["):
-                            try:
-                                vocab = json.loads(vocab)
-                                vocab = ", ".join(vocab)
-                            except:
-                                pass
-                        context_str += f"   Key vocabulary: {vocab}\n"
-                        
-                    context_str += f"   Description: {doc}\n"
-                    
-                else:
-                    # Default formatting with excerpt
-                    content_excerpt = doc
-                    # Limit excerpt length for very long content
-                    if len(content_excerpt) > 500:
-                        content_excerpt = content_excerpt[:500] + "..."
-                    context_str += f"   {content_excerpt}\n"
+                # Only add non-empty results
+                if text.strip():
+                    context_parts.append(f"[{context_type}] {text}")
             
-            return context_str
-            
+            # Combine the parts
+            if len(context_parts) > 1:  # If we have any actual results beyond the header
+                return "\n".join(context_parts)
         except Exception as e:
-            logger.error(f"Error retrieving context from vector store: {e}")
-            return ""
-    
-    def _add_intent_instructions(self, request: ClassifiedRequest) -> str:
-        """Add intent-specific instructions to the prompt."""
-        intent = request.intent
+            logger.error(f"Error getting world context: {e}")
         
+        return ""
+    
+    def _get_profile_context(self, request: ClassifiedRequest) -> str:
+        """
+        Get the NPC profile context for the prompt.
+        
+        Args:
+            request: The classified request that may contain a profile_id
+            
+        Returns:
+            A string with the profile context for the prompt
+        """
+        if not self.profile_registry:
+            # If no profile registry is available, return a default companion context
+            return """
+You are Hachiko, a helpful and enthusiastic companion dog at Tokyo Station 
+who assists travelers with Japanese language and navigation.
+
+Tokyo Train Station Adventure is a language learning game where you help players practice Japanese.
+"""
+        
+        # Get the profile from the registry
+        profile = self.profile_registry.get_profile(request.profile_id)
+        if not profile:
+            logger.warning(f"Profile not found for ID: {request.profile_id}, using default")
+        
+        # Get profile-specific prompt additions
+        return profile.get_system_prompt_additions()
+    
+    def _get_base_prompt(self, intent: IntentCategory) -> str:
+        """
+        Get the base prompt for a given intent.
+        
+        Args:
+            intent: The intent category
+            
+        Returns:
+            A string with the base prompt for the intent
+        """
         if intent == IntentCategory.VOCABULARY_HELP:
             return """VOCABULARY RESPONSE FORMAT:
             - Explain the meaning of the word clearly
@@ -313,115 +239,92 @@ class PromptManager:
             Include both English and Japanese (in hiragana) with pronunciation.
             """
     
-    def _add_complexity_instructions(self, request: ClassifiedRequest) -> str:
-        """Add complexity-specific instructions to the prompt."""
-        complexity = request.complexity
-        
-        if complexity == ComplexityLevel.SIMPLE:
-            return """SIMPLE RESPONSE GUIDELINES:
-            - Use only basic JLPT N5 vocabulary
-            - Keep sentences very short and direct
-            - Focus on one concept at a time
-            - Use common station-related words
-            - Provide clear pronunciation guides
-            """
-        elif complexity == ComplexityLevel.COMPLEX:
-            return """COMPLEX RESPONSE GUIDELINES:
-            - Use more detailed JLPT N5 vocabulary
-            - Include multiple related concepts
-            - Provide additional context and examples
-            - Connect to other station vocabulary
-            - Add cultural notes when relevant
-            """
-        else:  # MODERATE
-            return """MODERATE RESPONSE GUIDELINES:
-            - Use standard JLPT N5 vocabulary
-            - Balance detail with clarity
-            - Include helpful context
-            - Keep focus on practical usage
-            - Ensure clear pronunciation
-            """
-    
-    def _add_request_type_instructions(self, request: ClassifiedRequest) -> str:
-        """Add request type-specific instructions to the prompt."""
-        request_type = request.request_type
-        
-        if request_type == "translation":
-            return """For this translation request:
-- Provide the Japanese translation with both kanji/kana and romaji
-- Ensure the translation is natural and appropriate for the context
-- Note any cultural considerations for this phrase
-
-"""
-        elif request_type == "vocabulary":
-            return """For this vocabulary request:
-- Explain the meaning, usage, and provide example sentences
-- Include the word in kanji, hiragana, and romaji
-- Note any common collocations or expressions
-- Mention any homophones or easily confused words
-
-"""
-        elif request_type == "grammar":
-            return """For this grammar request:
-- Explain the grammar point clearly with examples and usage notes
-- Show how the grammar changes with different verb forms
-- Provide common patterns and expressions
-- Note any exceptions or special cases
-
-"""
-        elif request_type == "culture":
-            return """For this cultural request:
-- Provide accurate cultural information with historical context if relevant
-- Explain modern practices and attitudes
-- Note regional variations if applicable
-- Connect to language usage where relevant
-
-"""
-        elif request_type == "directions":
-            return """For this directions request:
-- Provide clear, concise directions
-- Use landmarks and station names
-- Include useful phrases for asking for help
-- Note any cultural etiquette for navigating or asking for directions
-
-"""
-        else:
-            return ""
-    
-    def _add_extracted_entities(self, request: ClassifiedRequest) -> str:
-        """Add extracted entities to the prompt."""
-        entities = request.extracted_entities
-        
-        if not entities:
-            return ""
-        
-        entities_str = "Extracted entities from the request:\n"
-        
-        for key, value in entities.items():
-            entities_str += f"- {key}: {value}\n"
-        
-        return entities_str + "\n"
-    
-    def _add_final_instructions(self, request: ClassifiedRequest) -> str:
-        """Add final instructions to the prompt."""
-        return """REMEMBER:
-        1. Keep response under 3 sentences
-        2. Use only JLPT N5 level Japanese
-        3. Write Japanese in hiragana only
-        4. Include pronunciation guide
-        5. Focus on practical station use
-        6. One new concept per response
-        7. ONLY respond to game-relevant topics (Japanese language, station navigation, game mechanics)
-        8. Politely redirect ANY off-topic questions to game-relevant topics
+    def _get_request_context(self, request: ClassifiedRequest) -> str:
         """
+        Get the request context for the prompt.
+        
+        Args:
+            request: The classified request
+            
+        Returns:
+            A string with the request context
+        """
+        context = f"The player has asked: \"{request.player_input}\"\n\nThis is a {request.request_type} request with intent: {request.intent.value}."
+        
+        # Add extracted entities if any
+        if request.extracted_entities:
+            context += "\n\nExtracted entities:"
+            for key, value in request.extracted_entities.items():
+                context += f"\n- {key}: {value}"
+                
+        # Add game context if available
+        if hasattr(request, 'game_context') and request.game_context:
+            context += "\n\nGame Context:"
+            
+            # Handle special formatting for nested dictionaries
+            for key, value in request.game_context.__dict__.items():
+                if value:
+                    # Special case for language_proficiency which is a dictionary
+                    if key == 'language_proficiency' and isinstance(value, dict):
+                        for lang, level in value.items():
+                            context += f"\n- {lang}: {level}"
+                    # Handle lists
+                    elif isinstance(value, list):
+                        context += f"\n- {key}: {value}"
+                    # Handle other types
+                    else:
+                        context += f"\n- {key}: {value}"
+                    
+        # Add complexity information
+        if hasattr(request, 'complexity') and request.complexity:
+            complexity_str = request.complexity.value if hasattr(request.complexity, 'value') else str(request.complexity)
+            context += f"\n\nRequest complexity: {complexity_str}"
+                    
+        return context
     
-    def _optimize_prompt(self, prompt: str, request: ClassifiedRequest) -> str:
+    def _get_response_instructions(self, request: ClassifiedRequest) -> str:
+        """
+        Get the response instructions for the prompt.
+        
+        Args:
+            request: The classified request
+            
+        Returns:
+            A string with the response instructions
+        """
+        # Basic instructions
+        instructions = """Please be helpful, concise, and accurate when responding to the player.
+
+STRICT TOPIC BOUNDARIES:
+1. ONLY respond to questions about Japanese language
+2. ONLY respond to questions about train station navigation
+3. ONLY respond to questions about basic cultural aspects
+4. ONLY respond to questions about how to play the game
+5. If asked about ANY other topic, politely redirect
+
+REDIRECTION EXAMPLES:
+- "I'm just a station dog focused on helping you learn Japanese and navigate Tokyo Station."
+- "I focus on helping you navigate the station and practice Japanese. Let's talk about that instead!"
+
+REMEMBER:
+1. Keep response under 3 sentences
+2. Use only JLPT N5 level Japanese
+3. Write Japanese in hiragana only
+4. Include pronunciation guide
+5. Focus on practical station use
+6. One new concept per response
+7. ONLY respond to game-relevant topics (Japanese language, station navigation, game mechanics)
+8. Politely redirect ANY off-topic questions to game-relevant topics
+"""
+        
+        return instructions
+    
+    def _optimize_prompt_for_token_efficiency(self, prompt: str) -> str:
         """
         Optimize the prompt for token efficiency.
         
         Args:
             prompt: The original prompt
-            request: The classified request
             
         Returns:
             An optimized prompt
@@ -473,30 +376,6 @@ class PromptManager:
             compressed = compressed[:max_chars]
         
         return compressed
-    
-    def _format_for_model(self, prompt: str, request: ClassifiedRequest) -> str:
-        """
-        Format the prompt for a specific model.
-        
-        Args:
-            prompt: The original prompt
-            request: The classified request
-            
-        Returns:
-            A formatted prompt
-        """
-        model_format = self.tier_specific_config.get('format_for_model')
-        
-        if model_format == "bedrock":
-            # Format for Amazon Bedrock models
-            return f"<s>\n{prompt}\n</s>\n\n<user>\n{request.player_input}\n</user>"
-        
-        elif model_format == "ollama":
-            # Format for Ollama models (if they need specific formatting)
-            return prompt
-        
-        # Default: return the original prompt
-        return prompt
 
     async def create_contextual_prompt(
         self, 
