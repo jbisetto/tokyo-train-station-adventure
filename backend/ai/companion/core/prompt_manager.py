@@ -20,6 +20,9 @@ from backend.ai.companion.core.models import (
 # Import the ConversationManager and ConversationState
 from backend.ai.companion.core.conversation_manager import ConversationManager, ConversationState
 
+# Import the PromptTemplateLoader
+from backend.ai.companion.core.prompt.prompt_template_loader import PromptTemplateLoader
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +41,8 @@ class PromptManager:
         conversation_manager: Optional[ConversationManager] = None,
         vector_store: Optional[Any] = None,
         tokyo_knowledge_base_path: Optional[str] = None,
-        profile_registry: Optional[Any] = None
+        profile_registry: Optional[Any] = None,
+        prompt_templates_directory: Optional[str] = None
     ):
         """
         Initialize the prompt manager.
@@ -54,10 +58,17 @@ class PromptManager:
             vector_store: Optional vector store for game world context
             tokyo_knowledge_base_path: Optional path to tokyo-train-knowledge-base.json
             profile_registry: Optional registry for NPC personality profiles
+            prompt_templates_directory: Optional path to directory containing prompt templates
         """
         self.tier_specific_config = tier_specific_config or {}
         self.conversation_manager = conversation_manager
         self.profile_registry = profile_registry
+        
+        # Initialize template loader if directory provided
+        self.prompt_templates = None
+        if prompt_templates_directory:
+            self.prompt_templates = PromptTemplateLoader(prompt_templates_directory)
+            logger.debug(f"Initialized prompt template loader from: {prompt_templates_directory}")
         
         # Initialize vector store either from provided one or from knowledge base file
         self.vector_store = None
@@ -83,7 +94,7 @@ class PromptManager:
             A prompt string for the model
         """
         # Get the intent-specific prompt template
-        intent_prompt = self._get_base_prompt(request.intent)
+        intent_prompt = self._get_base_prompt(request.intent, request.profile_id)
         
         # Get NPC profile if available and add specific personality context
         profile_context = self._get_profile_context(request)
@@ -93,6 +104,9 @@ class PromptManager:
         
         # Get relevant world context from vector store if available
         world_context = self._get_relevant_world_context(request)
+        
+        # Get profile-specific response format if available
+        response_format = self._get_response_format(request)
         
         # Get instructions for desired response
         response_instructions = self._get_response_instructions(request)
@@ -114,6 +128,8 @@ class PromptManager:
 
 {request_context}
 
+{response_format}
+
 {response_instructions}
 
 {additional_instructions}
@@ -124,6 +140,30 @@ class PromptManager:
         
         logger.debug("Generated prompt with length %d characters", len(full_prompt))
         return full_prompt
+    
+    def _get_response_format(self, request: ClassifiedRequest) -> str:
+        """
+        Get a response format for the request based on the NPC profile.
+        
+        Args:
+            request: The classified request
+            
+        Returns:
+            A string with response format guidelines, or empty string
+        """
+        if not self.profile_registry:
+            return ""
+        
+        profile = self.profile_registry.get_profile(request.profile_id)
+        if not profile:
+            return ""
+        
+        # Get format from profile
+        format_text = profile.get_response_format(request.intent)
+        if format_text:
+            return f"RESPONSE FORMAT GUIDELINES:\n{format_text}"
+        
+        return ""
     
     def _get_relevant_world_context(self, request: ClassifiedRequest) -> str:
         """
@@ -195,16 +235,30 @@ Tokyo Train Station Adventure is a language learning game where you help players
         # Get profile-specific prompt additions
         return profile.get_system_prompt_additions()
     
-    def _get_base_prompt(self, intent: IntentCategory) -> str:
+    def _get_base_prompt(self, intent: IntentCategory, profile_id: Optional[str] = None) -> str:
         """
         Get the base prompt for a given intent.
         
         Args:
             intent: The intent category
+            profile_id: Optional profile ID to get profile-specific prompts
             
         Returns:
             A string with the base prompt for the intent
         """
+        # If prompt templates are available, use them
+        if self.prompt_templates:
+            # Configure the template based on the profile type
+            if profile_id == "companion_dog":
+                self.prompt_templates.set_active_template("language_instructor_prompts")
+            else:
+                self.prompt_templates.set_active_template("default_prompts")
+                
+            prompt = self.prompt_templates.get_intent_prompt(intent, profile_id)
+            if prompt:
+                return prompt
+        
+        # Fallback to hard-coded prompts if templates not available or empty
         if intent == IntentCategory.VOCABULARY_HELP:
             return """VOCABULARY RESPONSE FORMAT:
             - Explain the meaning of the word clearly

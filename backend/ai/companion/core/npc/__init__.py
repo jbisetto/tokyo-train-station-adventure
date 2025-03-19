@@ -1,3 +1,10 @@
 """
-NPC personality profile system for modular AI personalities.
-""" 
+NPC module for the Tokyo Train Station Adventure.
+
+This module provides classes for NPC profiles and interactions.
+"""
+
+from backend.ai.companion.core.npc.profile import NPCProfile, NPCProfileRegistry
+from backend.ai.companion.core.npc.profile_loader import ProfileLoader
+
+__all__ = ["NPCProfile", "NPCProfileRegistry", "ProfileLoader"] 

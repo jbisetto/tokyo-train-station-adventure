@@ -13,7 +13,7 @@ import logging
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 
-from backend.ai.companion.core.models import ClassifiedRequest
+from backend.ai.companion.core.models import ClassifiedRequest, IntentCategory
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,8 @@ class NPCProfile:
         knowledge_areas: List[str],
         backstory: str,
         visual_traits: Dict[str, str] = None,
-        emotion_expressions: Dict[str, List[str]] = None
+        emotion_expressions: Dict[str, List[str]] = None,
+        response_format: Dict[str, str] = None
     ):
         """
         Initialize an NPC profile.
@@ -52,6 +53,7 @@ class NPCProfile:
             backstory: NPC's background story
             visual_traits: Optional dict of visual characteristics
             emotion_expressions: Optional dict mapping emotions to expressions
+            response_format: Optional dict of intent-specific response formats
         """
         self.profile_id = profile_id
         self.name = name
@@ -62,6 +64,7 @@ class NPCProfile:
         self.backstory = backstory
         self.visual_traits = visual_traits or {}
         self.emotion_expressions = emotion_expressions or {}
+        self.response_format = response_format or {}
         
         # Set default emotion expressions if not provided
         if not self.emotion_expressions:
@@ -89,7 +92,8 @@ class NPCProfile:
             knowledge_areas=data["knowledge_areas"],
             backstory=data["backstory"],
             visual_traits=data.get("visual_traits", {}),
-            emotion_expressions=data.get("emotion_expressions", {})
+            emotion_expressions=data.get("emotion_expressions", {}),
+            response_format=data.get("response_format", {})
         )
     
     def to_dict(self) -> Dict[str, Any]:
@@ -108,7 +112,8 @@ class NPCProfile:
             "knowledge_areas": self.knowledge_areas,
             "backstory": self.backstory,
             "visual_traits": self.visual_traits,
-            "emotion_expressions": self.emotion_expressions
+            "emotion_expressions": self.emotion_expressions,
+            "response_format": self.response_format
         }
     
     def get_system_prompt_additions(self) -> str:
@@ -146,6 +151,28 @@ About you:
 Remember to always stay in character and respond as {self.name} would.
 """
         return prompt
+    
+    def get_response_format(self, intent: IntentCategory) -> str:
+        """
+        Get the response format for the specified intent.
+        
+        Args:
+            intent: The intent category
+            
+        Returns:
+            A string with the response format, or empty if none is defined
+        """
+        # Try to get a format for the specific intent
+        intent_key = intent.value.upper()
+        if intent_key in self.response_format:
+            return self.response_format[intent_key]
+        
+        # Fall back to DEFAULT if available
+        if "DEFAULT" in self.response_format:
+            return self.response_format["DEFAULT"]
+        
+        # No format defined
+        return ""
     
     def get_emotion_expression(self, emotion: str) -> str:
         """
@@ -289,16 +316,24 @@ class NPCProfileRegistry:
     providing a centralized way to access profiles throughout the system.
     """
     
-    def __init__(self, default_profile_id: str = "companion_dog"):
+    def __init__(self, default_profile_id: str = "companion_dog", profiles_directory: str = None):
         """
         Initialize the registry.
         
         Args:
             default_profile_id: ID of the default profile to use when
                                 a specific profile is not found
+            profiles_directory: Optional path to directory containing profile JSON files.
+                                If provided, profiles will be loaded automatically.
         """
         self.profiles = {}
         self.default_profile_id = default_profile_id
+        self.profile_loader = None
+        
+        # If profiles directory is provided, load profiles
+        if profiles_directory:
+            self.load_profiles_from_directory(profiles_directory)
+            
         logger.debug(f"Initialized NPCProfileRegistry with default profile: {default_profile_id}")
     
     def register_profile(self, profile: NPCProfile):
@@ -313,31 +348,33 @@ class NPCProfileRegistry:
     
     def load_profiles_from_directory(self, directory_path: str):
         """
-        Load all profile files from a directory.
+        Load all profile files from a directory using ProfileLoader.
         
         Args:
             directory_path: Path to directory containing profile JSON files
         """
+        from backend.ai.companion.core.npc.profile_loader import ProfileLoader
+        
         if not os.path.exists(directory_path):
             logger.warning(f"Profile directory not found: {directory_path}")
             return
         
+        # Create a ProfileLoader and load profiles
+        self.profile_loader = ProfileLoader(directory_path)
+        
+        # Convert to NPCProfile objects and register them
         loaded_count = 0
-        for filename in os.listdir(directory_path):
-            if filename.endswith(".json"):
-                file_path = os.path.join(directory_path, filename)
-                try:
-                    with open(file_path, "r") as f:
-                        profile_data = json.load(f)
-                        profile = NPCProfile.from_dict(profile_data)
-                        self.register_profile(profile)
-                        loaded_count += 1
-                except Exception as e:
-                    logger.error(f"Error loading profile from {file_path}: {e}")
+        for profile_id in self.profile_loader.profiles:
+            try:
+                profile = self.profile_loader.get_profile(profile_id, as_object=True)
+                self.register_profile(profile)
+                loaded_count += 1
+            except Exception as e:
+                logger.error(f"Error converting profile {profile_id} to NPCProfile: {e}")
         
         logger.info(f"Loaded {loaded_count} profiles from {directory_path}")
     
-    def get_profile(self, profile_id: str = None) -> NPCProfile:
+    def get_profile(self, profile_id: str = None) -> Optional[NPCProfile]:
         """
         Get a profile by ID.
         
@@ -346,7 +383,8 @@ class NPCProfileRegistry:
                         returns the default profile.
         
         Returns:
-            The requested NPCProfile, or the default profile if not found
+            The requested NPCProfile, or the default profile if not found,
+            or None if neither are available
         """
         if not profile_id:
             return self.profiles.get(self.default_profile_id)
