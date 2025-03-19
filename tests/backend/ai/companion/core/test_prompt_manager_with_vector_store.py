@@ -178,7 +178,7 @@ class TestPromptManagerWithVectorStore:
         with patch('backend.ai.companion.core.conversation_manager.ConversationManager') as mock:
             manager_instance = AsyncMock()
             
-            # Configure the return value from get_or_create_context as a dictionary with entries
+            # Configure the context dictionary with entries
             context_dict = {
                 "entries": [
                     {"type": "user_message", "text": "What does kippu mean?"},
@@ -186,9 +186,12 @@ class TestPromptManagerWithVectorStore:
                 ]
             }
             
-            # Mock the get_or_create_context method to return the context directly
-            # AsyncMock will automatically handle the awaitable nature
-            manager_instance.get_or_create_context.return_value = context_dict
+            # Use side_effect to make the AsyncMock return an awaitable result
+            async def mock_get_context(*args, **kwargs):
+                return context_dict
+            
+            # Set the side_effect of get_or_create_context to our async function
+            manager_instance.get_or_create_context.side_effect = mock_get_context
             
             # Mock the detect_conversation_state method
             from backend.ai.companion.core.conversation_manager import ConversationState
