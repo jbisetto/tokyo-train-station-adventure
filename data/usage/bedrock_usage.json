@@ -38,5 +38,15 @@
     "duration_ms": 0,
     "success": false,
     "error_type": "unknown_error"
+  },
+  {
+    "timestamp": "2025-03-20T16:55:25.926925",
+    "request_id": "cfad5eb9-5e2e-409e-98e5-aff3cc083968",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 413,
+    "output_tokens": 0,
+    "duration_ms": 0,
+    "success": false,
+    "error_type": "unknown_error"
   }
 ]
