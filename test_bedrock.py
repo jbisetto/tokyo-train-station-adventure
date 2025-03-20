@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import json
+import datetime
 from backend.ai.companion.core.models import CompanionRequest
 from backend.ai.companion.tier3.bedrock_client import BedrockClient, BedrockError
 
@@ -22,7 +23,7 @@ async def test_bedrock():
             request_id="test-request",
             player_input="What does 'konnichiwa' mean?",
             request_type="language_help",
-            timestamp="2025-03-19T12:00:00Z"
+            timestamp=datetime.datetime(2025, 3, 19, 12, 0, 0)
         )
         
         # Debug: Add a hook to print raw API response

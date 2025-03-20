@@ -112,7 +112,7 @@ class Tier2Processor(Processor):
         # Check if processor is enabled
         if not self.enabled:
             logger.warning("Tier 2 processor is disabled in configuration")
-            return "Sorry, the Tier 2 processor is currently disabled."
+            raise Exception("Tier 2 processor is disabled in configuration")
             
         self.monitor.track_request("tier2", request.request_id)
         

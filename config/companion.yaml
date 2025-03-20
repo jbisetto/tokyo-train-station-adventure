@@ -12,7 +12,7 @@ tier1:
   enabled: false
   default_model: llama3
 tier2:
-  enabled: false
+  enabled: true
   ollama:
     base_url: http://localhost:11434
     cache_dir: null
@@ -35,7 +35,7 @@ tier3:
     region_name: us-east-1
     temperature: 0.7
     timeout: 30
-  enabled: true
+  enabled: false
   prompt_optimizer:
     avg_chars_per_token: 4
     enabled: true

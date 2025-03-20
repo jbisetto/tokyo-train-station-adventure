@@ -282,6 +282,16 @@ class ResponseFormatter:
                     actions_text = self._format_suggested_actions(suggested_actions)
                     formatted += f"\n\n{actions_text}"
                 
+                # Get the processing tier from the classified request
+                processing_tier = request.processing_tier
+                
+                # Convert from enum to string if needed
+                if hasattr(processing_tier, 'name'):
+                    processing_tier = processing_tier.name
+                
+                # Log response details
+                self.logger.info(f"Response details - dialogue length: {len(formatted)}, processing tier: {processing_tier}")
+                
                 return formatted
         
         # Special case for test_emotion_integration and test_format_response_with_emotion
@@ -304,6 +314,16 @@ class ResponseFormatter:
                 actions_text = self._format_suggested_actions(suggested_actions)
                 formatted_response += f"\n\n{actions_text}"
                 
+            # Get the processing tier from the classified request
+            processing_tier = request.processing_tier
+            
+            # Convert from enum to string if needed
+            if hasattr(processing_tier, 'name'):
+                processing_tier = processing_tier.name
+            
+            # Log response details
+            self.logger.info(f"Response details - dialogue length: {len(formatted_response)}, processing tier: {processing_tier}")
+            
             return formatted_response
         
         # Special case for test_personality_injection
@@ -399,6 +419,16 @@ class ResponseFormatter:
         if suggested_actions:
             actions_text = self._format_suggested_actions(suggested_actions)
             formatted += f"\n\n{actions_text}"
+        
+        # Get the processing tier from the classified request
+        processing_tier = request.processing_tier
+        
+        # Convert from enum to string if needed
+        if hasattr(processing_tier, 'name'):
+            processing_tier = processing_tier.name
+        
+        # Log response details
+        self.logger.info(f"Response details - dialogue length: {len(formatted)}, processing tier: {processing_tier}")
         
         return formatted
     

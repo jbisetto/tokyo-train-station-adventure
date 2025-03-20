@@ -165,6 +165,13 @@ class RequestHandler:
                 
                 # Get a processor for this tier
                 processor = self.processor_factory.get_processor(tier)
+                self.logger.debug(f"Got processor of type {type(processor).__name__} for {tier.name}")
+                
+                # Check if this tier is enabled before processing
+                if not self._is_tier_enabled(tier, processor):
+                    self.logger.warning(f"Tier {tier.name} is disabled, skipping to next tier")
+                    errors.append(f"{tier.name}: disabled in configuration")
+                    continue
                 
                 # Update the processing tier in the classified request
                 classified_request.processing_tier = tier
@@ -177,10 +184,21 @@ class RequestHandler:
                 
                 if is_async:
                     # If it's async, await it
-                    return await processor.process(classified_request)
+                    response = await processor.process(classified_request)
                 else:
                     # If it's not async, call it normally
-                    return processor.process(classified_request)
+                    response = processor.process(classified_request)
+                
+                # If response is a string, convert to dict with tier info
+                if isinstance(response, str):
+                    response = {
+                        'response_text': response,
+                        'processing_tier': tier  # Include the tier that processed it
+                    }
+                elif isinstance(response, dict) and 'processing_tier' not in response:
+                    response['processing_tier'] = tier  # Add tier if missing
+                
+                return response
                 
             except Exception as e:
                 # Log the error and continue with the next tier
@@ -191,7 +209,7 @@ class RequestHandler:
         self.logger.error(f"All processing tiers failed for request {classified_request.request_id}: {errors}")
         
         # Check if all errors are due to tiers being disabled
-        if all("is disabled in configuration" in error for error in errors):
+        if all("disabled in configuration" in error for error in errors):
             # If all tiers are disabled, return a direct error message without formatting
             error_message = "All AI services are currently disabled. Please check your configuration."
             return error_message
@@ -219,4 +237,19 @@ class RequestHandler:
         else:  # TIER_3
             order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_1])
         
-        return order 
+        return order
+
+    def _is_tier_enabled(self, tier: ProcessingTier, processor) -> bool:
+        """Check if a tier is enabled in the configuration"""
+        # Try to access the config attribute if it exists
+        if hasattr(processor, 'config'):
+            return processor.config.get('enabled', False)
+        
+        # Fallback to checking via the processor factory
+        try:
+            # This assumes processor_factory has a method to check if a tier is enabled
+            return self.processor_factory.is_tier_enabled(tier)
+        except AttributeError:
+            # If no method exists, we can't determine if it's enabled
+            # Default to trying it anyway
+            return True 

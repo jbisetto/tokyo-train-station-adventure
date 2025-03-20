@@ -89,7 +89,7 @@ class Tier3Processor(Processor):
             usage_tracker=usage_tracker or default_tracker
         )
     
-    async def process(self, request: ClassifiedRequest) -> str:
+    async def process(self, request: ClassifiedRequest) -> Dict[str, Any]:
         """
         Process a classified request and generate a response using Amazon Bedrock.
         
@@ -97,7 +97,7 @@ class Tier3Processor(Processor):
             request: A classified request
             
         Returns:
-            The generated response string
+            A dictionary containing the response text and processing tier
         """
         start_time = time.time()
         
@@ -112,7 +112,10 @@ class Tier3Processor(Processor):
                         self.context_manager, 
                         self.client
                     )
-                    return response
+                    return {
+                        'response_text': response,
+                        'processing_tier': request.processing_tier
+                    }
                 except Exception as e:
                     self.logger.error(f"Error in specialized handler: {str(e)}")
                     # Fall back to standard processing
@@ -199,14 +202,20 @@ class Tier3Processor(Processor):
                 # Parse the response
                 parsed_response = self._parse_response(response)
                 
-                return parsed_response
+                return {
+                    'response_text': parsed_response,
+                    'processing_tier': request.processing_tier
+                }
             except Exception as e:
                 self.logger.error(f"Error generating response: {str(e)}")
                 return self._generate_fallback_response(request, e)
                 
         except Exception as e:
             self.logger.error(f"Unexpected error in Tier3Processor: {str(e)}")
-            return f"I'm sorry, I'm having trouble processing your request. Error: {str(e)}"
+            return {
+                'response_text': f"I'm sorry, I'm having trouble processing your request. Error: {str(e)}",
+                'processing_tier': request.processing_tier
+            }
         finally:
             elapsed_time = time.time() - start_time
             self.logger.info(f"Processed request {request.request_id} in {elapsed_time:.2f}s")
@@ -232,7 +241,7 @@ class Tier3Processor(Processor):
         
         return cleaned_response
     
-    def _generate_fallback_response(self, request: ClassifiedRequest, error: Any) -> str:
+    def _generate_fallback_response(self, request: ClassifiedRequest, error: Any) -> Dict[str, Any]:
         """
         Generate a fallback response when an error occurs.
         
@@ -241,15 +250,21 @@ class Tier3Processor(Processor):
             error: The error that occurred
             
         Returns:
-            A fallback response
+            A dictionary containing the fallback response and processing tier
         """
         self.logger.debug(f"Generating fallback response for request {request.request_id}")
         
         # For quota errors, provide a specific message
         if isinstance(error, BedrockError) and error.error_type == BedrockError.QUOTA_ERROR:
             self.logger.info(f"Tier3 quota exceeded for request {request.request_id}. Returning quota error message.")
-            return "I'm sorry, but I've reached my limit for complex questions right now. Could you ask something simpler, or try again later?"
+            return {
+                'response_text': "I'm sorry, but I've reached my limit for complex questions right now. Could you ask something simpler, or try again later?",
+                'processing_tier': request.processing_tier
+            }
         
         # For other errors, provide a generic message
         self.logger.info(f"Tier3 fallback for request {request.request_id} due to error: {str(error)}")
-        return "I'm sorry, I'm having trouble understanding that right now. Could you rephrase your question or ask something else?" 
+        return {
+            'response_text': "I'm sorry, I'm having trouble understanding that right now. Could you rephrase your question or ask something else?",
+            'processing_tier': request.processing_tier
+        } 
