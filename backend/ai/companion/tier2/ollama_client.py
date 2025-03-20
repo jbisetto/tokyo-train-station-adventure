@@ -181,7 +181,7 @@ class OllamaClient:
             request: The player's request
             model: Model to use (defaults to self.default_model)
             temperature: Sampling temperature (0.0 to 1.0)
-            max_tokens: Maximum number of tokens to generate
+            max_tokens: Maximum number of tokens to generate (sent as num_predict to the API)
             prompt: Optional custom prompt (if not provided, one will be created)
             
         Returns:
@@ -271,7 +271,7 @@ class OllamaClient:
             prompt: The prompt to send to the model
             model: The model to use
             temperature: Sampling temperature
-            max_tokens: Maximum number of tokens to generate
+            max_tokens: Maximum number of tokens to generate (renamed to num_predict in API call)
             
         Returns:
             The generated response
@@ -282,9 +282,11 @@ class OllamaClient:
         payload = {
             "model": model,
             "prompt": prompt,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "stream": False
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+                "stream": False
+            }
         }
         
         try:
