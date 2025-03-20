@@ -121,10 +121,16 @@ class TestTier3Processor:
             # Generate a fallback response
             fallback_response = processor._generate_fallback_response(sample_classified_request, test_error)
             
-            # Check that the response contains an apology
-            assert "sorry" in fallback_response.lower()
+            # Check that the response is a dictionary with the expected keys
+            assert isinstance(fallback_response, dict)
+            assert 'response_text' in fallback_response
+            assert 'processing_tier' in fallback_response
+            
+            # Check that the response text contains an apology
+            response_text = fallback_response['response_text']
+            assert "sorry" in response_text.lower()
             # The actual response doesn't contain the word "error", so we'll check for other phrases
-            assert "trouble" in fallback_response.lower() or "rephrase" in fallback_response.lower()
+            assert "trouble" in response_text.lower() or "rephrase" in response_text.lower()
 
     @pytest.mark.asyncio
     async def test_process(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
@@ -140,7 +146,11 @@ class TestTier3Processor:
             response = await processor.process(sample_classified_request)
             
             # Check that the response is as expected
-            assert response == "'Kippu' means 'ticket' in Japanese."
+            assert isinstance(response, dict)
+            assert 'response_text' in response
+            assert 'processing_tier' in response
+            assert response['response_text'] == "'Kippu' means 'ticket' in Japanese."
+            assert response['processing_tier'] == ProcessingTier.TIER_3
             
             # Verify the client was called
             mock_bedrock_client.generate.assert_called_once()
@@ -159,7 +169,11 @@ class TestTier3Processor:
             response = await processor.process(sample_classified_request)
             
             # Check that the response is as expected
-            assert response == "'Kippu' means 'ticket' in Japanese."
+            assert isinstance(response, dict)
+            assert 'response_text' in response
+            assert 'processing_tier' in response
+            assert response['response_text'] == "'Kippu' means 'ticket' in Japanese."
+            assert response['processing_tier'] == ProcessingTier.TIER_3
             
             # Verify the client was called
             mock_bedrock_client.generate.assert_called_once()
@@ -179,7 +193,10 @@ class TestTier3Processor:
             response = await processor.process(sample_classified_request)
             
             # Check that the response is a fallback response
-            assert "sorry" in response.lower()
+            assert isinstance(response, dict)
+            assert 'response_text' in response
+            assert 'processing_tier' in response
+            assert "sorry" in response['response_text'].lower()
             
             # Verify the client was called
             mock_client.generate.assert_called_once()
@@ -216,7 +233,10 @@ class TestTier3Processor:
                 response = await processor.process(sample_classified_request)
                 
                 # Check that the response is as expected
-                assert response == response_text
+                assert isinstance(response, dict)
+                assert 'response_text' in response
+                assert 'processing_tier' in response
+                assert response['response_text'] == response_text
                 
                 # Verify the context manager was called
                 mock_context_manager.get_or_create_context.assert_called_once()
@@ -253,7 +273,10 @@ class TestTier3Processor:
                 response = await processor.process(sample_classified_request)
                 
                 # Check that the response is from the scenario handler
-                assert response == "'Kippu' means 'ticket' in Japanese. (From specialized handler)"
+                assert isinstance(response, dict)
+                assert 'response_text' in response
+                assert 'processing_tier' in response
+                assert response['response_text'] == "'Kippu' means 'ticket' in Japanese. (From specialized handler)"
                 
                 # Verify the scenario detector was used
                 mock_detector.detect_scenario.assert_called_once()

@@ -1,86 +1,75 @@
-# Tokyo Train Station Adventure 
-## Testing
+# Tokyo Train Station Adventure Tests
 
-The project follows a Test-Driven Development (TDD) approach, with comprehensive test coverage for all components. The tests are organized to match the module structure of the codebase.
+This directory contains all tests for the Tokyo Train Station Adventure project.
 
-### Setting Up the Test Environment
+## Test Structure
 
-1. Create and activate a virtual environment:
-   ```bash
-   python -m venv tokyo-py
-   source tokyo-py/bin/activate  # On Windows: tokyo-py\Scripts\activate
-   ```
+The tests are organized by module and test type:
 
-2. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+- `backend/` - Tests for backend code
+  - `ai/` - AI companion tests
+    - `companion/` - Tests for the companion AI modules
+      - `core/` - Core module tests
+      - `tier1/` - Tier 1 (rules-based) processor tests
+      - `tier2/` - Tier 2 (local LLM) processor tests
+      - `tier3/` - Tier 3 (cloud LLM) processor tests
+      - `integration/` - Tests that integrate multiple components
+  - `api/` - API endpoint tests
+  - `integration/` - Integration tests
+    - `tier2/` - Tier 2 integration tests (Ollama, DeepSeek-R1)
+    - `tier3/` - Tier 3 integration tests (AWS Bedrock)
 
-   Alternatively, you can install the testing dependencies directly:
-   ```bash
-   pip install pytest pytest-asyncio pytest-cov pytest-mock pyyaml aiohttp boto3
-   ```
+## Running Tests
 
-### Running Tests
+You can run tests in several ways:
 
-- Run all tests:
-  ```bash
-  python -m pytest
-  ```
-
-- Run tests for a specific module:
-  ```bash
-  python -m pytest tests/backend/ai/companion/tier3/
-  ```
-
-- Run a specific test file:
-  ```bash
-  python -m pytest tests/backend/ai/companion/tier3/test_tier3_processor.py
-  ```
-
-- Run a specific test:
-  ```bash
-  python -m pytest tests/backend/ai/companion/tier3/test_tier3_processor.py::TestTier3Processor::test_process
-  ```
-
-- Run tests with verbose output:
-  ```bash
-  python -m pytest -v
-  ```
-
-- Run tests with coverage report:
-  ```bash
-  python -m pytest --cov=backend
-  ```
-
-### Test Structure
-
-The test suite is organized to mirror the structure of the codebase:
-
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test interactions between components
-- **Functional Tests**: Test complete workflows
-
-Each module in the companion AI system has corresponding test files that verify its functionality:
-
-```
-tests/
-└── backend/
-    └── ai/
-        └── companion/
-            ├── core/              # Tests for core components
-            ├── tier1/             # Tests for rule-based processing
-            ├── tier2/             # Tests for local LLM integration
-            ├── tier3/             # Tests for cloud API integration
-            └── utils/             # Tests for utility functions
-```
-
-### Continuous Integration
-
-The project uses a shell script to run all tests as part of the development workflow:
+### Run All Tests
 
 ```bash
-./run_tests.sh
+# Run all tests
+./run_all_tests.sh
 ```
 
-This script runs the full test suite and generates a coverage report.
+### Run Specific Test Groups
+
+```bash
+# Run unit tests for a specific module
+python -m pytest backend/ai/companion/core -v
+
+# Run tier1 tests
+python -m pytest backend/ai/companion/tier1 -v
+
+# Run tier2 tests
+python -m pytest backend/ai/companion/tier2 -v
+
+# Run tier3 tests
+python -m pytest backend/ai/companion/tier3 -v
+
+# Run API tests
+python -m pytest backend/api -v
+```
+
+### Run Integration Tests
+
+```bash
+# Run tier2 integration tests (Ollama)
+cd backend/integration/tier2
+./run_tests.sh
+
+# Run tier3 integration tests (Bedrock)
+python -m pytest backend/integration/tier3 -v
+```
+
+## Test Requirements
+
+### Tier 2 Integration Tests
+
+The Tier 2 integration tests require:
+- Ollama installed and running (`ollama serve`)
+- DeepSeek-R1 model installed (`ollama pull deepseek-r1-chat-7b-v1.5`)
+
+### Tier 3 Integration Tests
+
+The Tier 3 integration tests require:
+- AWS credentials configured
+- Access to AWS Bedrock models

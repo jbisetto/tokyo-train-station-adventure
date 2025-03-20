@@ -74,7 +74,11 @@ class TestScenarioDetectionIntegration:
             response = await processor.process(request)
             
             # Verify that the response is what we expect
-            assert response == "This is a test response."
+            assert isinstance(response, dict)
+            assert 'response_text' in response
+            assert 'processing_tier' in response
+            assert response['response_text'] == "This is a test response."
+            assert response['processing_tier'] == ProcessingTier.TIER_3
             
             # Verify that the scenario detection was used
             mock_bedrock_client.generate_text.assert_called_once()

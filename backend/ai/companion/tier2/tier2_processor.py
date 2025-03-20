@@ -118,6 +118,7 @@ class Tier2Processor(Processor):
         
         start_time = time.time()
         success = False
+        used_processing_tier = ProcessingTier.TIER_2  # Default to Tier 2
         
         try:
             # Get or create conversation history
@@ -166,6 +167,9 @@ class Tier2Processor(Processor):
                     )
                 
                 success = True
+                
+                # Store the processing tier in additional params so it's available to the API
+                request.additional_params["processing_tier"] = ProcessingTier.TIER_2.value
                 return response
             
             # If we got a model-related error, try with a simpler model
@@ -198,6 +202,8 @@ class Tier2Processor(Processor):
                         )
                     
                     success = True
+                    # Store the processing tier in additional params so it's available to the API
+                    request.additional_params["processing_tier"] = ProcessingTier.TIER_2.value
                     return response
             
             # If we still don't have a response, check if we should fall back to tier1
@@ -205,11 +211,17 @@ class Tier2Processor(Processor):
                 logger.warning(f"Falling back to tier1 for request {request.request_id} due to error: {error}")
                 self.monitor.track_fallback("tier2", "tier1")
                 
+                used_processing_tier = ProcessingTier.TIER_1
+                
                 # Get a tier1 processor and process the request
                 tier1_processor = self._get_tier1_processor()
                 response = await tier1_processor.process(request)
                 
                 logger.info(f"Successfully generated fallback response with tier1 for request {request.request_id}")
+                
+                # Set this explicitly in case the tier1 processor doesn't
+                request.additional_params["processing_tier"] = ProcessingTier.TIER_1.value
+                
                 success = True
                 return response
             
@@ -217,18 +229,28 @@ class Tier2Processor(Processor):
             logger.warning(f"All attempts failed for request {request.request_id}, generating fallback response")
             self.monitor.track_fallback("tier2", "fallback")
             
+            used_processing_tier = ProcessingTier.RULE
             response = self._generate_fallback_response(request, error)
+            
+            # Store the processing tier in additional params
+            request.additional_params["processing_tier"] = ProcessingTier.RULE.value
+            
             success = True
             return response
             
         except Exception as e:
             logger.error(f"Error processing request {request.request_id}: {str(e)}")
+            used_processing_tier = ProcessingTier.RULE
+            
+            # Store the processing tier in additional params
+            request.additional_params["processing_tier"] = ProcessingTier.RULE.value
+            
             return self._generate_fallback_response(request, e)
             
         finally:
             end_time = time.time()
             duration = end_time - start_time
-            logger.info(f"Processed request {request.request_id} in {duration:.2f}s (success: {success})")
+            logger.info(f"Processed request {request.request_id} in {duration:.2f}s (success: {success}, tier: {used_processing_tier.value})")
             self.monitor.track_response_time("tier2", duration * 1000)  # Convert to milliseconds
             self.monitor.track_success("tier2", success)
     

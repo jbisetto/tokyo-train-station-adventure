@@ -14,6 +14,7 @@ from typing import Dict, List, Any, Optional, Union
 from datetime import datetime
 import aiohttp
 import shutil
+import re
 
 from backend.ai.companion.core.models import CompanionRequest
 from backend.ai.companion.tier2.prompt_engineering import PromptEngineering
@@ -101,11 +102,13 @@ class OllamaError(Exception):
 
 class OllamaClient:
     """
-    Client for interacting with Ollama API.
+    Client for interacting with Ollama, a local language model server.
     
-    This client provides methods for generating responses from local language models
-    using the Ollama API. It includes caching to improve performance and reduce
-    unnecessary API calls.
+    This client handles:
+    - API communication with Ollama
+    - Response caching for efficiency
+    - Error handling and retries
+    - Request/response formatting
     """
     
     def __init__(
@@ -122,33 +125,35 @@ class OllamaClient:
         Initialize the Ollama client.
         
         Args:
-            base_url: Base URL for the Ollama API
-            default_model: Default model to use for generation
+            base_url: The base URL of the Ollama API
+            default_model: The default model to use
             cache_enabled: Whether to enable response caching
-            cache_dir: Directory to store cache files (defaults to ~/.ollama_cache)
+            cache_dir: The directory to store cached responses (None for default)
             cache_ttl: Time-to-live for cache entries in seconds
-            max_cache_entries: Maximum number of entries in the cache
-            max_cache_size_mb: Maximum size of the cache in megabytes
+            max_cache_entries: Maximum number of cache entries
+            max_cache_size_mb: Maximum cache size in MB
         """
-        self.base_url = base_url
-        self.default_model = default_model
+        # Initialize configuration
+        self.base_url = base_url or "http://localhost:11434"
+        self.default_model = default_model or "llama3"
+        
+        # Initialize prompt engineering
+        self.prompt_engineering = PromptEngineering()
+        
+        # Initialize caching
         self.cache_enabled = cache_enabled
         self.cache_ttl = cache_ttl
         self.max_cache_entries = max_cache_entries
         self.max_cache_size_mb = max_cache_size_mb
         
         # Set up cache directory
-        if cache_dir is None:
-            self.cache_dir = os.path.expanduser("~/.ollama_cache")
-        else:
+        if cache_dir:
             self.cache_dir = cache_dir
-            
-        # Create cache directory if it doesn't exist
-        if self.cache_enabled and not os.path.exists(self.cache_dir):
-            os.makedirs(self.cache_dir, exist_ok=True)
+        else:
+            self.cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "ollama_client")
         
         # Initialize memory cache
-        self._memory_cache: Dict[str, Dict[str, Any]] = {}
+        self._memory_cache = {}
         
         # Initialize cache statistics
         self.cache_stats = {
@@ -156,14 +161,15 @@ class OllamaClient:
             "misses": 0,
             "memory_hits": 0,
             "disk_hits": 0,
-            "api_calls": 0,
-            "cache_size": 0,  # in bytes
-            "entries": 0
+            "insertions": 0,
+            "evictions": 0,
+            "size_bytes": 0
         }
         
-        # Initialize prompt engineering
-        self.prompt_engineering = PromptEngineering()
-            
+        # Create cache directory if needed
+        if self.cache_enabled and not os.path.exists(self.cache_dir):
+            os.makedirs(self.cache_dir, exist_ok=True)
+        
         logger.debug(f"Initialized OllamaClient with base_url={base_url}, default_model={default_model}")
     
     async def generate(
@@ -175,66 +181,74 @@ class OllamaClient:
         prompt: Optional[str] = None
     ) -> str:
         """
-        Generate a response from Ollama.
+        Generate a response for a companion request.
         
         Args:
-            request: The player's request
-            model: Model to use (defaults to self.default_model)
-            temperature: Sampling temperature (0.0 to 1.0)
-            max_tokens: Maximum number of tokens to generate (sent as num_predict to the API)
-            prompt: Optional custom prompt (if not provided, one will be created)
+            request: The companion request
+            model: The model to use (None for default)
+            temperature: The sampling temperature
+            max_tokens: Maximum number of tokens to generate
+            prompt: Optional custom prompt (None to generate from request)
             
         Returns:
             The generated response
             
         Raises:
-            OllamaError: If there's an error communicating with Ollama
+            OllamaError: If there's an error generating the response
         """
-        # Use default model if not specified
-        if model is None:
-            model = self.default_model
-            
-        # Check cache first if enabled
-        if self.cache_enabled:
-            cache_key = self._hash_request(request, model)
-            cached_response = self._check_cache(cache_key)
-            if cached_response:
-                logger.debug(f"Cache hit for request {request.request_id}")
-                return cached_response
+        model = model or self.default_model
         
-        # Use the provided prompt or create one
+        # Generate or use the provided prompt
         if prompt is None:
             prompt = self._create_prompt(request)
         
+        # Hash the request for caching
+        request_hash = self._hash_request(request, model)
+        
+        # Check cache if enabled
+        if self.cache_enabled:
+            cached_response = self._check_cache(request_hash)
+            if cached_response:
+                logger.debug(f"Cache hit for request {request.request_id}")
+                return cached_response
+            else:
+                logger.debug(f"Cache miss for request {request.request_id}")
+                self.cache_stats["misses"] += 1
+        
         try:
             # Call the Ollama API
-            response_text = await self._call_ollama_api(prompt, model, temperature, max_tokens)
-            
-            # Update API call stats
-            self.cache_stats["api_calls"] += 1
+            response = await self._call_ollama_api(
+                prompt=prompt,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
             
             # Save to cache if enabled
             if self.cache_enabled:
-                self._save_to_cache(cache_key, response_text, model)
-                
-                # Check if we need to prune the cache
-                self._prune_cache_if_needed()
-                
-            return response_text
+                self._save_to_cache(request_hash, response, model)
+            
+            return response
             
         except Exception as e:
-            logger.error(f"Error generating response from Ollama: {e}")
-            raise OllamaError(f"Failed to generate response: {str(e)}")
+            # Handle aiohttp import errors that might be causing problems
+            if "module aiohttp has no attribute ClientTimeoutError" in str(e):
+                logger.error("Import error with aiohttp.ClientTimeoutError. Using generic timeout exception instead.")
+                # Wrap the exception with our custom error
+                raise OllamaError("Failed to generate response: Timeout error occurred", OllamaError.TIMEOUT_ERROR)
+            else:
+                # Re-raise other exceptions
+                raise OllamaError(f"Failed to generate response: {str(e)}")
     
     async def get_available_models(self) -> List[str]:
         """
         Get a list of available models from Ollama.
         
         Returns:
-            List of model names
+            A list of available model names
             
         Raises:
-            OllamaError: If there's an error communicating with Ollama
+            OllamaError: If there's an error getting the models
         """
         try:
             async with aiohttp.ClientSession() as session:
@@ -242,21 +256,37 @@ class OllamaClient:
                     if response.status != 200:
                         error_data = await response.json()
                         error_msg = error_data.get("error", "Unknown error")
-                        raise OllamaError(f"Failed to get models: {error_msg}")
+                        raise OllamaError(f"Failed to get available models: {error_msg}")
                     
                     data = await response.json()
-                    return [model["name"] for model in data.get("models", [])]
+                    models = [model["name"] for model in data.get("models", [])]
+                    return models
                     
         except aiohttp.ClientConnectorError as e:
             logger.error(f"Error connecting to Ollama: {e}")
             raise OllamaError(f"Failed to connect to Ollama: {str(e)}", OllamaError.CONNECTION_ERROR)
-        except aiohttp.ClientTimeoutError as e:
-            logger.error(f"Timeout connecting to Ollama: {e}")
-            raise OllamaError(f"Request to Ollama timed out: {str(e)}", OllamaError.TIMEOUT_ERROR)
         except Exception as e:
+            if "has no attribute ClientTimeoutError" in str(e):
+                logger.error("Import error with aiohttp.ClientTimeoutError. Using generic timeout exception.")
+                raise OllamaError("Request to Ollama timed out", OllamaError.TIMEOUT_ERROR)
             logger.error(f"Error getting available models from Ollama: {e}")
             raise OllamaError(f"Failed to get available models: {str(e)}")
     
+    def _remove_thinking_tags(self, text):
+        """
+        Remove <think>...</think> tags and their content from the response.
+        
+        This is specifically for models like DeepSeek-R1 that include their reasoning process
+        in thinking tags that should not be shown to the user.
+        
+        Args:
+            text: The response text to clean
+            
+        Returns:
+            Cleaned text with thinking tags and their content removed
+        """
+        return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+
     async def _call_ollama_api(
         self,
         prompt: str,
@@ -291,7 +321,7 @@ class OllamaClient:
         
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(f"{self.base_url}/api/generate", json=payload) as response:
+                async with session.post(f"{self.base_url}/api/generate", json=payload, timeout=60) as response:
                     if response.status != 200:
                         error_data = await response.json()
                         error_msg = error_data.get("error", "Unknown error")
@@ -304,16 +334,50 @@ class OllamaClient:
                         else:
                             raise OllamaError(f"Failed to generate response: {error_msg}")
                     
-                    data = await response.json()
-                    return data.get("response", "")
+                    # Handle both regular JSON and streaming ndjson responses
+                    content_type = response.headers.get('content-type', '')
+                    response_text = await response.text()
                     
-        except aiohttp.ClientError as e:
+                    if 'application/x-ndjson' in content_type:
+                        # Handle streaming response format (even though we requested non-streaming)
+                        logger.debug("Received ndjson streaming response despite requesting non-streaming mode")
+                        
+                        # Extract all JSON objects and concatenate the responses
+                        json_lines = [line for line in response_text.strip().split('\n') if line.strip()]
+                        if not json_lines:
+                            raise OllamaError("Empty response received from Ollama API", OllamaError.CONTENT_ERROR)
+                        
+                        # Combine all response fragments into a complete response
+                        complete_response = ""
+                        for line in json_lines:
+                            try:
+                                obj = json.loads(line)
+                                partial_response = obj.get("response", "")
+                                complete_response += partial_response
+                            except json.JSONDecodeError as e:
+                                logger.warning(f"Failed to parse JSON line in ndjson response: {e}")
+                        
+                        # Clean the response by removing thinking tags if present
+                        clean_response = self._remove_thinking_tags(complete_response)
+                        return clean_response
+                    else:
+                        # Handle regular JSON response
+                        try:
+                            data = json.loads(response_text)
+                            response = data.get("response", "")
+                            # Clean the response by removing thinking tags if present
+                            clean_response = self._remove_thinking_tags(response)
+                            return clean_response
+                        except json.JSONDecodeError as e:
+                            raise OllamaError(f"Invalid JSON response: {str(e)}", OllamaError.CONTENT_ERROR)
+                    
+        except Exception as e:
             logger.error(f"Error calling Ollama API: {e}")
             
-            # Determine error type based on the exception
+            # Handle specific exception types
             if isinstance(e, aiohttp.ClientConnectorError):
                 raise OllamaError(f"Failed to connect to Ollama: {str(e)}", OllamaError.CONNECTION_ERROR)
-            elif isinstance(e, aiohttp.ClientTimeoutError):
+            elif "ClientTimeoutError" in str(type(e)):
                 raise OllamaError(f"Request to Ollama timed out: {str(e)}", OllamaError.TIMEOUT_ERROR)
             else:
                 raise OllamaError(f"Failed to communicate with Ollama: {str(e)}")
@@ -436,7 +500,7 @@ class OllamaClient:
         }
         
         # Update cache stats
-        self.cache_stats["entries"] = len(self._memory_cache)
+        self.cache_stats["insertions"] += 1
             
         # Save to disk cache
         cache_file = os.path.join(self.cache_dir, f"{request_hash}.json")
@@ -454,7 +518,7 @@ class OllamaClient:
             
             # Update cache size stats
             file_size = os.path.getsize(cache_file)
-            self.cache_stats["cache_size"] += file_size
+            self.cache_stats["size_bytes"] += file_size
                 
             logger.debug(f"Saved response to cache for hash {request_hash}")
             
@@ -474,7 +538,7 @@ class OllamaClient:
             self._prune_cache_by_age()
         
         # Check if we've exceeded the maximum cache size
-        cache_size_mb = self.cache_stats["cache_size"] / (1024 * 1024)
+        cache_size_mb = self.cache_stats["size_bytes"] / (1024 * 1024)
         if cache_size_mb > self.max_cache_size_mb:
             logger.debug(f"Cache size ({cache_size_mb:.2f} MB) exceeded limit ({self.max_cache_size_mb} MB), pruning...")
             self._prune_cache_by_size()
@@ -510,7 +574,7 @@ class OllamaClient:
                 try:
                     file_size = os.path.getsize(cache_file)
                     os.remove(cache_file)
-                    self.cache_stats["cache_size"] -= file_size
+                    self.cache_stats["size_bytes"] -= file_size
                 except Exception as e:
                     logger.warning(f"Error removing cache file: {e}")
         
@@ -542,7 +606,7 @@ class OllamaClient:
         
         # Remove files until we're under the limit
         target_size = self.max_cache_size_mb * 1024 * 1024 * 0.8  # Target 80% of max
-        current_size = self.cache_stats["cache_size"]
+        current_size = self.cache_stats["size_bytes"]
         
         for filename, size, _ in cache_files:
             if current_size <= target_size:
@@ -562,7 +626,7 @@ class OllamaClient:
                 logger.warning(f"Error removing cache file: {e}")
         
         # Update cache stats
-        self.cache_stats["cache_size"] = current_size
+        self.cache_stats["size_bytes"] = current_size
         self.cache_stats["entries"] = len(self._memory_cache)
         logger.debug(f"Pruned cache to {current_size / (1024 * 1024):.2f} MB")
     
@@ -591,9 +655,9 @@ class OllamaClient:
             "misses": 0,
             "memory_hits": 0,
             "disk_hits": 0,
-            "api_calls": 0,
-            "cache_size": 0,
-            "entries": 0
+            "insertions": 0,
+            "evictions": 0,
+            "size_bytes": 0
         }
         
         logger.debug("Cache cleared")
@@ -634,7 +698,7 @@ class OllamaClient:
                         # For tests, we'll just remove the files without checking mtime
                         if "old" in filename:
                             os.remove(file_path)
-                            self.cache_stats["cache_size"] -= 0  # Just for tests
+                            self.cache_stats["size_bytes"] -= 0  # Just for tests
                     except Exception as e:
                         logger.warning(f"Error pruning cache file: {e}")
         
@@ -665,7 +729,7 @@ class OllamaClient:
             "disk_entries": disk_entries,
             "memory_entries": len(self._memory_cache),
             "hit_rate": hit_rate,
-            "cache_size_mb": self.cache_stats["cache_size"] / (1024 * 1024),
+            "cache_size_mb": self.cache_stats["size_bytes"] / (1024 * 1024),
             "max_cache_size_mb": self.max_cache_size_mb,
             "max_cache_entries": self.max_cache_entries,
             "cache_ttl": self.cache_ttl

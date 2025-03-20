@@ -189,6 +189,9 @@ class ResponseFormatter:
             personality_config: Optional personality configuration to use
             profile_registry: Optional registry for NPC personality profiles
         """
+        # Set up logger
+        self.logger = logging.getLogger(__name__)
+        
         # Start with the default personality
         self.personality = self.DEFAULT_PERSONALITY.copy()
         

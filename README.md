@@ -168,23 +168,56 @@ Optional for full development:
 
 ## Testing
 
-The project includes comprehensive tests for all components:
+The project follows a Test-Driven Development (TDD) approach, with comprehensive test coverage for all components. The tests are organized by module and test type.
 
-### Running Backend Tests
+### Running Tests
+
+You can run all tests using the provided script:
 
 ```bash
-# Run all tests
-python -m pytest
+cd tests
+./run_all_tests.sh
+```
 
-# Run specific test file
+Or run specific test categories:
+
+```bash
+# Run unit tests for a specific module
+python -m pytest tests/backend/ai/companion/core -v
+
+# Run tier1 tests
+python -m pytest tests/backend/ai/companion/tier1 -v
+
+# Run tier2 tests
+python -m pytest tests/backend/ai/companion/tier2 -v
+
+# Run tier3 tests
+python -m pytest tests/backend/ai/companion/tier3 -v
+
+# Run API tests
+python -m pytest tests/backend/api -v
+
+# Run DeepSeek parameters test
 python -m pytest tests/backend/api/test_deepseek_parameters.py
 
 # Run vector database tests
 python -m pytest tests/backend/ai/companion/core/vector/
-
-# Run with verbose output
-python -m pytest -v
 ```
+
+### Integration Tests
+
+The project includes integration tests for different tiers of the AI system:
+
+```bash
+# Run tier2 integration tests (Ollama with DeepSeek-R1)
+cd tests/backend/integration/tier2
+./run_tests.sh
+
+# Run tier3 integration tests (AWS Bedrock)
+python -m pytest tests/backend/integration/tier3 -v
+```
+
+For more detailed testing information, see the [Testing README](tests/README.md).
 
 ### AI Companion Simulator
 
@@ -208,7 +241,7 @@ The simulator provides a web interface to interact with the AI companion directl
 
 The simulator provides options to configure different game contexts such as player location, current quest, and request type, giving you control over the testing environment.
 
-For more detailed testing information, see the [Testing README](tests/README.md) and the [Simulator README](simulator/README.md).
+For more information, see the [Simulator README](simulator/README.md).
 
 ## License
 
