@@ -6,37 +6,48 @@ This module contains configuration settings for the companion AI system.
 
 import os
 import yaml
+import logging
 from typing import Dict, Any, Optional
 
-# Tiered processing configuration
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Constants for the different processing tiers
 TIER_CONFIG = {
-    "tier1_threshold": 0.7,  # Percentage of requests to handle with rule-based system
-    "tier2_threshold": 0.2,  # Percentage of requests to handle with local LLM
-    "tier3_threshold": 0.1,  # Percentage of requests to handle with cloud API
+    "TIER_1_THRESHOLD": 0.3,  # Threshold for Tier 1 processing
+    "TIER_2_THRESHOLD": 0.7,  # Threshold for Tier 2 processing
+    "TIER_3_THRESHOLD": 1.0,  # Threshold for Tier 3 processing
 }
 
 # Intent categories
-INTENT_CATEGORIES = [
-    "vocabulary_help",      # Assistance with specific words
-    "grammar_explanation",  # Explanation of grammar patterns
-    "direction_guidance",   # Help navigating the station
-    "translation_confirmation",  # Verification of player's translation
-    "general_hint",         # Suggestions on what to do next
-]
+INTENT_CATEGORIES = {
+    "VOCABULARY_HELP": "vocabulary_help",
+    "NAVIGATION_HELP": "navigation_help",
+    "CULTURAL_INFO": "cultural_info",
+    "TRANSLATION_REQUEST": "translation_request",
+    "TICKET_INFO": "ticket_info",
+    "CASUAL_CHAT": "casual_chat",
+    "SAFETY_INFO": "safety_info",
+    "FOOD_RECOMMENDATION": "food_recommendation",
+    "EMERGENCY_HELP": "emergency_help",
+    "ATTRACTION_INFO": "attraction_info",
+}
 
 # Complexity levels
-COMPLEXITY_LEVELS = [
-    "simple",    # Common requests with clear patterns (→ Tier 1)
-    "moderate",  # Less common requests with some variation (→ Tier 2)
-    "complex",   # Novel or highly specific requests (→ Tier 3)
-]
+COMPLEXITY_LEVELS = {
+    "SIMPLE": 0.3,
+    "MODERATE": 0.7,
+    "COMPLEX": 1.0,
+}
 
-# Companion personality traits
+# Personality traits
 PERSONALITY_TRAITS = {
-    "friendliness": 0.8,    # How friendly the companion is (0-1)
-    "helpfulness": 0.9,     # How helpful the companion is (0-1)
-    "patience": 0.7,        # How patient the companion is (0-1)
-    "enthusiasm": 0.6,      # How enthusiastic the companion is (0-1)
+    "FRIENDLY": 0.8,
+    "HELPFUL": 0.9,
+    "KNOWLEDGEABLE": 0.7,
+    "PATIENT": 0.9,
+    "ENTHUSIASTIC": 0.6,
 }
 
 # Local model configuration
@@ -50,12 +61,12 @@ LOCAL_MODEL_CONFIG = {
 
 # Cloud API configuration
 CLOUD_API_CONFIG = {
-    "service": "bedrock",
-    "model": "anthropic.claude-3-haiku-20240307-v1:0",
-    "max_tokens": 512,
+    "region_name": "us-west-2",
+    "model_id": "amazon.claude-3-sonnet-20240229-v1:0",
+    "max_tokens": 1024,
     "temperature": 0.7,
-    "top_p": 0.9,
-    "daily_quota": 100,  # Maximum number of API calls per day
+    "top_p": 0.95,
+    "daily_quota": 10000  # Maximum tokens per day
 }
 
 # Logging configuration
@@ -66,120 +77,42 @@ LOGGING_CONFIG = {
     "enable_response_logging": True,
 }
 
-def get_config(section: Optional[str] = None, default: Any = None) -> Any:
+# Path to the companion.yaml configuration file
+CONFIG_FILE_PATH = os.environ.get('COMPANION_CONFIG', 'config/companion.yaml')
+
+def get_config(section: str, default: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
     """
-    Get configuration values from the config file or default values.
+    Get configuration for the specified section from companion.yaml.
     
     Args:
-        section: The configuration section to retrieve (e.g., 'tier3.bedrock')
-        default: The default value to return if the section is not found
+        section: The section name to retrieve
+        default: Default values to return if section is not found
         
     Returns:
-        The configuration value for the specified section, or the default value
+        Configuration dictionary or default if not found
     """
-    # Try to load from the config file
-    config_path = os.environ.get('COMPANION_CONFIG', 'config/companion.yaml')
-    
     try:
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
-        else:
-            # Use default configuration
-            config = {
-                "tier1": {"enabled": True},
-                "tier2": {
-                    "enabled": True,
-                    "ollama": {
-                        "base_url": "http://localhost:11434",
-                        "default_model": "llama3",
-                        "complex_model": "llama3:16b",
-                        "max_tokens": 500,
-                        "temperature": 0.7,
-                        "cache_enabled": True,
-                        "cache_dir": None,
-                        "cache_ttl": 86400,
-                        "max_cache_entries": 1000,
-                        "max_cache_size_mb": 100,
-                        "log_interval": 100
-                    }
-                },
-                "tier3": {
-                    "enabled": True,
-                    "bedrock": {
-                        "region_name": "us-east-1",
-                        "default_model": "amazon.nova-micro-v1:0",
-                        "models": {
-                            "default": "amazon.nova-micro-v1:0",
-                            "complex": "amazon.titan-text-express-v1"
-                        },
-                        "max_tokens": 1000,
-                        "temperature": 0.7,
-                        "timeout": 30
-                    },
-                    "prompt_optimizer": {
-                        "enabled": True,
-                        "max_prompt_tokens": 800,
-                        "avg_chars_per_token": 4,
-                        "system_prompts": {
-                            "low": "You are a helpful bilingual dog companion in a Japanese train station. Provide simple language help.",
-                            "medium": "You are a helpful bilingual dog companion in a Japanese train station. Assist with language help, directions, and basic cultural information.",
-                            "high": "You are a helpful bilingual dog companion in a Japanese train station. Your role is to assist the player with language help, directions, and cultural information. Provide detailed explanations when appropriate."
-                        }
-                    },
-                    "usage_tracker": {
-                        "enabled": True,
-                        "storage_path": "data/usage/bedrock_usage.json",
-                        "auto_save": True,
-                        "daily_token_limit": 100000,
-                        "hourly_request_limit": 100,
-                        "monthly_cost_limit": 50.0,
-                        "cost_per_1k_input_tokens": {
-                            "default": 0.001,
-                            "amazon.nova-micro-v1:0": 0.0003,
-                            "amazon.titan-text-express-v1": 0.0008,
-                            "anthropic.claude-3-haiku-20240307-v1:0": 0.00025,
-                            "anthropic.claude-3-sonnet-20240229-v1:0": 0.003
-                        },
-                        "cost_per_1k_output_tokens": {
-                            "default": 0.002,
-                            "amazon.nova-micro-v1:0": 0.0006,
-                            "amazon.titan-text-express-v1": 0.0016,
-                            "anthropic.claude-3-haiku-20240307-v1:0": 0.00125,
-                            "anthropic.claude-3-sonnet-20240229-v1:0": 0.015
-                        }
-                    }
-                },
-                "general": {
-                    "log_level": "INFO",
-                    "data_dir": "data"
-                },
-                "retry": {
-                    "max_retries": 3,
-                    "base_delay": 1.0,
-                    "backoff_factor": 2.0,
-                    "jitter": True,
-                    "jitter_factor": 0.25,
-                    "max_delay": 60.0
-                }
-            }
+        if not os.path.exists(CONFIG_FILE_PATH):
+            logger.warning(f"Configuration file {CONFIG_FILE_PATH} not found, using defaults")
+            return default
             
-        # If no section is specified, return the entire config
-        if section is None:
-            return config
+        with open(CONFIG_FILE_PATH, 'r') as f:
+            config = yaml.safe_load(f)
             
-        # Navigate to the specified section
-        parts = section.split('.')
-        value = config
-        for part in parts:
-            if part in value:
-                value = value[part]
-            else:
-                return default
-                
-        return value
+        if config is None:
+            logger.warning(f"Configuration file {CONFIG_FILE_PATH} is empty, using defaults")
+            return default
+            
+        logger.info(f"Loaded configuration from {CONFIG_FILE_PATH}")
         
+        # Return the specified section or default if not found
+        if section in config:
+            logger.debug(f"Found configuration for section '{section}'")
+            return config[section]
+        else:
+            logger.debug(f"Section '{section}' not found in configuration, using defaults")
+            return default
+            
     except Exception as e:
-        # Log the error and return the default value
-        print(f"Error loading configuration: {e}")
+        logger.error(f"Error loading configuration: {str(e)}")
         return default 
