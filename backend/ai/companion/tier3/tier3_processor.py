@@ -78,10 +78,14 @@ class Tier3Processor(Processor):
         Returns:
             A configured Bedrock client
         """
+        # Get configuration from companion.yaml
+        tier3_config = get_config('tier3', {})
+        bedrock_config = tier3_config.get('bedrock', {})
+        
         return BedrockClient(
-            region_name=CLOUD_API_CONFIG.get("region", "us-east-1"),
-            model_id=CLOUD_API_CONFIG.get("model", "amazon.nova-micro-v1:0"),
-            max_tokens=CLOUD_API_CONFIG.get("max_tokens", 512),
+            region_name=bedrock_config.get("region_name", "us-east-1"),
+            model_id=bedrock_config.get("default_model", "amazon.nova-micro-v1:0"),
+            max_tokens=bedrock_config.get("max_tokens", 512),
             usage_tracker=usage_tracker or default_tracker
         )
     
@@ -152,22 +156,26 @@ class Tier3Processor(Processor):
             
             # Generate a response using the Bedrock client
             try:
+                # Get configuration from companion.yaml for model parameters
+                tier3_config = get_config('tier3', {})
+                bedrock_config = tier3_config.get('bedrock', {})
+                
                 # Check if the generate method is a coroutine or not
                 if asyncio.iscoroutinefunction(self.client.generate):
                     response = await self.client.generate(
                         request=companion_request,
-                        model_id=CLOUD_API_CONFIG.get("model", "amazon.nova-micro-v1:0"),
-                        temperature=CLOUD_API_CONFIG.get("temperature", 0.7),
-                        max_tokens=CLOUD_API_CONFIG.get("max_tokens", 512),
+                        model_id=bedrock_config.get("default_model", "amazon.nova-micro-v1:0"),
+                        temperature=bedrock_config.get("temperature", 0.7),
+                        max_tokens=bedrock_config.get("max_tokens", 512),
                         prompt=prompt
                     )
                 else:
                     # For mocked clients that don't implement async
                     response = self.client.generate(
                         request=companion_request,
-                        model_id=CLOUD_API_CONFIG.get("model", "amazon.nova-micro-v1:0"),
-                        temperature=CLOUD_API_CONFIG.get("temperature", 0.7),
-                        max_tokens=CLOUD_API_CONFIG.get("max_tokens", 512),
+                        model_id=bedrock_config.get("default_model", "amazon.nova-micro-v1:0"),
+                        temperature=bedrock_config.get("temperature", 0.7),
+                        max_tokens=bedrock_config.get("max_tokens", 512),
                         prompt=prompt
                     )
                 

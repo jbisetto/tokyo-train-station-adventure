@@ -18,7 +18,7 @@ tier2:
     cache_dir: null
     cache_enabled: false
     cache_ttl: 86400
-    complex_model: mistral:latest  
+    complex_model: deepseek-r1:latest 
     default_model: deepseek-r1:latest  # Use the correct model name with version
     log_interval: 100
     max_cache_entries: 1000

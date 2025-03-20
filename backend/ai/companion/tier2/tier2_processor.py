@@ -169,11 +169,12 @@ class Tier2Processor(Processor):
                 return response
             
             # If we got a model-related error, try with a simpler model
-            if error and error.is_model_related() and model != "llama3":
+            config = get_config('tier2', {})
+            fallback_model = config.get('ollama', {}).get('default_model', "llama3")
+            if error and error.is_model_related() and model != fallback_model:
                 logger.warning(f"Model-related error with {model} for request {request.request_id}, falling back to simpler model")
                 self.monitor.track_fallback("tier2", "simpler_model")
                 
-                fallback_model = "llama3"
                 logger.info(f"Attempting to generate response with fallback model {fallback_model} for request {request.request_id}")
                 response, error = await self._generate_with_retries(request, fallback_model, prompt)
                 
@@ -333,12 +334,19 @@ class Tier2Processor(Processor):
         Returns:
             The name of the model to use
         """
+        # Get configuration
+        config = get_config('tier2', {})
+        
+        # Get models from configuration
+        default_model = config.get('ollama', {}).get('default_model', "llama3")
+        complex_model = config.get('ollama', {}).get('complex_model', "llama3:8b")
+        
         if complexity == ComplexityLevel.SIMPLE:
-            return "llama3"
+            return default_model
         elif complexity == ComplexityLevel.MODERATE:
-            return "llama3"
+            return default_model
         else:  # COMPLEX
-            return "llama3:8b"
+            return complex_model
     
     def _generate_fallback_response(self, request: ClassifiedRequest, error: Any) -> str:
         """
