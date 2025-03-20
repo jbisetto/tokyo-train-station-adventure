@@ -346,20 +346,32 @@ class BedrockClient:
                     {"role": "user", "content": prompt}
                 ]
             }
-        elif model_provider == "amazon":
+        elif model_id.startswith("amazon"):
             payload = {
-                "inputText": prompt,
-                "textGenerationConfig": {
-                    "maxTokenCount": max_tokens,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ],
+                "inferenceConfig": {
                     "temperature": temperature,
-                    "topP": 0.9
-                }
+                    "topP": 0.9,
+                    "maxTokens": max_tokens
+                } 
             }
         else:
             raise BedrockError(f"Unsupported model provider: {model_provider}")
         
         # Convert the payload to JSON
         payload_json = json.dumps(payload)
+        
+        # Debug log for payload
+        self.logger.debug(f"Request payload: {payload_json}")
         
         # Create the URL
         url = f"https://bedrock-runtime.{self.region_name}.amazonaws.com/model/{model_id}/invoke"
@@ -388,19 +400,73 @@ class BedrockClient:
                     
                     # Parse the response
                     response_data = json.loads(await response.read())
+                    self.logger.debug(f"Raw response: {json.dumps(response_data)}")
                     
                     # Extract the completion based on the model provider
                     if model_provider == "anthropic":
                         return response_data
                     elif model_provider == "amazon":
-                        # For Amazon models, the response is in a different format
-                        return {
-                            "completion": response_data.get("results", [{}])[0].get("outputText", ""),
-                            "stop_reason": response_data.get("results", [{}])[0].get("completionReason", ""),
-                            "usage": {
-                                "input_tokens": response_data.get("inputTextTokenCount", 0),
-                                "output_tokens": response_data.get("results", [{}])[0].get("tokenCount", 0)
+                        # Handle the response based on model provider
+                        # Check for new format with output.message
+                        if "output" in response_data and "message" in response_data["output"]:
+                            message = response_data["output"]["message"]
+                            content = message.get("content", [])
+                            
+                            if content and isinstance(content, list) and len(content) > 0:
+                                if isinstance(content[0], dict) and "text" in content[0]:
+                                    completion = content[0].get("text", "")
+                                else:
+                                    completion = " ".join(str(item) for item in content)
+                            else:
+                                completion = ""
+                            
+                            stop_reason = response_data.get("stopReason", "")
+                            usage = {
+                                "input_tokens": response_data.get("usage", {}).get("inputTokens", 0),
+                                "output_tokens": response_data.get("usage", {}).get("outputTokens", 0)
                             }
+                        # Check for messages array format
+                        elif "messages" in response_data:
+                            messages = response_data.get("messages", [])
+                            if len(messages) > 0 and "content" in messages[-1]:
+                                # Handle content as either string or array
+                                content = messages[-1].get("content", "")
+                                if isinstance(content, list) and len(content) > 0:
+                                    # Content is an array
+                                    if isinstance(content[0], dict) and "text" in content[0]:
+                                        # Array of objects with text field
+                                        text_blocks = [block.get("text", "") for block in content if "text" in block]
+                                        completion = " ".join(text_blocks)
+                                    else:
+                                        # Array of strings or other objects
+                                        completion = " ".join(str(item) for item in content)
+                                elif isinstance(content, str):
+                                    # Content is a simple string
+                                    completion = content
+                                else:
+                                    completion = str(content)
+                            else:
+                                # Fallback if no messages or content
+                                completion = ""
+                            
+                            stop_reason = response_data.get("stopReason", "")
+                            usage = {
+                                "input_tokens": response_data.get("usage", {}).get("inputTokens", 0),
+                                "output_tokens": response_data.get("usage", {}).get("outputTokens", 0)
+                            }
+                        else:
+                            # Fallback for unknown format
+                            completion = str(response_data)
+                            stop_reason = ""
+                            usage = {
+                                "input_tokens": 0,
+                                "output_tokens": 0
+                            }
+                        
+                        return {
+                            "completion": completion,
+                            "stop_reason": stop_reason,
+                            "usage": usage
                         }
                     
                     return response_data

@@ -48,5 +48,145 @@
     "duration_ms": 0,
     "success": false,
     "error_type": "unknown_error"
+  },
+  {
+    "timestamp": "2025-03-20T17:00:23.436605",
+    "request_id": "test-request",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 51,
+    "output_tokens": 0,
+    "duration_ms": 0,
+    "success": false,
+    "error_type": "unknown_error"
+  },
+  {
+    "timestamp": "2025-03-20T17:01:01.922897",
+    "request_id": "test-request",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 51,
+    "output_tokens": 0,
+    "duration_ms": 0,
+    "success": false,
+    "error_type": "unknown_error"
+  },
+  {
+    "timestamp": "2025-03-20T17:02:22.767879",
+    "request_id": "test-request",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 51,
+    "output_tokens": 0,
+    "duration_ms": 0,
+    "success": false,
+    "error_type": "unknown_error"
+  },
+  {
+    "timestamp": "2025-03-20T17:03:12.794679",
+    "request_id": "test-request",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 51,
+    "output_tokens": 0,
+    "duration_ms": 0,
+    "success": false,
+    "error_type": "unknown_error"
+  },
+  {
+    "timestamp": "2025-03-20T17:03:46.206486",
+    "request_id": "test-request",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 51,
+    "output_tokens": 0,
+    "duration_ms": 0,
+    "success": false,
+    "error_type": "unknown_error"
+  },
+  {
+    "timestamp": "2025-03-20T17:11:11.322381",
+    "request_id": "test-request",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 40,
+    "output_tokens": 145,
+    "duration_ms": 1042,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-20T17:11:44.096803",
+    "request_id": "test-request",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 40,
+    "output_tokens": 153,
+    "duration_ms": 1036,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-20T17:14:04.057748",
+    "request_id": "test-request",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 40,
+    "output_tokens": 138,
+    "duration_ms": 1030,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-20T17:14:51.503059",
+    "request_id": "test-123",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 42,
+    "output_tokens": 128,
+    "duration_ms": 0,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-20T17:15:34.799850",
+    "request_id": "test-123",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 42,
+    "output_tokens": 128,
+    "duration_ms": 0,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-20T17:15:34.820544",
+    "request_id": "test-123",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 42,
+    "output_tokens": 128,
+    "duration_ms": 0,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-20T17:16:17.475680",
+    "request_id": "test-123",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 42,
+    "output_tokens": 128,
+    "duration_ms": 0,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-20T17:16:17.480666",
+    "request_id": "test-123",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 42,
+    "output_tokens": 128,
+    "duration_ms": 0,
+    "success": true,
+    "error_type": null
+  },
+  {
+    "timestamp": "2025-03-20T17:16:28.269810",
+    "request_id": "test-request",
+    "model_id": "amazon.nova-micro-v1:0",
+    "input_tokens": 40,
+    "output_tokens": 99,
+    "duration_ms": 742,
+    "success": true,
+    "error_type": null
   }
 ]

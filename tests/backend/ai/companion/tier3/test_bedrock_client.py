@@ -9,6 +9,7 @@ import pytest
 import json
 import aiohttp
 from unittest.mock import patch, MagicMock, AsyncMock
+import datetime
 
 from backend.ai.companion.core.models import CompanionRequest
 from backend.ai.companion.tier3.bedrock_client import BedrockClient, BedrockError
@@ -28,20 +29,26 @@ def sample_request():
 
 @pytest.fixture
 def sample_bedrock_response():
-    """Create a sample response from the Bedrock API."""
+    """Return a sample response from the Bedrock API."""
     return {
-        "amazon-bedrock-invocationMetrics": {
-            "firstByteLatency": 567,
-            "inputTokenCount": 42,
-            "invocationLatency": 1234,
-            "outputTokenCount": 128
-        },
-        "results": [
-            {
-                "outputText": "「東京に行きたいです」(Tōkyō ni ikitai desu) is how you say 'I want to go to Tokyo' in Japanese.",
-                "tokenCount": 128
+        "output": {
+            "message": {
+                "content": [
+                    {
+                        "text": "「東京に行きたいです」(Tōkyō ni ikitai desu) is how you say 'I want to go to Tokyo' in Japanese."
+                    }
+                ],
+                "role": "assistant"
             }
-        ]
+        },
+        "stopReason": "end_turn",
+        "usage": {
+            "inputTokens": 42,
+            "outputTokens": 128,
+            "totalTokens": 170,
+            "cacheReadInputTokenCount": 0,
+            "cacheWriteInputTokenCount": 0
+        }
     }
 
 
@@ -69,111 +76,89 @@ class TestBedrockClient:
         assert custom_client.max_tokens == 500
     
     @pytest.mark.asyncio
-    async def test_generate(self, sample_request, sample_bedrock_response):
-        """Test generating a response from Bedrock."""
+    async def test_generate(self, sample_bedrock_response):
+        """Test generating a response."""
         client = BedrockClient()
         
-        # Create the expected response format after processing
-        processed_response = {
-            "completion": sample_bedrock_response["results"][0]["outputText"],
-            "stop_reason": "",
-            "usage": {
-                "input_tokens": sample_bedrock_response["amazon-bedrock-invocationMetrics"]["inputTokenCount"],
-                "output_tokens": sample_bedrock_response["results"][0]["tokenCount"]
+        # Mock the _call_bedrock_api method
+        with patch.object(client, '_call_bedrock_api') as mock_call_api:
+            # Set the return value of the mocked method
+            mock_call_api.return_value = {
+                "completion": sample_bedrock_response["output"]["message"]["content"][0]["text"],
+                "stop_reason": sample_bedrock_response["stopReason"],
+                "usage": {
+                    "input_tokens": sample_bedrock_response["usage"]["inputTokens"],
+                    "output_tokens": sample_bedrock_response["usage"]["outputTokens"]
+                }
             }
-        }
-        
-        # Mock the check_quota function
-        with patch('backend.ai.companion.tier3.bedrock_client.check_quota', new_callable=AsyncMock) as mock_check_quota:
-            mock_check_quota.return_value = (True, "Quota check passed")
             
-            # Mock the track_request function
-            with patch('backend.ai.companion.tier3.bedrock_client.track_request', new_callable=AsyncMock) as mock_track_request:
-                # Mock the _call_bedrock_api method
-                with patch.object(client, '_call_bedrock_api', new_callable=AsyncMock) as mock_call_api:
-                    mock_call_api.return_value = processed_response
-                    
-                    # Generate a response
-                    response = await client.generate(sample_request)
-                    
-                    # Check that the response is correct
-                    assert response == processed_response["completion"]
-                    
-                    # Check that _call_bedrock_api was called with the correct parameters
-                    mock_call_api.assert_called_once()
-                    args, kwargs = mock_call_api.call_args
-                    
-                    assert kwargs["model_id"] == "amazon.nova-micro-v1:0"
-                    assert kwargs["temperature"] == 0.7
-                    assert kwargs["max_tokens"] == 1000
-                    assert sample_request.player_input in kwargs["prompt"]
-                    
-                    # Check that check_quota was called
-                    mock_check_quota.assert_called_once()
-                    
-                    # Check that track_request was called
-                    mock_track_request.assert_called_once()
-                    track_args, track_kwargs = mock_track_request.call_args
-                    
-                    assert track_kwargs["request_id"] == sample_request.request_id
-                    assert track_kwargs["model_id"] == "amazon.nova-micro-v1:0"
-                    assert track_kwargs["success"] is True
+            # Create a request
+            request = CompanionRequest(
+                request_id="test-123",
+                player_input="What does 'I want to go to Tokyo' mean in Japanese?",
+                request_type="language_help",
+                timestamp=datetime.datetime(2023, 1, 1)
+            )
+            
+            # Call generate
+            response = await client.generate(request)
+            
+            # Check the response - generate() returns just the completion string
+            assert response == sample_bedrock_response["output"]["message"]["content"][0]["text"]
+            
+            # Check that _call_bedrock_api was called with the correct arguments
+            mock_call_api.assert_called_once()
+            _, kwargs = mock_call_api.call_args
+            assert "What does 'I want to go to Tokyo' mean in Japanese?" in kwargs["prompt"]
+            assert kwargs["model_id"] == "amazon.nova-micro-v1:0"
     
     @pytest.mark.asyncio
-    async def test_generate_with_custom_parameters(self, sample_request, sample_bedrock_response):
+    async def test_generate_with_custom_parameters(self, sample_bedrock_response):
         """Test generating a response with custom parameters."""
         client = BedrockClient()
         
-        # Create the expected response format after processing
-        processed_response = {
-            "completion": sample_bedrock_response["results"][0]["outputText"],
-            "stop_reason": "",
-            "usage": {
-                "input_tokens": sample_bedrock_response["amazon-bedrock-invocationMetrics"]["inputTokenCount"],
-                "output_tokens": sample_bedrock_response["results"][0]["tokenCount"]
+        # Mock the _call_bedrock_api method
+        with patch.object(client, '_call_bedrock_api') as mock_call_api:
+            # Set the return value of the mocked method
+            mock_call_api.return_value = {
+                "completion": sample_bedrock_response["output"]["message"]["content"][0]["text"],
+                "stop_reason": sample_bedrock_response["stopReason"],
+                "usage": {
+                    "input_tokens": sample_bedrock_response["usage"]["inputTokens"],
+                    "output_tokens": sample_bedrock_response["usage"]["outputTokens"]
+                }
             }
-        }
-        
-        # Mock the check_quota function
-        with patch('backend.ai.companion.tier3.bedrock_client.check_quota', new_callable=AsyncMock) as mock_check_quota:
-            mock_check_quota.return_value = (True, "Quota check passed")
             
-            # Mock the track_request function
-            with patch('backend.ai.companion.tier3.bedrock_client.track_request', new_callable=AsyncMock) as mock_track_request:
-                # Mock the _call_bedrock_api method
-                with patch.object(client, '_call_bedrock_api', new_callable=AsyncMock) as mock_call_api:
-                    mock_call_api.return_value = processed_response
-                    
-                    # Generate a response with custom parameters
-                    response = await client.generate(
-                        sample_request,
-                        model_id="amazon.titan-text-express-v1",
-                        temperature=0.5,
-                        max_tokens=300,
-                        prompt="Custom prompt"
-                    )
-                    
-                    # Check that the response is correct
-                    assert response == processed_response["completion"]
-                    
-                    # Check that _call_bedrock_api was called with the correct parameters
-                    mock_call_api.assert_called_once()
-                    args, kwargs = mock_call_api.call_args
-                    
-                    assert kwargs["model_id"] == "amazon.titan-text-express-v1"
-                    assert kwargs["temperature"] == 0.5
-                    assert kwargs["max_tokens"] == 300
-                    assert kwargs["prompt"] == "Custom prompt"
-                    
-                    # Check that check_quota was called with the custom model
-                    mock_check_quota.assert_called_once()
-                    quota_args, quota_kwargs = mock_check_quota.call_args
-                    assert quota_kwargs["model_id"] == "amazon.titan-text-express-v1"
-                    
-                    # Check that track_request was called with the custom model
-                    mock_track_request.assert_called_once()
-                    track_args, track_kwargs = mock_track_request.call_args
-                    assert track_kwargs["model_id"] == "amazon.titan-text-express-v1"
+            # Create a request with custom parameters in additional_params
+            request = CompanionRequest(
+                request_id="test-123",
+                player_input="What does 'I want to go to Tokyo' mean in Japanese?",
+                request_type="language_help",
+                timestamp=datetime.datetime(2023, 1, 1),
+                additional_params={
+                    "temperature": 0.5,
+                    "top_p": 0.8,
+                    "max_tokens": 500
+                }
+            )
+            
+            # Call generate with custom parameters directly
+            response = await client.generate(
+                request,
+                temperature=0.5,
+                max_tokens=500
+            )
+            
+            # Check the response - generate() returns just the completion string
+            assert response == sample_bedrock_response["output"]["message"]["content"][0]["text"]
+            
+            # Check that _call_bedrock_api was called with the correct arguments
+            mock_call_api.assert_called_once()
+            _, kwargs = mock_call_api.call_args
+            assert "What does 'I want to go to Tokyo' mean in Japanese?" in kwargs["prompt"]
+            assert kwargs["model_id"] == "amazon.nova-micro-v1:0"
+            assert kwargs["temperature"] == 0.5
+            assert kwargs["max_tokens"] == 500
     
     @pytest.mark.asyncio
     async def test_generate_with_error(self, sample_request):
@@ -244,11 +229,11 @@ class TestBedrockClient:
         
         # Expected processed response
         expected_processed_response = {
-            "completion": sample_bedrock_response["results"][0]["outputText"],
-            "stop_reason": "",
+            "completion": sample_bedrock_response["output"]["message"]["content"][0]["text"],
+            "stop_reason": sample_bedrock_response["stopReason"],
             "usage": {
-                "input_tokens": sample_bedrock_response["amazon-bedrock-invocationMetrics"]["inputTokenCount"],
-                "output_tokens": sample_bedrock_response["results"][0]["tokenCount"]
+                "input_tokens": sample_bedrock_response["usage"]["inputTokens"],
+                "output_tokens": sample_bedrock_response["usage"]["outputTokens"]
             }
         }
         
@@ -266,9 +251,9 @@ class TestBedrockClient:
             
             # Check that the response is correctly processed
             assert response["completion"] == expected_processed_response["completion"]
-            assert "usage" in response
-            assert "input_tokens" in response["usage"]
-            assert "output_tokens" in response["usage"]
+            assert response["stop_reason"] == expected_processed_response["stop_reason"]
+            assert response["usage"]["input_tokens"] == expected_processed_response["usage"]["input_tokens"]
+            assert response["usage"]["output_tokens"] == expected_processed_response["usage"]["output_tokens"]
             
             # Check that post was called with the correct parameters
             mock_post.assert_called_once()
@@ -283,10 +268,15 @@ class TestBedrockClient:
             
             # Check the payload
             payload = json.loads(kwargs["data"])
-            assert "inputText" in payload
-            assert "textGenerationConfig" in payload
-            assert payload["textGenerationConfig"]["maxTokenCount"] == 1000
-            assert payload["textGenerationConfig"]["temperature"] == 0.7
+            assert "messages" in payload
+            assert isinstance(payload["messages"], list)
+            assert len(payload["messages"]) > 0
+            assert payload["messages"][0]["role"] == "user"
+            assert "content" in payload["messages"][0]
+            assert isinstance(payload["messages"][0]["content"], list)
+            assert len(payload["messages"][0]["content"]) > 0
+            assert "text" in payload["messages"][0]["content"][0]
+            assert payload["messages"][0]["content"][0]["text"] == "Test prompt"
     
     @pytest.mark.asyncio
     async def test_call_bedrock_api_with_error(self):

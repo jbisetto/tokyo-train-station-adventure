@@ -392,7 +392,7 @@ class TestProcessorFactory:
             # Add a debug print to track calls
             def config_side_effect(section, default=None):
                 print(f"Section requested: {section}")
-                if section == 'tier1':  # Use the format without underscore to match the config file
+                if section == 'tier_1':  # Use the correct tier value format from the enum
                     return {'enabled': False}
                 return {'enabled': True}
 
