@@ -83,32 +83,44 @@ class TestTier1Processor:
     def test_tier1_processor_process(self, sample_classified_request, monkeypatch):
         """Test processing a request with the Tier1Processor."""
         from backend.ai.companion.tier1.tier1_processor import Tier1Processor
+    
+        # Override get_config to ensure processor is enabled for this test
+        monkeypatch.setattr(
+            'backend.ai.companion.tier1.tier1_processor.get_config',
+            lambda section, default: {"enabled": True, "default_model": "rule-based"} if section == 'tier1' else default
+        )
         
         # Create a processor
         processor = Tier1Processor()
-        
+    
         # Mock the _get_tree_name_for_intent method to return a specific tree name
         monkeypatch.setattr(processor, '_get_tree_name_for_intent', lambda intent: "vocabulary")
-        
+    
         # Mock the _process_with_decision_tree method to return a specific response
         monkeypatch.setattr(processor, '_process_with_decision_tree', lambda tree, request: "'kippu' means 'ticket' in Japanese.")
-        
+    
         # Process a request
         response = processor.process(sample_classified_request)
-        
+    
         # Check that the response is correct
         assert response == "'kippu' means 'ticket' in Japanese."
     
     def test_tier1_processor_with_pattern_match(self, sample_classified_request, monkeypatch):
         """Test processing a request with pattern matching."""
         from backend.ai.companion.tier1.tier1_processor import Tier1Processor
+    
+        # Override get_config to ensure processor is enabled for this test
+        monkeypatch.setattr(
+            'backend.ai.companion.tier1.tier1_processor.get_config',
+            lambda section, default: {"enabled": True, "default_model": "rule-based"} if section == 'tier1' else default
+        )
         
         # Create a processor
         processor = Tier1Processor()
-        
+    
         # Mock the _get_tree_name_for_intent method to return a specific tree name
         monkeypatch.setattr(processor, '_get_tree_name_for_intent', lambda intent: "vocabulary")
-        
+    
         # Create a mock decision tree with pattern matching
         mock_tree = {
             "patterns": [
@@ -123,26 +135,32 @@ class TestTier1Processor:
                 }
             ]
         }
-        
+    
         # Mock the _load_decision_tree method to return the mock tree
         monkeypatch.setattr(processor, '_load_decision_tree', lambda tree_name: mock_tree)
-        
+    
         # Process a request
         response = processor.process(sample_classified_request)
-        
+    
         # Check that the response is correct
         assert response == "'kippu' means 'ticket' in Japanese."
     
     def test_tier1_processor_with_decision_tree(self, sample_classified_request, monkeypatch):
         """Test processing a request with a decision tree."""
         from backend.ai.companion.tier1.tier1_processor import Tier1Processor
+    
+        # Override get_config to ensure processor is enabled for this test
+        monkeypatch.setattr(
+            'backend.ai.companion.tier1.tier1_processor.get_config',
+            lambda section, default: {"enabled": True, "default_model": "rule-based"} if section == 'tier1' else default
+        )
         
         # Create a processor
         processor = Tier1Processor()
-        
+    
         # Mock the _get_tree_name_for_intent method to return a specific tree name
         monkeypatch.setattr(processor, '_get_tree_name_for_intent', lambda intent: "vocabulary")
-        
+    
         # Create a mock decision tree with nodes
         mock_tree = {
             "nodes": {
@@ -165,13 +183,13 @@ class TestTier1Processor:
                 }
             }
         }
-        
+    
         # Mock the _load_decision_tree method to return the mock tree
         monkeypatch.setattr(processor, '_load_decision_tree', lambda tree_name: mock_tree)
-        
+    
         # Process a request
         response = processor.process(sample_classified_request)
-        
+    
         # Check that the response is correct
         assert response == "'Kippu' means 'ticket' in Japanese."
 

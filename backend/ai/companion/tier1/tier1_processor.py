@@ -17,6 +17,7 @@ from backend.ai.companion.core.models import (
     IntentCategory
 )
 from backend.ai.companion.core.processor_framework import Processor
+from backend.ai.companion.config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +34,14 @@ class Tier1Processor(Processor):
         """Initialize the Tier 1 processor."""
         self.logger = logging.getLogger(__name__)
         self.decision_trees = {}
+        
+        # Load configuration
+        config = get_config('tier1', {})
+        self.enabled = True if config is None else config.get('enabled', True)
+        self.default_model = "rule-based" if config is None else config.get('default_model', "rule-based")
+        
         self._load_default_trees()
-        self.logger.debug("Initialized Tier1Processor")
+        self.logger.debug(f"Initialized Tier1Processor (enabled: {self.enabled}, model: {self.default_model})")
     
     def process(self, request: ClassifiedRequest) -> str:
         """
@@ -47,6 +54,11 @@ class Tier1Processor(Processor):
             The generated response
         """
         self.logger.info(f"Processing request {request.request_id} with Tier 1 processor")
+        
+        # Check if processor is enabled
+        if not self.enabled:
+            self.logger.warning("Tier 1 processor is disabled in configuration")
+            return "Sorry, the Tier 1 processor is currently disabled."
         
         # Create a companion request from the classified request
         companion_request = self._create_companion_request(request)

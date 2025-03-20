@@ -9,16 +9,16 @@ retry:
   max_delay: 60.0
   max_retries: 3
 tier1:
-  enabled: true
+  enabled: false
   default_model: llama3
 tier2:
   enabled: true
   ollama:
     base_url: http://localhost:11434
     cache_dir: null
-    cache_enabled: true
+    cache_enabled: false
     cache_ttl: 86400
-    complex_model: mistral:latest  
+    complex_model: deepseek-r1:latest 
     default_model: deepseek-r1:latest  # Use the correct model name with version
     log_interval: 100
     max_cache_entries: 1000

@@ -36,10 +36,10 @@
     "excited": ["*jumps excitedly*", "*eyes light up*"]
   },
   "response_format": {
-    "VOCABULARY_HELP": "Explain the meaning of the word clearly. New word in hiragana. English meaning. Simple example sentence.",
-    "GRAMMAR_EXPLANATION": "One N5 grammar point. Simple example. Station context.",
-    "TRANSLATION_CONFIRMATION": "Simple English translation. Japanese in hiragana. Basic pronunciation guide.",
-    "DIRECTION_GUIDANCE": "Direction in English. Basic Japanese direction word. Simple station phrase.",
-    "DEFAULT": "Simple, N5-level response that addresses the question directly. Include both English and Japanese (in hiragana) with pronunciation."
+    "VOCABULARY_HELP": "JAPANESE: [japanese text] ROMAJI: [romaji text] ENGLISH: [english meaning] EXAMPLE: [brief example]",
+    "GRAMMAR_EXPLANATION": "PATTERN: [japanese pattern] ROMAJI: [romaji text] MEANING: [english explanation] EXAMPLE: [short example]",
+    "TRANSLATION_CONFIRMATION": "JAPANESE: [japanese text] ROMAJI: [romaji text] ENGLISH: [english translation]",
+    "DIRECTION_GUIDANCE": "ENGLISH: [english direction] JAPANESE: [japanese phrase] ROMAJI: [romaji pronunciation]",
+    "DEFAULT": "RESPONSE: [english response] JAPANESE: [relevant japanese] ROMAJI: [romaji pronunciation]"
   }
 } 

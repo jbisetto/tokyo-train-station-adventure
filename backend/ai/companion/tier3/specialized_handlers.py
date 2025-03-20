@@ -17,6 +17,7 @@ from backend.ai.companion.core.models import (
 )
 from backend.ai.companion.tier3.bedrock_client import BedrockClient
 from backend.ai.companion.tier3.context_manager import ConversationContext
+from backend.ai.companion.config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class SpecializedHandler(abc.ABC):
     
     async def handle_request(self, request: ClassifiedRequest) -> str:
         """
-        Handle the given request.
+        Handle the request by creating a prompt and generating a response.
         
         Args:
             request: The request to handle.
@@ -93,11 +94,15 @@ class SpecializedHandler(abc.ABC):
         
         logger.debug(f"Sending prompt to Bedrock: {prompt[:100]}...")
         
+        # Get configuration from companion.yaml
+        tier3_config = get_config('tier3', {})
+        bedrock_config = tier3_config.get('bedrock', {})
+        
         response = await self.bedrock_client.generate(
             prompt=prompt,
-            max_tokens=1000,
-            temperature=0.7,
-            model_id="anthropic.claude-3-sonnet-20240229-v1:0"
+            max_tokens=bedrock_config.get("max_tokens", 1000),
+            temperature=bedrock_config.get("temperature", 0.7),
+            model_id=bedrock_config.get("default_model", "anthropic.claude-3-sonnet-20240229-v1:0")
         )
         
         return self.process_response(response, request)

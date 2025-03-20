@@ -18,6 +18,7 @@ from backend.ai.companion.core.context_manager import ContextManager, default_co
 from backend.ai.companion.tier2.response_parser import ResponseParser
 from backend.ai.companion.utils.monitoring import ProcessorMonitor
 from backend.ai.companion.utils.retry import RetryConfig, retry_async
+from backend.ai.companion.config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,23 @@ class Tier2Processor(Processor):
             retry_config: Configuration for retry behavior (optional)
             context_manager: Context manager for tracking conversation context (optional)
         """
-        self.ollama_client = OllamaClient()
+        # Load configuration
+        config = get_config('tier2', {})
+        self.enabled = True if config is None else config.get('enabled', True)
+        
+        # Initialize OllamaClient with configuration
+        if config is not None:
+            self.ollama_client = OllamaClient(
+                base_url=config.get('base_url'),
+                default_model=config.get('default_model'),
+                cache_enabled=config.get('cache_enabled'),
+                cache_dir=config.get('cache_dir'),
+                cache_ttl=config.get('cache_ttl'),
+                max_cache_entries=config.get('max_cache_entries'),
+                max_cache_size_mb=config.get('max_cache_size_mb')
+            )
+        else:
+            self.ollama_client = OllamaClient()
         
         # Use the common PromptManager instead of PromptEngineering
         tier2_prompt_config = {
@@ -91,6 +108,12 @@ class Tier2Processor(Processor):
             The generated response
         """
         logger.info(f"Processing request {request.request_id} with Tier 2 processor")
+        
+        # Check if processor is enabled
+        if not self.enabled:
+            logger.warning("Tier 2 processor is disabled in configuration")
+            return "Sorry, the Tier 2 processor is currently disabled."
+            
         self.monitor.track_request("tier2", request.request_id)
         
         start_time = time.time()
@@ -146,11 +169,12 @@ class Tier2Processor(Processor):
                 return response
             
             # If we got a model-related error, try with a simpler model
-            if error and error.is_model_related() and model != "llama3":
+            config = get_config('tier2', {})
+            fallback_model = config.get('ollama', {}).get('default_model', "llama3")
+            if error and error.is_model_related() and model != fallback_model:
                 logger.warning(f"Model-related error with {model} for request {request.request_id}, falling back to simpler model")
                 self.monitor.track_fallback("tier2", "simpler_model")
                 
-                fallback_model = "llama3"
                 logger.info(f"Attempting to generate response with fallback model {fallback_model} for request {request.request_id}")
                 response, error = await self._generate_with_retries(request, fallback_model, prompt)
                 
@@ -178,12 +202,12 @@ class Tier2Processor(Processor):
             
             # If we still don't have a response, check if we should fall back to tier1
             if error and self._should_fallback_to_tier1(error):
-                logger.warning(f"Falling back to tier1 for request {request.request_id}")
+                logger.warning(f"Falling back to tier1 for request {request.request_id} due to error: {error}")
                 self.monitor.track_fallback("tier2", "tier1")
                 
                 # Get a tier1 processor and process the request
                 tier1_processor = self._get_tier1_processor()
-                response = tier1_processor.process(request)
+                response = await tier1_processor.process(request)
                 
                 logger.info(f"Successfully generated fallback response with tier1 for request {request.request_id}")
                 success = True
@@ -242,6 +266,9 @@ class Tier2Processor(Processor):
         # Define the function to generate and parse the response
         async def generate_and_parse():
             try:
+                # Log the prompt being sent to the LLM
+                logger.debug(f"Prompt sent to LLM: {prompt}")
+                
                 # Generate a response using the Ollama client
                 raw_response = await self.ollama_client.generate(
                     request=request,
@@ -250,6 +277,13 @@ class Tier2Processor(Processor):
                     max_tokens=500,
                     prompt=prompt
                 )
+                
+                logger.debug(f"Full response from LLM: {raw_response}")
+                
+                # Ensure raw_response is a dictionary
+                if isinstance(raw_response, str):
+                    logger.error("Received response is a string, expected a dictionary.")
+                    return None, OllamaError("Invalid response format from LLM.")
                 
                 # Parse the response
                 parsed_response = self.response_parser.parse_response(
@@ -260,6 +294,15 @@ class Tier2Processor(Processor):
                     simplify=False,
                     add_learning_cues=False
                 )
+                
+                logger.debug(f"Parsed response: {parsed_response}")
+                
+                # Extract Japanese text and pronunciation
+                japanese_text = parsed_response.get("japanese", "")
+                pronunciation = parsed_response.get("pronunciation", "")
+                
+                if not japanese_text or not pronunciation:
+                    logger.warning("Missing Japanese text or pronunciation in the response.")
                 
                 return parsed_response
             except Exception as e:
@@ -291,12 +334,19 @@ class Tier2Processor(Processor):
         Returns:
             The name of the model to use
         """
+        # Get configuration
+        config = get_config('tier2', {})
+        
+        # Get models from configuration
+        default_model = config.get('ollama', {}).get('default_model', "llama3")
+        complex_model = config.get('ollama', {}).get('complex_model', "llama3:8b")
+        
         if complexity == ComplexityLevel.SIMPLE:
-            return "llama3"
+            return default_model
         elif complexity == ComplexityLevel.MODERATE:
-            return "llama3"
+            return default_model
         else:  # COMPLEX
-            return "llama3:8b"
+            return complex_model
     
     def _generate_fallback_response(self, request: ClassifiedRequest, error: Any) -> str:
         """

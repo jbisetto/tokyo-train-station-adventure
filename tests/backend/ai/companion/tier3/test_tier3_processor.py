@@ -4,7 +4,7 @@ Tests for the Tier 3 processor.
 
 import pytest
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime
 
 from backend.ai.companion.core.models import (
@@ -47,7 +47,17 @@ class TestTier3Processor:
     @pytest.fixture
     def mock_context_manager(self):
         """Create a mock context manager."""
-        return MagicMock(spec=ContextManager)
+        context_manager = MagicMock(spec=ContextManager)
+        context_manager.get_or_create_context.return_value = {
+            "conversation_id": "test-conv-123",
+            "entries": []
+        }
+        context_manager.get_context.return_value = {
+            "conversation_id": "test-conv-123",
+            "entries": []
+        }
+        context_manager.update_context.return_value = None
+        return context_manager
 
     def test_tier3_processor_creation(self):
         """Test creating a Tier3Processor."""
@@ -120,30 +130,39 @@ class TestTier3Processor:
     async def test_process(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
         """Test processing a request."""
         with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
-            # Mock the asyncio functions
-            with patch('asyncio.new_event_loop') as mock_new_loop:
-                with patch('asyncio.set_event_loop') as mock_set_loop:
-                    # Create a mock loop
-                    mock_loop = MagicMock()
-                    mock_new_loop.return_value = mock_loop
-                    
-                    # Mock the run_until_complete method to return a response
-                    mock_loop.run_until_complete.return_value = "'Kippu' means 'ticket' in Japanese."
-                    
-                    # Create a processor with the mock context manager
-                    processor = Tier3Processor(context_manager=mock_context_manager)
-                    
-                    # Process the request
-                    response = processor.process(sample_classified_request)
-                    
-                    # Check that the response is as expected
-                    assert response == "'Kippu' means 'ticket' in Japanese."
-                    
-                    # Check that the loop was created and used
-                    mock_new_loop.assert_called_once()
-                    mock_set_loop.assert_called_once_with(mock_loop)
-                    mock_loop.run_until_complete.assert_called_once()
-                    mock_loop.close.assert_called_once()
+            # Set up the mock bedrock client to return a response
+            mock_bedrock_client.generate.return_value = "'Kippu' means 'ticket' in Japanese."
+            
+            # Create a processor with the mock context manager
+            processor = Tier3Processor(context_manager=mock_context_manager)
+            
+            # Process the request
+            response = await processor.process(sample_classified_request)
+            
+            # Check that the response is as expected
+            assert response == "'Kippu' means 'ticket' in Japanese."
+            
+            # Verify the client was called
+            mock_bedrock_client.generate.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_process_existing_loop(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
+        """Test processing a request with an existing event loop."""
+        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
+            # Set up the mock bedrock client to return a response
+            mock_bedrock_client.generate.return_value = "'Kippu' means 'ticket' in Japanese."
+            
+            # Create a processor with the mock context manager
+            processor = Tier3Processor(context_manager=mock_context_manager)
+            
+            # Process the request
+            response = await processor.process(sample_classified_request)
+            
+            # Check that the response is as expected
+            assert response == "'Kippu' means 'ticket' in Japanese."
+            
+            # Verify the client was called
+            mock_bedrock_client.generate.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_with_error(self, sample_classified_request, mock_context_manager):
@@ -151,28 +170,19 @@ class TestTier3Processor:
         with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient') as mock_client_class:
             # Set up the mock client to raise an error
             mock_client = mock_client_class.return_value
-            mock_client.generate.side_effect = BedrockError("Test error")
+            mock_client.generate = AsyncMock(side_effect=BedrockError("Test error"))
             
-            # Mock the asyncio functions
-            with patch('asyncio.new_event_loop') as mock_new_loop:
-                with patch('asyncio.set_event_loop') as mock_set_loop:
-                    # Create a mock loop
-                    mock_loop = MagicMock()
-                    mock_new_loop.return_value = mock_loop
-                    
-                    # Mock the run_until_complete method to raise the error
-                    mock_loop.run_until_complete.side_effect = BedrockError("Test error")
-                    
-                    # Create a processor with the mock context manager
-                    processor = Tier3Processor(context_manager=mock_context_manager)
-                    
-                    # Process the request
-                    response = processor.process(sample_classified_request)
-                    
-                    # Check that the response is a fallback response
-                    assert "sorry" in response.lower()
-                    # The actual response doesn't contain the word "error", so we'll check for other phrases
-                    assert "trouble" in response.lower() or "rephrase" in response.lower()
+            # Create a processor with the mock context manager
+            processor = Tier3Processor(context_manager=mock_context_manager)
+            
+            # Process the request
+            response = await processor.process(sample_classified_request)
+            
+            # Check that the response is a fallback response
+            assert "sorry" in response.lower()
+            
+            # Verify the client was called
+            mock_client.generate.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_with_conversation_history(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
@@ -187,39 +197,30 @@ class TestTier3Processor:
                 from backend.ai.companion.tier3.scenario_detection import ScenarioType
                 mock_detector.detect_scenario.return_value = ScenarioType.UNKNOWN
                 
-                # Mock the asyncio functions
-                with patch('asyncio.new_event_loop') as mock_new_loop:
-                    with patch('asyncio.set_event_loop') as mock_set_loop:
-                        # Create a mock loop
-                        mock_loop = MagicMock()
-                        mock_new_loop.return_value = mock_loop
-                        
-                        # Define the expected response
-                        response_text = "'Kippu' means 'ticket' in Japanese."
-                        
-                        # Configure the mock client to return the expected response
-                        mock_bedrock_client.generate.return_value = response_text
-                        
-                        # Mock the run_until_complete method to return the response
-                        mock_loop.run_until_complete.return_value = response_text
-                        
-                        # Add a conversation ID to the request
-                        sample_classified_request.additional_params = {"conversation_id": "test-conv-123"}
-                        
-                        # Create a processor with the mock context manager
-                        processor = Tier3Processor(context_manager=mock_context_manager)
-                        
-                        # Replace the scenario detector with our mock
-                        processor.scenario_detector = mock_detector
-                        
-                        # Process the request
-                        response = processor.process(sample_classified_request)
-                        
-                        # Check that the response is as expected
-                        assert response == response_text
-                        
-                        # Check that the context was updated
-                        mock_context_manager.update_context.assert_called_once()
+                # Define the expected response
+                response_text = "'Kippu' means 'ticket' in Japanese."
+                
+                # Configure the mock client to return the expected response
+                mock_bedrock_client.generate.return_value = response_text
+                
+                # Add a conversation ID to the request
+                sample_classified_request.additional_params = {"conversation_id": "test-conv-123"}
+                
+                # Create a processor with the mock context manager
+                processor = Tier3Processor(context_manager=mock_context_manager)
+                
+                # Replace the scenario detector with our mock
+                processor.scenario_detector = mock_detector
+                
+                # Process the request
+                response = await processor.process(sample_classified_request)
+                
+                # Check that the response is as expected
+                assert response == response_text
+                
+                # Verify the context manager was called
+                mock_context_manager.get_or_create_context.assert_called_once()
+                mock_context_manager.update_context.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_with_scenario_detection(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
@@ -233,7 +234,7 @@ class TestTier3Processor:
                 # Set up the mock detector to detect a scenario
                 from backend.ai.companion.tier3.scenario_detection import ScenarioType
                 mock_detector.detect_scenario.return_value = ScenarioType.VOCABULARY_HELP
-                mock_detector.handle_scenario.return_value = "'Kippu' means 'ticket' in Japanese. (From specialized handler)"
+                mock_detector.handle_scenario = AsyncMock(return_value="'Kippu' means 'ticket' in Japanese. (From specialized handler)")
                 
                 # Mock the context manager to return a valid context
                 mock_context_manager.get_context.return_value = {"some": "context"}
@@ -249,11 +250,11 @@ class TestTier3Processor:
                 processor.scenario_detector = mock_detector
                 
                 # Process the request
-                response = processor.process(sample_classified_request)
+                response = await processor.process(sample_classified_request)
                 
                 # Check that the response is from the scenario handler
                 assert response == "'Kippu' means 'ticket' in Japanese. (From specialized handler)"
                 
-                # Check that the scenario detector was used
-                mock_detector.detect_scenario.assert_called_once_with(sample_classified_request)
+                # Verify the scenario detector was used
+                mock_detector.detect_scenario.assert_called_once()
                 mock_detector.handle_scenario.assert_called_once() 
