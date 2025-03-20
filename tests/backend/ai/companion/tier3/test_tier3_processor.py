@@ -120,18 +120,47 @@ class TestTier3Processor:
     async def test_process(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
         """Test processing a request."""
         with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
-            # Mock the asyncio functions
-            with patch('asyncio.new_event_loop') as mock_new_loop:
-                with patch('asyncio.set_event_loop') as mock_set_loop:
-                    # Create a mock loop
-                    mock_loop = MagicMock()
-                    mock_new_loop.return_value = mock_loop
-                    
-                    # Mock the run_until_complete method to return a response
-                    mock_loop.run_until_complete.return_value = "'Kippu' means 'ticket' in Japanese."
-                    
+            # Mock the get_event_loop to raise RuntimeError (no running loop)
+            with patch('asyncio.get_event_loop', side_effect=RuntimeError("No running event loop")):
+                # Mock the asyncio functions for new loop
+                with patch('asyncio.new_event_loop') as mock_new_loop:
+                    with patch('asyncio.set_event_loop') as mock_set_loop:
+                        # Create a mock loop
+                        mock_loop = MagicMock()
+                        mock_new_loop.return_value = mock_loop
+                        
+                        # Mock the run_until_complete method to return a response
+                        mock_loop.run_until_complete.return_value = "'Kippu' means 'ticket' in Japanese."
+                        
+                        # Create a processor with the mock context manager
+                        processor = Tier3Processor(context_manager=mock_context_manager)
+                        
+                        # Process the request
+                        response = processor.process(sample_classified_request)
+                        
+                        # Check that the response is as expected
+                        assert response == "'Kippu' means 'ticket' in Japanese."
+                        
+                        # Check that the loop was created and used
+                        mock_new_loop.assert_called_once()
+                        mock_set_loop.assert_called_once_with(mock_loop)
+                        mock_loop.run_until_complete.assert_called_once()
+                        mock_loop.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_process_existing_loop(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
+        """Test processing a request with an existing event loop."""
+        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
+            # Mock the get_event_loop to return an existing loop
+            mock_existing_loop = MagicMock()
+            with patch('asyncio.get_event_loop', return_value=mock_existing_loop):
+                # Mock the asyncio new_event_loop function (should not be called)
+                with patch('asyncio.new_event_loop') as mock_new_loop:
                     # Create a processor with the mock context manager
                     processor = Tier3Processor(context_manager=mock_context_manager)
+                    
+                    # Mock the run_until_complete method to return a response
+                    mock_existing_loop.run_until_complete.return_value = "'Kippu' means 'ticket' in Japanese."
                     
                     # Process the request
                     response = processor.process(sample_classified_request)
@@ -139,11 +168,14 @@ class TestTier3Processor:
                     # Check that the response is as expected
                     assert response == "'Kippu' means 'ticket' in Japanese."
                     
-                    # Check that the loop was created and used
-                    mock_new_loop.assert_called_once()
-                    mock_set_loop.assert_called_once_with(mock_loop)
-                    mock_loop.run_until_complete.assert_called_once()
-                    mock_loop.close.assert_called_once()
+                    # Check that the existing loop was used
+                    mock_existing_loop.run_until_complete.assert_called_once()
+                    
+                    # Check that a new loop was not created
+                    mock_new_loop.assert_not_called()
+                    
+                    # Check that the existing loop was not closed
+                    mock_existing_loop.close.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_process_with_error(self, sample_classified_request, mock_context_manager):
@@ -153,26 +185,28 @@ class TestTier3Processor:
             mock_client = mock_client_class.return_value
             mock_client.generate.side_effect = BedrockError("Test error")
             
-            # Mock the asyncio functions
-            with patch('asyncio.new_event_loop') as mock_new_loop:
-                with patch('asyncio.set_event_loop') as mock_set_loop:
-                    # Create a mock loop
-                    mock_loop = MagicMock()
-                    mock_new_loop.return_value = mock_loop
-                    
-                    # Mock the run_until_complete method to raise the error
-                    mock_loop.run_until_complete.side_effect = BedrockError("Test error")
-                    
-                    # Create a processor with the mock context manager
-                    processor = Tier3Processor(context_manager=mock_context_manager)
-                    
-                    # Process the request
-                    response = processor.process(sample_classified_request)
-                    
-                    # Check that the response is a fallback response
-                    assert "sorry" in response.lower()
-                    # The actual response doesn't contain the word "error", so we'll check for other phrases
-                    assert "trouble" in response.lower() or "rephrase" in response.lower()
+            # Mock get_event_loop to raise RuntimeError (no running loop)
+            with patch('asyncio.get_event_loop', side_effect=RuntimeError("No running event loop")):
+                # Mock the asyncio functions
+                with patch('asyncio.new_event_loop') as mock_new_loop:
+                    with patch('asyncio.set_event_loop') as mock_set_loop:
+                        # Create a mock loop
+                        mock_loop = MagicMock()
+                        mock_new_loop.return_value = mock_loop
+                        
+                        # Mock the run_until_complete method to raise the error
+                        mock_loop.run_until_complete.side_effect = BedrockError("Test error")
+                        
+                        # Create a processor with the mock context manager
+                        processor = Tier3Processor(context_manager=mock_context_manager)
+                        
+                        # Process the request
+                        response = processor.process(sample_classified_request)
+                        
+                        # Check that the response is a fallback response
+                        assert "sorry" in response.lower()
+                        # The actual response doesn't contain the word "error", so we'll check for other phrases
+                        assert "trouble" in response.lower() or "rephrase" in response.lower()
 
     @pytest.mark.asyncio
     async def test_process_with_conversation_history(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
@@ -187,39 +221,41 @@ class TestTier3Processor:
                 from backend.ai.companion.tier3.scenario_detection import ScenarioType
                 mock_detector.detect_scenario.return_value = ScenarioType.UNKNOWN
                 
-                # Mock the asyncio functions
-                with patch('asyncio.new_event_loop') as mock_new_loop:
-                    with patch('asyncio.set_event_loop') as mock_set_loop:
-                        # Create a mock loop
-                        mock_loop = MagicMock()
-                        mock_new_loop.return_value = mock_loop
-                        
-                        # Define the expected response
-                        response_text = "'Kippu' means 'ticket' in Japanese."
-                        
-                        # Configure the mock client to return the expected response
-                        mock_bedrock_client.generate.return_value = response_text
-                        
-                        # Mock the run_until_complete method to return the response
-                        mock_loop.run_until_complete.return_value = response_text
-                        
-                        # Add a conversation ID to the request
-                        sample_classified_request.additional_params = {"conversation_id": "test-conv-123"}
-                        
-                        # Create a processor with the mock context manager
-                        processor = Tier3Processor(context_manager=mock_context_manager)
-                        
-                        # Replace the scenario detector with our mock
-                        processor.scenario_detector = mock_detector
-                        
-                        # Process the request
-                        response = processor.process(sample_classified_request)
-                        
-                        # Check that the response is as expected
-                        assert response == response_text
-                        
-                        # Check that the context was updated
-                        mock_context_manager.update_context.assert_called_once()
+                # Mock the get_event_loop to raise RuntimeError (no running loop)
+                with patch('asyncio.get_event_loop', side_effect=RuntimeError("No running event loop")):
+                    # Mock the asyncio functions
+                    with patch('asyncio.new_event_loop') as mock_new_loop:
+                        with patch('asyncio.set_event_loop') as mock_set_loop:
+                            # Create a mock loop
+                            mock_loop = MagicMock()
+                            mock_new_loop.return_value = mock_loop
+                            
+                            # Define the expected response
+                            response_text = "'Kippu' means 'ticket' in Japanese."
+                            
+                            # Configure the mock client to return the expected response
+                            mock_bedrock_client.generate.return_value = response_text
+                            
+                            # Mock the run_until_complete method to return the response
+                            mock_loop.run_until_complete.return_value = response_text
+                            
+                            # Add a conversation ID to the request
+                            sample_classified_request.additional_params = {"conversation_id": "test-conv-123"}
+                            
+                            # Create a processor with the mock context manager
+                            processor = Tier3Processor(context_manager=mock_context_manager)
+                            
+                            # Replace the scenario detector with our mock
+                            processor.scenario_detector = mock_detector
+                            
+                            # Process the request
+                            response = processor.process(sample_classified_request)
+                            
+                            # Check that the response is as expected
+                            assert response == response_text
+                            
+                            # Check that the context was updated
+                            mock_context_manager.update_context.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_with_scenario_detection(self, sample_classified_request, mock_bedrock_client, mock_context_manager):

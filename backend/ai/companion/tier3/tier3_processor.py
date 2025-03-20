@@ -176,8 +176,16 @@ class Tier3Processor(Processor):
             )
             
             # Generate a response using the Bedrock client
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            try:
+                # Try to get the running event loop
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                # If no loop is running, create a new one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                should_close_loop = True
+            else:
+                should_close_loop = False
             
             # Define a function to generate a response
             async def generate_response():
@@ -189,9 +197,13 @@ class Tier3Processor(Processor):
                     prompt=prompt
                 )
             
-            # Generate the response
-            response = loop.run_until_complete(generate_response())
-            loop.close()
+            try:
+                # Generate the response
+                response = loop.run_until_complete(generate_response())
+            finally:
+                # Only close the loop if we created it
+                if should_close_loop:
+                    loop.close()
             
             # Parse and clean the response
             response = self._parse_response(response)

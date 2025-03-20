@@ -9,6 +9,7 @@ import pytest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime
+import unittest
 
 from backend.ai.companion.core.models import (
     CompanionRequest,
@@ -20,7 +21,7 @@ from backend.ai.companion.core.models import (
 from backend.ai.companion.core.prompt_manager import PromptManager
 from backend.ai.companion.core.conversation_manager import ConversationManager
 from backend.ai.companion.core.context_manager import ContextManager
-from backend.ai.companion.tier2.ollama_client import OllamaError
+from backend.ai.companion.tier2.ollama_client import OllamaError, OllamaClient
 from backend.ai.companion.tier2.tier2_processor import Tier2Processor
 
 
@@ -67,6 +68,109 @@ def mock_context_manager():
         ]
     }
     return context_manager
+
+
+class TestTier2Processor(unittest.TestCase):
+    """Test the Tier2Processor class."""
+
+    def setUp(self):
+        # Create a mock for get_config
+        self.get_config_patcher = patch('backend.ai.companion.tier2.tier2_processor.get_config')
+        self.mock_get_config = self.get_config_patcher.start()
+        
+        # Mock config
+        self.mock_config = {
+            "enabled": True,
+            "base_url": "http://test-ollama:11434/api",
+            "default_model": "test-model",
+            "cache_enabled": False,
+            "cache_dir": "/tmp/test-cache",
+            "cache_ttl": 3600,
+            "max_cache_entries": 100,
+            "max_cache_size_mb": 50
+        }
+        self.mock_get_config.return_value = self.mock_config
+        
+        # Mock OllamaClient
+        self.ollama_client_patcher = patch('backend.ai.companion.tier2.tier2_processor.OllamaClient')
+        self.mock_ollama_client_class = self.ollama_client_patcher.start()
+        self.mock_ollama_client = MagicMock(spec=OllamaClient)
+        self.mock_ollama_client_class.return_value = self.mock_ollama_client
+        
+    def tearDown(self):
+        self.get_config_patcher.stop()
+        self.ollama_client_patcher.stop()
+        
+    def test_tier2_processor_init_uses_config(self):
+        """Test that Tier2Processor uses configuration in initialization."""
+        processor = Tier2Processor()
+        
+        # Check that get_config was called with the expected arguments
+        self.mock_get_config.assert_called_with('tier2', {})
+        
+        # Check that OllamaClient was created with the right parameters
+        self.mock_ollama_client_class.assert_called_once_with(
+            base_url=self.mock_config["base_url"],
+            default_model=self.mock_config["default_model"],
+            cache_enabled=self.mock_config["cache_enabled"],
+            cache_dir=self.mock_config["cache_dir"],
+            cache_ttl=self.mock_config["cache_ttl"],
+            max_cache_entries=self.mock_config["max_cache_entries"],
+            max_cache_size_mb=self.mock_config["max_cache_size_mb"]
+        )
+        
+        # Check that the processor is using the config values
+        self.assertEqual(processor.enabled, self.mock_config["enabled"])
+    
+    def test_tier2_processor_respects_enabled_flag(self):
+        """Test that Tier2Processor respects the enabled flag from configuration."""
+        # Set enabled to False
+        self.mock_get_config.return_value = {"enabled": False}
+        
+        processor = Tier2Processor()
+        
+        # Create a mock request
+        request = MagicMock(spec=ClassifiedRequest)
+        request.intent = IntentCategory.VOCABULARY_HELP
+        request.complexity = ComplexityLevel.MODERATE
+        request.processing_tier = ProcessingTier.TIER_2
+        request.request_id = "test_request"
+        
+        # Check that processing is skipped when disabled
+        response = processor.process(request)
+        self.assertIn("disabled", response.lower())
+        
+        # Ensure OllamaClient was not called
+        self.mock_ollama_client.generate_response.assert_not_called()
+        
+        # Set enabled to True and check that processing happens
+        self.mock_get_config.return_value = {"enabled": True}
+        processor = Tier2Processor()
+        self.mock_ollama_client.generate_response.return_value = "Test response from Ollama"
+        
+        response = processor.process(request)
+        self.mock_ollama_client.generate_response.assert_called_once()
+        self.assertEqual(response, "Test response from Ollama")
+    
+    def test_tier2_processor_falls_back_to_defaults(self):
+        """Test that Tier2Processor falls back to defaults if config is missing."""
+        # Return None to simulate missing config
+        self.mock_get_config.return_value = None
+        
+        # Should use defaults for OllamaClient
+        processor = Tier2Processor()
+        self.assertTrue(processor.enabled)  # Default should be True
+        
+        # Check OllamaClient was created with default parameters
+        self.mock_ollama_client_class.assert_called_once()
+        
+        # Should use default parameters (no specific values)
+        call_args = self.mock_ollama_client_class.call_args[1]
+        self.assertEqual(call_args, {})
+
+
+if __name__ == '__main__':
+    unittest.main()
 
 
 class TestTier2Processor:
