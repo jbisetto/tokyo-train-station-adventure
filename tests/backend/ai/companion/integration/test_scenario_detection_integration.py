@@ -7,7 +7,7 @@ with the rest of the companion AI system.
 
 import pytest
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime
 
 from backend.ai.companion.core.models import (
@@ -41,14 +41,16 @@ def mock_context_manager():
 def mock_bedrock_client():
     """Create a mock Bedrock client for testing."""
     client = MagicMock()
-    client.generate_text.return_value = "This is a test response."
+    client.generate_text = AsyncMock(return_value="This is a test response.")
+    client.generate = AsyncMock(return_value="This is a test response.")
     return client
 
 
 class TestScenarioDetectionIntegration:
     """Integration tests for the scenario detection system."""
     
-    def test_scenario_detection_with_tier3_processor(self, mock_context_manager, mock_bedrock_client):
+    @pytest.mark.asyncio
+    async def test_scenario_detection_with_tier3_processor(self, mock_context_manager, mock_bedrock_client):
         """Test that the scenario detection system works with the Tier3Processor."""
         # Create a Tier3Processor with our mocks
         with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
@@ -69,7 +71,7 @@ class TestScenarioDetectionIntegration:
             )
             
             # Process the request
-            response = processor.process(request)
+            response = await processor.process(request)
             
             # Verify that the response is what we expect
             assert response == "This is a test response."

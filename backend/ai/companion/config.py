@@ -92,18 +92,23 @@ def get_config(section: str, default: Dict[str, Any] = None) -> Optional[Dict[st
         Configuration dictionary or default if not found
     """
     try:
-        if not os.path.exists(CONFIG_FILE_PATH):
-            logger.warning(f"Configuration file {CONFIG_FILE_PATH} not found, using defaults")
+        config_path = os.environ.get('COMPANION_CONFIG', 'config/companion.yaml')
+        
+        if not os.path.exists(config_path):
+            logger.warning(f"Configuration file {config_path} not found, using defaults")
             return default
             
-        with open(CONFIG_FILE_PATH, 'r') as f:
+        with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
             
         if config is None:
-            logger.warning(f"Configuration file {CONFIG_FILE_PATH} is empty, using defaults")
+            logger.warning(f"Configuration file {config_path} is empty, using defaults")
             return default
-            
-        logger.info(f"Loaded configuration from {CONFIG_FILE_PATH}")
+        
+        # Only log at INFO level for production config, DEBUG for test config
+        is_test_config = 'test' in config_path
+        log_level = logging.DEBUG if is_test_config else logging.INFO
+        logger.log(log_level, f"Loaded configuration from {config_path}")
         
         # Return the specified section or default if not found
         if section in config:

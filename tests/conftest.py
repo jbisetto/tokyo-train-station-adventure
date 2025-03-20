@@ -7,6 +7,8 @@ This module contains pytest fixtures and configuration for testing.
 import pytest
 import sys
 import os
+import yaml
+from pathlib import Path
 
 # Add the project root to the Python path to allow imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -37,4 +39,30 @@ def sample_companion_request():
         request_id=str(uuid.uuid4()),
         player_input="Where is the ticket machine?",
         request_type="assistance"
-    ) 
+    )
+
+@pytest.fixture(autouse=True)
+def mock_config_path():
+    """Override the configuration path for tests.
+    
+    This fixture runs automatically for all tests and sets the COMPANION_CONFIG
+    environment variable to point to our test configuration file.
+    """
+    original_path = os.environ.get('COMPANION_CONFIG')
+    test_config_path = str(Path(__file__).parent / 'fixtures' / 'test_companion.yaml')
+    
+    # Make sure the test config file exists
+    if not os.path.exists(test_config_path):
+        raise FileNotFoundError(f"Test configuration file not found at {test_config_path}")
+    
+    # Set the environment variable to use our test configuration
+    os.environ['COMPANION_CONFIG'] = test_config_path
+    
+    # Run the test
+    yield
+    
+    # Restore the original environment
+    if original_path:
+        os.environ['COMPANION_CONFIG'] = original_path
+    else:
+        os.environ.pop('COMPANION_CONFIG', None) 

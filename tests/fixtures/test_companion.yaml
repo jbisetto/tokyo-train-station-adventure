@@ -1,0 +1,21 @@
+tier1:
+  enabled: true
+  default_model: "rule-based-test"
+
+tier2:
+  enabled: true
+  base_url: "http://test-ollama:11434/api"
+  default_model: "test-model"
+  cache_enabled: false
+  cache_dir: "/tmp/test-cache"
+  cache_ttl: 3600
+  max_cache_entries: 100
+  max_cache_size_mb: 50
+
+tier3:
+  enabled: true
+  region_name: "us-test-1"
+  model_id: "test.model-id"
+  max_tokens: 100
+  temperature: 0.7
+  top_p: 0.95 

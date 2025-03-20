@@ -8,6 +8,7 @@ and route them to the appropriate specialized handlers.
 import enum
 import logging
 from typing import Dict, Any, Optional, List, Callable
+import asyncio
 
 from backend.ai.companion.core.models import (
     ClassifiedRequest,
@@ -101,7 +102,7 @@ class ScenarioDetector:
         """
         return self._handlers.get(scenario_type)
     
-    def handle_scenario(
+    async def handle_scenario(
         self,
         request: ClassifiedRequest,
         context_manager: ContextManager,
@@ -127,17 +128,26 @@ class ScenarioDetector:
         if handler is None:
             logger.warning(f"No handler available for scenario: {scenario_type.value}")
             # Fall back to a generic response
-            return bedrock_client.generate_text(
-                prompt=f"The player asked: '{request.player_input}'. Provide a helpful response.",
-                max_tokens=300
-            )
+            if asyncio.iscoroutinefunction(bedrock_client.generate_text):
+                return await bedrock_client.generate_text(
+                    prompt=f"The player asked: '{request.player_input}'. Provide a helpful response.",
+                    max_tokens=300
+                )
+            else:
+                return bedrock_client.generate_text(
+                    prompt=f"The player asked: '{request.player_input}'. Provide a helpful response.",
+                    max_tokens=300
+                )
         
         # Get the conversation context
         context = context_manager.get_context(request.additional_params.get("conversation_id", ""))
         
         # Handle the scenario
         logger.info(f"Handling scenario: {scenario_type.value} with handler: {handler.__class__.__name__}")
-        return handler.handle(request, context, bedrock_client)
+        if asyncio.iscoroutinefunction(handler.handle):
+            return await handler.handle(request, context, bedrock_client)
+        else:
+            return handler.handle(request, context, bedrock_client)
     
     # Scenario detection rules
     

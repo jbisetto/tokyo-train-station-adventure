@@ -3,6 +3,7 @@ import os
 import tempfile
 import yaml
 from unittest.mock import patch, mock_open
+import logging
 
 from backend.ai.companion.config import get_config
 
@@ -86,17 +87,23 @@ class TestConfig(unittest.TestCase):
         """Test that get_config logs information about loading the configuration."""
         config_content = {"test": "value"}
         
-        # Mock the open function and os.path.exists
+        # Mock the open function
         with patch("builtins.open", mock_open(read_data=yaml.dump(config_content))):
             with patch("os.path.exists", return_value=True):
-                with patch("backend.ai.companion.config.logger.info") as mock_info:
-                    with patch("backend.ai.companion.config.logger.debug") as mock_debug:
+                # Set the path to a name that contains 'test' to ensure DEBUG level is used
+                path_with_test = "config/test_companion.yaml"
+                with patch("os.environ.get", return_value=path_with_test):
+                    # Mock the loggers
+                    with patch("backend.ai.companion.config.logger") as mock_logger:
                         # Call get_config
                         get_config("test")
                         
-                        # Check that logging was called with the expected messages
-                        mock_info.assert_any_call("Loaded configuration from config/companion.yaml")
-                        mock_debug.assert_any_call("Found configuration for section 'test'")
+                        # Verify the logger was called with the correct log level and message
+                        mock_logger.log.assert_any_call(
+                            logging.DEBUG,  # Debug level because path contains 'test'
+                            f"Loaded configuration from {path_with_test}"
+                        )
+                        mock_logger.debug.assert_any_call("Found configuration for section 'test'")
 
 
 if __name__ == '__main__':

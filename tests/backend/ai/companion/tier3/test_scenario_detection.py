@@ -9,6 +9,7 @@ import pytest
 import uuid
 from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
+import asyncio
 
 from backend.ai.companion.core.models import (
     ClassifiedRequest,
@@ -27,51 +28,38 @@ from backend.ai.companion.tier3.context_manager import (
 @pytest.fixture
 def sample_context():
     """Create a sample conversation context for testing."""
-    context = ConversationContext(
-        conversation_id="conv-123",
-        player_id="player-456",
-        player_language_level="N5",
-        current_location="ticket_counter",
-        created_at=datetime.now() - timedelta(minutes=10),
-        updated_at=datetime.now() - timedelta(minutes=5)
+    context = ConversationContext()
+    context.player_language_level = "intermediate"
+    context.current_location = "Tokyo Station"
+    
+    # Create proper ContextEntry instances
+    entry1 = ContextEntry(
+        request="How do I get to Shibuya?",
+        response="To get to Shibuya from Tokyo Station, you need to take the JR Yamanote Line. Follow the green signs to the JR lines, then look for the Yamanote Line platform. The train to Shibuya is on Platform 10.",
+        intent=IntentCategory.DIRECTION_GUIDANCE,
+        entities={"destination": "Shibuya"}
     )
     
-    # Add some entries to the context
-    context.entries = [
-        ContextEntry(
-            request="What does 'kippu' mean?",
-            response="'Kippu' means 'ticket' in Japanese.",
-            timestamp=datetime.now() - timedelta(minutes=5),
-            intent=IntentCategory.VOCABULARY_HELP,
-            entities={"word": "kippu"}
-        ),
-        ContextEntry(
-            request="How do I ask for a ticket to Odawara?",
-            response="You can say 'Odawara made no kippu o kudasai'.",
-            timestamp=datetime.now() - timedelta(minutes=3),
-            intent=IntentCategory.TRANSLATION_CONFIRMATION,
-            entities={"destination": "Odawara"}
-        )
-    ]
-    
+    context.add_entry(entry1)
     return context
 
 
 @pytest.fixture
 def sample_classified_request():
     """Create a sample classified request for testing."""
-    return ClassifiedRequest(
-        request_id=str(uuid.uuid4()),
-        player_input="I want to buy a ticket to Tokyo",
-        request_type="transaction",
-        timestamp=datetime.now(),
+    request = ClassifiedRequest(
+        request_id="test-123",
+        player_input="How do I buy a ticket to Tokyo?",
+        request_type="general",
         intent=IntentCategory.GENERAL_HINT,
-        complexity=ComplexityLevel.COMPLEX,
+        complexity=ComplexityLevel.MODERATE,
         processing_tier=ProcessingTier.TIER_3,
+        game_context=None,
+        additional_params={"conversation_id": "conv-123"},
         confidence=0.9,
-        extracted_entities={"destination": "Tokyo"},
-        additional_params={"conversation_id": "conv-123"}
+        extracted_entities={"destination": "Tokyo"}
     )
+    return request
 
 
 class TestScenarioDetector:
@@ -197,7 +185,8 @@ class TestScenarioDetector:
         assert handler is not None
         assert hasattr(handler, 'handle')
     
-    def test_handle_scenario(self, sample_classified_request, sample_context):
+    @pytest.mark.asyncio
+    async def test_handle_scenario(self, sample_classified_request, sample_context):
         """Test handling a detected scenario."""
         from backend.ai.companion.tier3.scenario_detection import ScenarioDetector
         
@@ -212,7 +201,7 @@ class TestScenarioDetector:
         sample_classified_request.intent = IntentCategory.GENERAL_HINT
         sample_classified_request.extracted_entities = {"destination": "Tokyo"}
         
-        response = detector.handle_scenario(
+        response = await detector.handle_scenario(
             sample_classified_request,
             context_manager,
             bedrock_client
@@ -222,7 +211,8 @@ class TestScenarioDetector:
         assert "Tokyo" in response
         assert "ticket" in response
     
-    def test_integration_with_tier3_processor(self, sample_classified_request):
+    @pytest.mark.asyncio
+    async def test_integration_with_tier3_processor(self, sample_classified_request):
         """Test integration with the Tier3Processor."""
         from backend.ai.companion.tier3.scenario_detection import (
             ScenarioDetector,
@@ -242,7 +232,7 @@ class TestScenarioDetector:
             return_value=ScenarioType.TICKET_PURCHASE
         ):
             # Test the handle_scenario method
-            response = detector.handle_scenario(
+            response = await detector.handle_scenario(
                 sample_classified_request,
                 context_manager,
                 bedrock_client
