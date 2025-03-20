@@ -83,32 +83,19 @@ class RequestHandler:
                 extracted_entities=entities
             )
             
-            # Log the tier selection at INFO level
-            self.logger.info(f"Request {request_id} routed to {tier.name} processor with intent={intent.name}, complexity={complexity.name}, confidence={confidence:.2f}")
+            # Log the initial tier selection at INFO level
+            self.logger.info(f"Request {request_id} initially classified for {tier.name} processing with intent={intent.name}, complexity={complexity.name}, confidence={confidence:.2f}")
             
-            # Get the appropriate processor for the tier
-            self.logger.debug(f"Getting processor for tier {tier.name}: {request_id}")
+            # Try to get a processor using the cascade pattern
             processor_start = time.time()
-            processor = self.processor_factory.get_processor(tier)
-            self.logger.debug(f"Using processor: {processor.__class__.__name__}: {request_id}")
-            
-            # Process the request
-            self.logger.debug(f"Processing request with {processor.__class__.__name__}: {request_id}")
-            # Check if the processor's process method is async
-            is_async = inspect.iscoroutinefunction(processor.process)
-            self.logger.debug(f"Processor.process is {'async' if is_async else 'sync'}: {request_id}")
-            
-            if is_async:
-                # If it's async, await it
-                self.logger.debug(f"Awaiting async processor.process: {request_id}")
-                processor_response = await processor.process(classified_request)
-            else:
-                # If it's not async, call it normally
-                self.logger.debug(f"Calling sync processor.process: {request_id}")
-                processor_response = processor.process(classified_request)
-                
+            processor_response = await self._process_with_cascade(classified_request, tier)
             processor_time = time.time() - processor_start
             self.logger.debug(f"Request processed in {processor_time:.3f}s: {request_id}")
+            
+            # Check if the response is a special error message that should be returned directly
+            if isinstance(processor_response, str) and "All AI services are currently disabled" in processor_response:
+                self.logger.warning(f"Returning error message directly: {processor_response}")
+                return processor_response
             
             # Format the response
             self.logger.debug(f"Formatting response: {request_id}")
@@ -146,4 +133,90 @@ class RequestHandler:
             self.logger.debug(traceback.format_exc())
             
             # Return a fallback response
-            return f"I'm sorry, I encountered an error while processing your request. Please try again." 
+            return f"I'm sorry, I encountered an error while processing your request. Please try again."
+    
+    async def _process_with_cascade(self, classified_request: ClassifiedRequest, 
+                             preferred_tier: ProcessingTier) -> str:
+        """
+        Process a request using the cascade pattern.
+        
+        This method attempts to process the request with the preferred tier.
+        If that fails (e.g., because the tier is disabled), it will try the next
+        tier in the cascade order.
+        
+        Args:
+            classified_request: The classified request to process
+            preferred_tier: The preferred processing tier
+            
+        Returns:
+            The processor response
+            
+        Raises:
+            Exception: If no processors are available or all processing attempts fail
+        """
+        # Define the cascade order based on the preferred tier
+        cascade_order = self._get_cascade_order(preferred_tier)
+        
+        # Try each tier in the cascade order
+        errors = []
+        for tier in cascade_order:
+            try:
+                self.logger.debug(f"Attempting to process request {classified_request.request_id} with {tier.name}")
+                
+                # Get a processor for this tier
+                processor = self.processor_factory.get_processor(tier)
+                
+                # Update the processing tier in the classified request
+                classified_request.processing_tier = tier
+                
+                # Log that we're using this tier
+                self.logger.info(f"Processing request {classified_request.request_id} with {tier.name} processor")
+                
+                # Check if the processor's process method is async
+                is_async = inspect.iscoroutinefunction(processor.process)
+                
+                if is_async:
+                    # If it's async, await it
+                    return await processor.process(classified_request)
+                else:
+                    # If it's not async, call it normally
+                    return processor.process(classified_request)
+                
+            except Exception as e:
+                # Log the error and continue with the next tier
+                self.logger.warning(f"Failed to process request {classified_request.request_id} with {tier.name} processor: {str(e)}")
+                errors.append(f"{tier.name}: {str(e)}")
+        
+        # If we get here, all tiers failed
+        self.logger.error(f"All processing tiers failed for request {classified_request.request_id}: {errors}")
+        
+        # Check if all errors are due to tiers being disabled
+        if all("is disabled in configuration" in error for error in errors):
+            # If all tiers are disabled, return a direct error message without formatting
+            error_message = "All AI services are currently disabled. Please check your configuration."
+            return error_message
+        else:
+            raise Exception(f"Failed to process request with any tier: {errors}")
+    
+    def _get_cascade_order(self, preferred_tier: ProcessingTier) -> list:
+        """
+        Get the cascade order for a preferred tier.
+        
+        Args:
+            preferred_tier: The preferred tier level
+            
+        Returns:
+            List of tier levels in cascade order
+        """
+        # Start with the preferred tier
+        order = [preferred_tier]
+        
+        # Add the remaining tiers in a sensible order
+        if preferred_tier == ProcessingTier.TIER_1:
+            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_3])
+        elif preferred_tier == ProcessingTier.TIER_2:
+            order.extend([ProcessingTier.TIER_3, ProcessingTier.TIER_1])
+        else:  # TIER_3
+            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_1])
+        
+        return order 

@@ -4,7 +4,8 @@ Tests for the Request Handler component.
 
 import pytest
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, Mock
+import logging
 
 from backend.ai.companion.core.models import (
     CompanionRequest,
@@ -14,6 +15,7 @@ from backend.ai.companion.core.models import (
     ComplexityLevel,
     ProcessingTier
 )
+from backend.ai.companion.core.request_handler import RequestHandler
 
 
 @pytest.fixture
@@ -177,4 +179,157 @@ class TestRequestHandler:
         response = await handler.handle_request(request)
         
         # Check that the error was handled and a fallback response was returned
-        assert "error" in response.lower() or "sorry" in response.lower() 
+        assert "error" in response.lower() or "sorry" in response.lower()
+
+
+class TestRequestHandlerCascade:
+    """Test the cascade functionality in the RequestHandler."""
+    
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        """Set up the test environment."""
+        # Create mock components
+        self.intent_classifier = Mock()
+        self.processor_factory = Mock()
+        self.response_formatter = Mock()
+        
+        # Configure the response formatter
+        self.response_formatter.format_response.return_value = "Formatted response"
+        
+        # Create the request handler
+        self.handler = RequestHandler(
+            intent_classifier=self.intent_classifier,
+            processor_factory=self.processor_factory,
+            response_formatter=self.response_formatter
+        )
+        
+        # Create a sample request
+        self.sample_request = CompanionRequest(
+            request_id="test-id",
+            player_input="Help me with directions",
+            request_type="general_query"
+        )
+        
+        # Configure the intent classifier
+        self.intent_classifier.classify.return_value = (
+            IntentCategory.GENERAL_HINT,
+            ComplexityLevel.MODERATE,
+            ProcessingTier.TIER_2,
+            0.85,
+            {}
+        )
+        
+        # Create mock processors
+        self.mock_tier1_processor = Mock()
+        self.mock_tier2_processor = Mock()
+        self.mock_tier3_processor = Mock()
+        
+        # Configure processors' responses
+        self.mock_tier1_processor.process.return_value = "Tier 1 response"
+        self.mock_tier2_processor.process.return_value = "Tier 2 response"
+        self.mock_tier3_processor.process.return_value = "Tier 3 response"
+    
+    @pytest.mark.asyncio
+    async def test_cascade_order(self):
+        """Test that the cascade order is correct for different tiers."""
+        # Test TIER_1 cascade order
+        order = self.handler._get_cascade_order(ProcessingTier.TIER_1)
+        assert order == [ProcessingTier.TIER_1, ProcessingTier.TIER_2, ProcessingTier.TIER_3]
+        
+        # Test TIER_2 cascade order
+        order = self.handler._get_cascade_order(ProcessingTier.TIER_2)
+        assert order == [ProcessingTier.TIER_2, ProcessingTier.TIER_3, ProcessingTier.TIER_1]
+        
+        # Test TIER_3 cascade order
+        order = self.handler._get_cascade_order(ProcessingTier.TIER_3)
+        assert order == [ProcessingTier.TIER_3, ProcessingTier.TIER_2, ProcessingTier.TIER_1]
+    
+    @pytest.mark.asyncio
+    async def test_process_with_preferred_tier(self):
+        """Test processing with the preferred tier when it's available."""
+        # Configure the processor factory to return our mock processor for TIER_2
+        self.processor_factory.get_processor.return_value = self.mock_tier2_processor
+        
+        # Process the request
+        response = await self.handler.handle_request(self.sample_request)
+        
+        # Check that we only tried to get a processor for TIER_2
+        self.processor_factory.get_processor.assert_called_once_with(ProcessingTier.TIER_2)
+        
+        # Check that we used the TIER_2 processor
+        self.mock_tier2_processor.process.assert_called_once()
+        
+        # Check that the response was formatted
+        self.response_formatter.format_response.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_cascade_to_next_tier(self):
+        """Test cascading to the next tier when the preferred tier is unavailable."""
+        # Configure the processor factory to raise an error for TIER_2 and return our mock processor for TIER_3
+        def get_processor_side_effect(tier):
+            if tier == ProcessingTier.TIER_2:
+                raise ValueError("TIER_2 is disabled in configuration")
+            elif tier == ProcessingTier.TIER_3:
+                return self.mock_tier3_processor
+            return None
+        
+        self.processor_factory.get_processor.side_effect = get_processor_side_effect
+        
+        # Process the request
+        response = await self.handler.handle_request(self.sample_request)
+        
+        # Check that we tried to get processors for TIER_2 and TIER_3
+        assert self.processor_factory.get_processor.call_count == 2
+        assert self.processor_factory.get_processor.call_args_list[0][0][0] == ProcessingTier.TIER_2
+        assert self.processor_factory.get_processor.call_args_list[1][0][0] == ProcessingTier.TIER_3
+        
+        # Check that we used the TIER_3 processor
+        self.mock_tier3_processor.process.assert_called_once()
+        
+        # Check that the response was formatted
+        self.response_formatter.format_response.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_all_tiers_disabled(self):
+        """Test handling when all tiers are disabled."""
+        # Configure the processor factory to raise an error for all tiers
+        self.processor_factory.get_processor.side_effect = ValueError("Tier is disabled in configuration")
+        
+        # Process the request
+        response = await self.handler.handle_request(self.sample_request)
+        
+        # Check that we tried all tiers
+        assert self.processor_factory.get_processor.call_count == 3
+        
+        # Check that the response formatter was not called (we return an error directly)
+        self.response_formatter.format_response.assert_not_called()
+        
+        # Check that the response indicates that all services are disabled
+        assert "All AI services are currently disabled" in response
+    
+    @pytest.mark.asyncio
+    async def test_tier_fails_with_other_error(self):
+        """Test handling when a tier fails with an error other than being disabled."""
+        # Configure the processor factory to raise different errors for each tier
+        def get_processor_side_effect(tier):
+            if tier == ProcessingTier.TIER_2:
+                raise ValueError("Some other error")
+            elif tier == ProcessingTier.TIER_3:
+                raise RuntimeError("Another error")
+            elif tier == ProcessingTier.TIER_1:
+                raise Exception("Yet another error")
+            return None
+        
+        self.processor_factory.get_processor.side_effect = get_processor_side_effect
+        
+        # Process the request
+        response = await self.handler.handle_request(self.sample_request)
+        
+        # Check that we tried all tiers
+        assert self.processor_factory.get_processor.call_count == 3
+        
+        # Check that the response formatter was not called (we return an error directly)
+        self.response_formatter.format_response.assert_not_called()
+        
+        # Check that the response is a general error (not related to disabled tiers)
+        assert "I'm sorry, I encountered an error" in response 

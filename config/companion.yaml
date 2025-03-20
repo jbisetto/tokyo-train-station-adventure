@@ -12,7 +12,7 @@ tier1:
   enabled: false
   default_model: llama3
 tier2:
-  enabled: true
+  enabled: false
   ollama:
     base_url: http://localhost:11434
     cache_dir: null

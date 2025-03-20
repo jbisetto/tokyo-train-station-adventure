@@ -199,6 +199,11 @@ class ProcessorFactory:
             cls._instance = super(ProcessorFactory, cls).__new__(cls)
         return cls._instance
     
+    @classmethod
+    def clear_cache(cls):
+        """Clear the processor cache. Used primarily for testing."""
+        cls._processors = {}
+    
     def get_processor(self, tier: ProcessingTier) -> Processor:
         """
         Get a processor for the specified tier.
@@ -208,12 +213,33 @@ class ProcessorFactory:
             
         Returns:
             A processor for the specified tier
+            
+        Raises:
+            ValueError: If the tier is disabled in configuration or unknown
         """
         # If we already have a processor for this tier, return it
         if tier in self._processors:
             return self._processors[tier]
         
-        # Otherwise, create a new processor
+        # Import here to avoid circular imports
+        from backend.ai.companion.config import get_config
+        
+        # Handle both string and ProcessingTier enum
+        tier_value = tier.value if hasattr(tier, 'value') else tier
+        
+        # For string values, check if they're valid ProcessingTier values
+        if isinstance(tier_value, str) and not any(tier_value == t.value for t in ProcessingTier):
+            raise ValueError(f"Unknown processing tier: {tier}")
+        
+        # Check if the tier is enabled
+        tier_config_key = tier_value  # Use the actual tier value as the config key
+        tier_config = get_config(tier_config_key, {})
+        
+        # If tier config exists and enabled is False, raise an error
+        if tier_config is not None and tier_config.get('enabled') is False:
+            raise ValueError(f"{tier} is disabled in configuration")
+        
+        # Create a new processor
         if tier == ProcessingTier.TIER_1:
             from backend.ai.companion.tier1.tier1_processor import Tier1Processor
             processor = Tier1Processor()

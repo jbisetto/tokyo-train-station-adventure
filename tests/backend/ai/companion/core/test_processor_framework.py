@@ -312,19 +312,27 @@ class TestProcessorFactory:
         from backend.ai.companion.core.processor_framework import ProcessorFactory
         from backend.ai.companion.tier1.tier1_processor import Tier1Processor
         
-        factory = ProcessorFactory()
-        
-        processor = factory.get_processor(ProcessingTier.TIER_1)
-        
-        assert processor is not None
-        assert isinstance(processor, Tier1Processor)
+        # Mock the config to enable tier1
+        with patch('backend.ai.companion.config.get_config') as mock_get_config:
+            mock_get_config.return_value = {'enabled': True}
+            
+            factory = ProcessorFactory()
+            
+            processor = factory.get_processor(ProcessingTier.TIER_1)
+            
+            assert processor is not None
+            assert isinstance(processor, Tier1Processor)
     
     def test_get_processor_tier2(self):
         """Test getting a Tier2Processor from the factory."""
         from backend.ai.companion.core.processor_framework import ProcessorFactory
         from backend.ai.companion.tier2.tier2_processor import Tier2Processor
         
-        with patch('backend.ai.companion.tier2.tier2_processor.OllamaClient'):
+        # Mock both the config and OllamaClient
+        with patch('backend.ai.companion.config.get_config') as mock_get_config, \
+             patch('backend.ai.companion.tier2.tier2_processor.OllamaClient'):
+            mock_get_config.return_value = {'enabled': True}
+            
             factory = ProcessorFactory()
             
             processor = factory.get_processor(ProcessingTier.TIER_2)
@@ -337,7 +345,11 @@ class TestProcessorFactory:
         from backend.ai.companion.core.processor_framework import ProcessorFactory
         from backend.ai.companion.tier3.tier3_processor import Tier3Processor
         
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient'):
+        # Mock both the config and BedrockClient
+        with patch('backend.ai.companion.config.get_config') as mock_get_config, \
+             patch('backend.ai.companion.tier3.tier3_processor.BedrockClient'):
+            mock_get_config.return_value = {'enabled': True}
+            
             factory = ProcessorFactory()
             
             processor = factory.get_processor(ProcessingTier.TIER_3)
@@ -365,4 +377,33 @@ class TestProcessorFactory:
         factory1 = ProcessorFactory()
         factory2 = ProcessorFactory()
         
-        assert factory1 is factory2 
+        assert factory1 is factory2
+    
+    def test_get_processor_disabled_tier(self):
+        """Test getting a processor for a disabled tier raises a ValueError."""
+        from backend.ai.companion.core.processor_framework import ProcessorFactory
+        from backend.ai.companion.core.models import ProcessingTier
+
+        # Clear the factory cache to ensure we don't have any cached processors
+        ProcessorFactory.clear_cache()
+
+        # Test with a mock that allows us to see what's being passed
+        with patch('backend.ai.companion.config.get_config') as mock_get_config:
+            # Add a debug print to track calls
+            def config_side_effect(section, default=None):
+                print(f"Section requested: {section}")
+                if section == 'tier_1':  # Use the correct tier value format from the enum
+                    return {'enabled': False}
+                return {'enabled': True}
+
+            mock_get_config.side_effect = config_side_effect
+
+            factory = ProcessorFactory()
+
+            # Try to get a processor for the disabled tier
+            with pytest.raises(ValueError) as excinfo:
+                result = factory.get_processor(ProcessingTier.TIER_1)  # Use the actual enum
+                print(f"Result: {result}")  # This should not execute if the exception is raised
+
+            # Check that the error message says the tier is disabled
+            assert "disabled in configuration" in str(excinfo.value) 
