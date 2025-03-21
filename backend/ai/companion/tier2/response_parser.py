@@ -52,6 +52,13 @@ class ResponseParser:
         # For test compatibility, handle string responses directly
         if isinstance(raw_response, str):
             logger.debug("Received string response, parsing as test input")
+            
+            # Validate the response before proceeding
+            validated_response = self._validate_raw_response(raw_response)
+            if validated_response != raw_response:
+                logger.warning(f"Response was malformed and has been replaced with a fallback")
+                return validated_response
+                
             formatted_response = raw_response
             
             # If no request is provided (test scenario), return the raw response
@@ -321,4 +328,29 @@ Related words:
             pronunciation=pronunciation,
             examples=examples_text,
             related=related_text
-        ) 
+        )
+
+    def _validate_raw_response(self, response: str) -> str:
+        """
+        Validate the raw response to catch malformed or nonsensical responses.
+        
+        Args:
+            response: The raw response from the language model
+            
+        Returns:
+            Either the original response if valid, or a fallback response
+        """
+        # Check for empty response
+        if not response or len(response.strip()) < 10:
+            return "I'm sorry, I couldn't generate a proper response. Please try again."
+            
+        # Check for repetitive patterns that indicate malformed responses
+        if re.search(r'Hachi:\s*$', response) or re.search(r'Hachi:\s*√', response):
+            return "I'm sorry, I encountered an error while processing your request. Please try again."
+            
+        # Check for responses that are just repeating "Hachi:" multiple times
+        hachi_count = response.count("Hachi:")
+        if hachi_count > 2 and len(response.replace("Hachi:", "").strip()) < 20:
+            return "I'm sorry, I couldn't generate a proper response. Please try again."
+            
+        return response 

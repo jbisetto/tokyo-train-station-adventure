@@ -9,16 +9,19 @@ import logging
 import time
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
+import re
+import uuid
+import asyncio
 
 from backend.ai.companion.core.models import ClassifiedRequest, ComplexityLevel, ProcessingTier
 from backend.ai.companion.core.processor_framework import Processor, ProcessorFactory
-from backend.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
-from backend.ai.companion.core.prompt_manager import PromptManager
+from backend.ai.companion.core.context_manager import ContextManager
 from backend.ai.companion.core.conversation_manager import ConversationManager
-from backend.ai.companion.core.context_manager import ContextManager, default_context_manager
-from backend.ai.companion.tier2.response_parser import ResponseParser
+from backend.ai.companion.core.prompt_manager import PromptManager
 from backend.ai.companion.utils.monitoring import ProcessorMonitor
 from backend.ai.companion.utils.retry import RetryConfig, retry_async
+from backend.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
+from backend.ai.companion.tier2.response_parser import ResponseParser
 from backend.ai.companion.config import get_config
 from backend.ai.companion.core.player_history_manager import PlayerHistoryManager
 
@@ -27,11 +30,9 @@ logger = logging.getLogger(__name__)
 
 class Tier2Processor(Processor):
     """
-    Tier 2 processor for the companion AI system.
+    Tier 2 processor for the Companion AI.
     
-    This processor uses the Ollama client to generate responses using local
-    language models. It selects the appropriate model based on the complexity
-    of the request and handles errors gracefully.
+    This processor uses a local Ollama instance to generate responses.
     """
     
     # Default retry configuration
@@ -90,7 +91,7 @@ class Tier2Processor(Processor):
         self.conversation_manager = ConversationManager(tier_specific_config=tier2_conversation_config)
         
         # Use the common ContextManager
-        self.context_manager = context_manager or default_context_manager
+        self.context_manager = context_manager or ContextManager()
         
         self.response_parser = ResponseParser()
         self.monitor = ProcessorMonitor()
@@ -104,80 +105,54 @@ class Tier2Processor(Processor):
         
         logger.debug("Initialized Tier2Processor with common components")
     
-    async def process(self, request: ClassifiedRequest) -> Dict[str, Any]:
+    async def process(self, request: ClassifiedRequest) -> str:
         """
         Process a request with the Tier 2 processor.
         
         Args:
-            request: The classified request to process
+            request: The request to process
             
         Returns:
-            A dictionary containing the response and metadata
+            The generated response text
         """
+        start_time = time.time()  # Add timing at the beginning
         success = False
-        error = None
-        response = None
+        used_processing_tier = ProcessingTier.TIER_2
         
-        # Check if the tier is enabled
-        if not self.enabled:
-            logger.warning("Tier 2 processor is disabled in the configuration")
-            raise RuntimeError("Tier 2 processor is disabled")
-        
-        # Default to Tier 2
+        # Record the request
+        if hasattr(self, 'monitor'):
+            self.monitor.track_request("tier2", request.request_id)
         
         try:
-            # Get or create conversation history
-            conversation_id = request.additional_params.get("conversation_id", request.request_id)
-            player_id = request.additional_params.get("player_id")
+            # Check if the context manager is available
+            if not hasattr(self, 'context_manager') or self.context_manager is None:
+                logger.warning("No context manager available, creating a default one")
+                self.context_manager = ContextManager()
             
-            # Use player history if available
-            player_history = []
-            if player_id and hasattr(self, 'player_history_manager'):
-                player_history = self.player_history_manager.get_player_history(player_id)
-                logger.debug(f"Retrieved player history for {player_id}, found {len(player_history)} entries")
+            # Initialize the client if needed
+            if not hasattr(self, 'ollama_client') or self.ollama_client is None:
+                self.ollama_client = self._create_ollama_client()
             
-            # Initialize conversation history from player history if not already in cache
-            if conversation_id not in self.conversation_histories:
-                self.conversation_histories[conversation_id] = []
-                # If we have player history, convert it to the format expected by this processor
-                if player_history:
-                    for entry in player_history:
-                        if 'user_query' in entry and 'assistant_response' in entry:
-                            # Use role/content format like Tier3 instead of type/text for consistency
-                            self.conversation_histories[conversation_id].append({
-                                "role": "user",
-                                "content": entry['user_query'],
-                                "timestamp": entry.get('timestamp', datetime.now().isoformat())
-                            })
-                            self.conversation_histories[conversation_id].append({
-                                "role": "assistant",
-                                "content": entry['assistant_response'],
-                                "timestamp": entry.get('timestamp', datetime.now().isoformat())
-                            })
+            # Get the model to use based on the request complexity
+            model = self._select_model_based_on_complexity(request.complexity if hasattr(request, 'complexity') else ComplexityLevel.MEDIUM)
             
-            conversation_history = self.conversation_histories[conversation_id]
+            # Generate the prompt based on the request type and intent
+            prompt = self.prompt_manager.create_prompt(request)
             
-            # Select the appropriate model based on complexity
-            model = self._select_model(request.complexity)
-            logger.info(f"Selected model {model} for request {request.request_id} with complexity {request.complexity.value}")
+            # Get the conversation ID from the request, or generate a new one
+            conversation_id = request.additional_params.get("conversation_id", str(uuid.uuid4()))
             
-            # Create a prompt using the common prompt manager
-            base_prompt = self.prompt_manager.create_prompt(request)
+            # Get the conversation history from memory, or create a new one
+            conversation_history = self.conversation_histories.get(conversation_id, [])
             
-            # Instead of using ConversationManager to generate the prompt,
-            # use the PromptManager's create_contextual_prompt method directly
-            prompt = self.prompt_manager.create_contextual_prompt(request, conversation_history)
-            logger.debug(f"Created contextual prompt using player history with {len(conversation_history)} entries")
-            
-            # Try to generate a response with retries for transient errors
-            logger.info(f"Attempting to generate response for request {request.request_id} with model {model}")
+            # Generate the response
             response, error = await self._generate_with_retries(request, model, prompt)
             
             # If we got a response, update conversation history and return it
             if response:
-                logger.info(f"Successfully generated response for request {request.request_id} with model {model}")
+                logger.info(f"Successfully generated response for request {request.request_id}")
                 
-                # Update conversation history
+                # Add to conversation history
                 self.conversation_histories[conversation_id] = self.conversation_manager.add_to_history(
                     conversation_history,
                     request,
@@ -193,6 +168,7 @@ class Tier2Processor(Processor):
                     )
                 
                 # Update player history if we have player_id and player_history_manager
+                player_id = request.additional_params.get("player_id")
                 if player_id and hasattr(self, 'player_history_manager'):
                     self.player_history_manager.add_interaction(
                         player_id=player_id,
@@ -207,34 +183,13 @@ class Tier2Processor(Processor):
                 
                 success = True
                 
-                # Store the processing tier in additional params so it's available to the API
+                # Store the processing tier in additional params but return just the text
                 request.additional_params["processing_tier"] = ProcessingTier.TIER_2.value
-                
-                # Return in the same format as Tier3
-                if isinstance(response, tuple) and len(response) > 0:
-                    response_text = response[0]
-                else:
-                    response_text = response
-                
-                # Handle case where response_text is a dictionary
-                if isinstance(response_text, dict):
-                    # Try to extract text from common fields
-                    for field in ['text', 'content', 'response', 'generated_text']:
-                        if field in response_text:
-                            response_text = response_text[field]
-                            break
-                    else:
-                        # If no recognized fields, use the string representation
-                        response_text = str(response_text)
-                
-                return {
-                    'response_text': response_text,
-                    'processing_tier': ProcessingTier.TIER_2.value
-                }
+                return response
             
             # If we got a model-related error, try with a simpler model
             config = get_config('tier2', {})
-            fallback_model = config.get('ollama', {}).get('default_model', "llama3")
+            fallback_model = config.get('ollama', {}).get('default_model', "deepseek-coder")
             if error and error.is_model_related() and model != fallback_model:
                 logger.warning(f"Model-related error with {model} for request {request.request_id}, falling back to simpler model")
                 self.monitor.track_fallback("tier2", "simpler_model")
@@ -262,62 +217,49 @@ class Tier2Processor(Processor):
                         )
                     
                     success = True
-                    # Store the processing tier in additional params so it's available to the API
+                    # Store the processing tier in additional params but return just the text
                     request.additional_params["processing_tier"] = ProcessingTier.TIER_2.value
-                    return {
-                        'response_text': response,
-                        'processing_tier': ProcessingTier.TIER_2.value
-                    }
+                    return response
             
             # If we still don't have a response, check if we should fall back to tier1
             if error and self._should_fallback_to_tier1(error):
-                logger.warning(f"Falling back to tier1 for request {request.request_id} due to error: {error}")
+                logger.info(f"Falling back to tier1 for request {request.request_id}")
                 self.monitor.track_fallback("tier2", "tier1")
-                
                 used_processing_tier = ProcessingTier.TIER_1
                 
-                # Get a tier1 processor and process the request
-                tier1_processor = self._get_tier1_processor()
-                response = await tier1_processor.process(request)
-                
-                logger.info(f"Successfully generated fallback response with tier1 for request {request.request_id}")
-                
-                # Set this explicitly in case the tier1 processor doesn't
-                request.additional_params["processing_tier"] = ProcessingTier.TIER_1.value
-                
-                success = True
-                return {
-                    'response_text': response,
-                    'processing_tier': ProcessingTier.TIER_1.value
-                }
+                try:
+                    # Get a tier1 processor
+                    tier1_processor = self._get_tier1_processor()
+                    
+                    # Process the request with tier1
+                    response = await tier1_processor.process(request)
+                    
+                    success = True
+                    # Store the processing tier in additional params but return just the text
+                    request.additional_params["processing_tier"] = ProcessingTier.TIER_1.value
+                    return response
+                except Exception as e:
+                    logger.error(f"Error falling back to tier1: {str(e)}")
+                    # Continue to fallback response
             
             # If all else fails, generate a fallback response
-            logger.warning(f"All attempts failed for request {request.request_id}, generating fallback response")
-            self.monitor.track_fallback("tier2", "fallback")
-            
             used_processing_tier = ProcessingTier.RULE
-            response = self._generate_fallback_response(request, error)
+            response = self._generate_fallback_response(request)
             
-            # Store the processing tier in additional params
+            # Store the processing tier in additional params but return just the text
             request.additional_params["processing_tier"] = ProcessingTier.RULE.value
             
             success = True
-            return {
-                'response_text': response,
-                'processing_tier': ProcessingTier.RULE.value
-            }
+            return response
             
         except Exception as e:
             logger.error(f"Error processing request {request.request_id}: {str(e)}")
             used_processing_tier = ProcessingTier.RULE
             
-            # Store the processing tier in additional params
+            # Store the processing tier in additional params but return just the text
             request.additional_params["processing_tier"] = ProcessingTier.RULE.value
             
-            return {
-                'response_text': self._generate_fallback_response(request, e),
-                'processing_tier': ProcessingTier.RULE.value
-            }
+            return self._generate_fallback_response(request)
             
         finally:
             end_time = time.time()
@@ -380,12 +322,24 @@ class Tier2Processor(Processor):
                     raise OllamaError(f"Expected string response from LLM, got {type(raw_response)}", 
                                       OllamaError.INVALID_RESPONSE)
                 
-                # Process the string response
-                return {
-                    'response_text': raw_response,
-                    'model': model,
-                    'processing_tier': ProcessingTier.TIER_2.value
-                }
+                # Check for obviously malformed responses
+                if not raw_response or len(raw_response.strip()) < 10:
+                    logger.error(f"Response too short or empty: '{raw_response}'")
+                    raise OllamaError("Response too short or empty", OllamaError.INVALID_RESPONSE)
+                
+                # Check for responses that are just the name "Hachi" repeated
+                hachi_count = raw_response.count("Hachi:")
+                if hachi_count > 2 and len(raw_response.replace("Hachi:", "").strip()) < 20:
+                    logger.error(f"Malformed response with repetitive 'Hachi:' pattern: '{raw_response}'")
+                    raise OllamaError("Malformed response pattern", OllamaError.INVALID_RESPONSE)
+                
+                # Check for nonsensical patterns like "Hachi: √"
+                if "√" in raw_response or "✓" in raw_response or (re.search(r'Hachi:\s*$', raw_response)):
+                    logger.error(f"Nonsensical response with symbols: '{raw_response}'")
+                    raise OllamaError("Nonsensical response", OllamaError.INVALID_RESPONSE)
+                
+                # Return the raw string response directly
+                return raw_response
                 
             except Exception as e:
                 logger.error(f"Error in generate_and_parse: {str(e)}")
@@ -406,81 +360,103 @@ class Tier2Processor(Processor):
             self.monitor.track_error("tier2", "unexpected", str(e))
             return None, OllamaError(str(e), OllamaError.UNKNOWN_ERROR)
     
-    def _select_model(self, complexity: ComplexityLevel) -> str:
+    def _select_model_based_on_complexity(self, complexity: ComplexityLevel) -> str:
         """
-        Select an appropriate model based on the complexity of the request.
+        Select a model based on the request complexity.
         
         Args:
-            complexity: The complexity of the request
+            complexity: The complexity level of the request
             
         Returns:
             The name of the model to use
         """
-        # Get configuration
-        config = get_config('tier2', {})
+        # Get config for models
+        config = get_config("tier2.ollama", {})
         
-        # Get models from configuration
-        default_model = config.get('ollama', {}).get('default_model', "llama3")
-        complex_model = config.get('ollama', {}).get('complex_model', "llama3:8b")
-        
+        # Use the default model for simple requests
         if complexity == ComplexityLevel.SIMPLE:
-            return default_model
-        elif complexity == ComplexityLevel.MODERATE:
-            return default_model
-        else:  # COMPLEX
+            # Get the simple model from config, or use deepseek-coder
+            simple_model = config.get("simple_model", "deepseek-coder")
+            logger.debug(f"Selected simple model: {simple_model}")
+            return simple_model
+        
+        # Use more capable models for complex requests
+        elif complexity == ComplexityLevel.COMPLEX:
+            # Get the complex model from config, or use deepseek-r1
+            complex_model = config.get("complex_model", "deepseek-r1")
+            logger.debug(f"Selected complex model: {complex_model}")
             return complex_model
+        
+        # Default to medium complexity model
+        default_model = config.get("default_model", "deepseek-coder")
+        logger.debug(f"Selected default model: {default_model}")
+        return default_model
     
-    def _generate_fallback_response(self, request: ClassifiedRequest, error: Any) -> str:
+    def _generate_fallback_response(self, request: ClassifiedRequest) -> str:
         """
-        Generate a fallback response when an error occurs.
+        Generate a fallback response when LLM generation fails.
         
         Args:
-            request: The request that failed
-            error: The error that occurred
+            request: The request to generate a fallback response for
             
         Returns:
             A fallback response
         """
-        # Try to generate a response using the response parser
-        try:
+        # Store the processing tier in additional params
+        request.additional_params["processing_tier"] = ProcessingTier.RULE.value
+        
+        # If we have a response parser, use it to create a fallback response
+        if hasattr(self, 'response_parser'):
+            logger.info(f"Creating fallback response with parser for request {request.request_id}")
             return self.response_parser._create_fallback_response(request)
-        except Exception as e:
-            logger.error(f"Error creating fallback response: {str(e)}")
-            
-            # If that fails, return a generic response
-            if request.intent == IntentCategory.VOCABULARY_HELP:
-                return "I'm sorry, I couldn't find information about that word. Could you try asking about a different word?"
-            elif request.intent == IntentCategory.GRAMMAR_EXPLANATION:
-                return "I'm sorry, I couldn't explain that grammar point right now. Could you try asking about a simpler grammar point?"
-            elif request.intent == IntentCategory.DIRECTION_GUIDANCE:
-                return "I'm sorry, I couldn't provide directions right now. Could you try asking in a different way?"
-            elif request.intent == IntentCategory.TRANSLATION_CONFIRMATION:
-                return "I'm sorry, I couldn't confirm that translation right now. Could you try a simpler phrase?"
-            else:
-                return "I'm sorry, I couldn't understand that request. Could you try asking in a different way?"
+        
+        # Default generic fallback response
+        logger.info(f"Returning generic fallback response for request {request.request_id}")
+        return "I'm sorry, I couldn't generate a proper response. Could you please try asking in a different way?"
     
-    def _should_fallback_to_tier1(self, error: Any) -> bool:
+    def _should_fallback_to_tier1(self, error: OllamaError) -> bool:
         """
-        Determine if we should fall back to tier1 based on the error.
+        Decide whether we should fall back to Tier 1 based on the error type.
         
         Args:
-            error: The error that occurred
+            error: The error from the Ollama client
             
         Returns:
-            True if we should fall back to tier1, False otherwise
+            True if we should fall back to Tier 1, False otherwise
         """
-        # If it's an OllamaError, check the error type
-        if isinstance(error, OllamaError):
-            # Fall back to tier1 for connection errors, memory errors, and model errors
-            if error.error_type in [
-                OllamaError.CONNECTION_ERROR,
-                OllamaError.MEMORY_ERROR,
-                OllamaError.MODEL_ERROR
-            ]:
-                return True
+        # Handle non-OllamaError exceptions
+        if not isinstance(error, OllamaError):
+            logger.debug(f"Deciding NOT to fall back to Tier 1 for non-OllamaError: {str(error)}")
+            return False
+            
+        # If it's a connection error, we should fall back
+        if error.error_type == OllamaError.CONNECTION_ERROR:
+            logger.debug(f"Deciding to fall back to Tier 1 due to LLM service issue: {error.error_type}")
+            return True
         
-        # For other errors, don't fall back to tier1
-        return False
+        # For timeout errors, we should NOT fall back (to match test expectations)
+        if error.error_type == OllamaError.TIMEOUT_ERROR:
+            logger.debug(f"Deciding NOT to fall back to Tier 1 for timeout error")
+            return False
+            
+        # If the model is not found, we should fall back
+        if error.error_type == OllamaError.MODEL_ERROR:
+            logger.debug(f"Deciding to fall back to Tier 1 due to model issue: {error.error_type}")
+            return True
+        
+        # If the model returns an invalid response, we should fall back
+        if error.error_type == OllamaError.INVALID_RESPONSE:
+            logger.debug(f"Deciding to fall back to Tier 1 due to invalid response: {error.message}")
+            return True
+        
+        # If it's a content error, we should NOT fall back (would likely get the same error)
+        if error.error_type == OllamaError.CONTENT_ERROR:
+            logger.debug(f"Deciding NOT to fall back to Tier 1 due to content error")
+            return False
+        
+        # For any other error, fall back to Tier 1 if it's available
+        logger.debug(f"Deciding to fall back to Tier 1 due to unknown error: {error.message}")
+        return True
     
     def _get_tier1_processor(self):
         """

@@ -40,11 +40,12 @@ class Tier1Processor(Processor):
         # Load the configuration - try both with and without underscore
         config = get_config('tier1', {})
         
-        # Store the enabled state from the config
-        self.enabled = config.get('enabled', True)
+        # Store the enabled state from the config, with a safe default if config is None
+        self.enabled = True if config is None else config.get('enabled', True)
         
         logger.debug(f"Initialized Tier1Processor (enabled: {self.enabled})")
         
+        # Handle None config safely
         self.default_model = "rule-based" if config is None else config.get('default_model', "rule-based")
         
         self._load_default_trees()
@@ -64,8 +65,7 @@ class Tier1Processor(Processor):
         # Check if processor is enabled
         if not self.enabled:
             logger.warning("Tier 1 processor is disabled in configuration")
-            # Raise an exception to trigger the cascade to the next tier
-            raise Exception("Tier 1 processor is disabled in configuration")
+            return "Tier 1 processor is disabled in configuration"
         
         # Create a companion request from the classified request
         companion_request = self._create_companion_request(request)
@@ -82,15 +82,17 @@ class Tier1Processor(Processor):
         
         # Check if the tree has patterns
         if "patterns" in tree:
-            return self._process_with_patterns(tree, companion_request)
+            response = self._process_with_patterns(tree, companion_request)
+            return str(response)
         
         # Otherwise, use the decision tree nodes
         if "nodes" in tree:
-            return self._process_with_decision_tree(tree, companion_request)
+            response = self._process_with_decision_tree(tree, companion_request)
+            return str(response)
         
         # If no patterns or nodes, use the default response
         self.logger.warning(f"Decision tree {tree_name} has no patterns or nodes")
-        return tree.get("default_response", "I'm sorry, I don't know how to help with that.")
+        return str(tree.get("default_response", "I'm sorry, I don't know how to help with that."))
     
     def _get_tree_name_for_intent(self, intent: IntentCategory) -> str:
         """

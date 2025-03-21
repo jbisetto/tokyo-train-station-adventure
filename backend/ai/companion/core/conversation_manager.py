@@ -260,7 +260,7 @@ class ConversationManager:
             conversation_history: The current conversation history
             request: The current request
             response: The response to the request
-            
+        
         Returns:
             The updated conversation history
         """
@@ -276,22 +276,58 @@ class ConversationManager:
         # Add the user's request to the history
         conversation_history.append(entry)
         
-        # Create the assistant's response entry
+        # Add the assistant's response to the history
         response_entry = {
             "role": "assistant",
             "content": response,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now().isoformat()
         }
-        
-        # Add the response to the history
         conversation_history.append(response_entry)
         
-        # Limit the history size if specified in the config
-        max_history = self.tier_specific_config.get('max_history_size', 10) if hasattr(self, 'tier_specific_config') else 10
-        if len(conversation_history) > max_history * 2:  # Each exchange is 2 entries (user + assistant)
-            conversation_history = conversation_history[-(max_history * 2):]
-        
+        # Return the updated history
         return conversation_history
+    
+    async def add_to_history(
+        self,
+        conversation_id: str,
+        request: ClassifiedRequest,
+        response: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Add a request-response pair to the conversation history stored by ID.
+        
+        Args:
+            conversation_id: The ID of the conversation
+            request: The current request
+            response: The response to the request
+        
+        Returns:
+            The updated conversation history
+        """
+        # Get the current conversation history
+        conversation_history = await self.get_entries(conversation_id)
+        
+        # Create a user message entry
+        user_entry = {
+            "type": "user_message",
+            "text": request.player_input,
+            "timestamp": request.timestamp.isoformat() if hasattr(request, 'timestamp') else datetime.now().isoformat(),
+            "intent": request.intent.value if hasattr(request, 'intent') else None,
+            "entities": request.extracted_entities if hasattr(request, 'extracted_entities') else {}
+        }
+        await self.add_entry(conversation_id, user_entry)
+        
+        # Create an assistant message entry
+        assistant_entry = {
+            "type": "assistant_message",
+            "text": response,
+            "timestamp": datetime.now().isoformat()
+        }
+        await self.add_entry(conversation_id, assistant_entry)
+        
+        # Get the updated history
+        updated_history = await self.get_entries(conversation_id)
+        return updated_history
     
     async def process_with_history(
         self,
@@ -301,38 +337,37 @@ class ConversationManager:
         generate_response_func
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """
-        Process a request using conversation history.
+        Process a request with conversation history.
         
         Args:
-            request: The current request
-            conversation_id: The conversation ID
-            base_prompt: The base prompt to build upon
-            generate_response_func: Function to generate a response
+            request: The request to process
+            conversation_id: The ID of the conversation
+            base_prompt: The base prompt to use for generation
+            generate_response_func: A function that generates a response given a prompt
             
         Returns:
-            A tuple of (response, updated_history)
+            The response and the updated conversation history
         """
         # Get the conversation history
-        context = await self.get_or_create_context(conversation_id)
-        conversation_history = context.get("entries", [])
+        conversation_history = await self.get_entries(conversation_id)
         
         # Detect the conversation state
         state = self.detect_conversation_state(request, conversation_history)
         
         # Generate a contextual prompt
-        prompt = self.generate_contextual_prompt(
+        contextual_prompt = self.generate_contextual_prompt(
             request,
             conversation_history,
             state,
             base_prompt
         )
         
-        # Generate a response using the provided function
-        response = await generate_response_func(prompt)
+        # Generate a response
+        response = await generate_response_func(contextual_prompt)
         
-        # Add the request-response pair to the history
-        updated_history = self.add_to_history(
-            conversation_history,
+        # Add the request and response to the history
+        updated_history = await self.add_to_history(
+            conversation_id,
             request,
             response
         )

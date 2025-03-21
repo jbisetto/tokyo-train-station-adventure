@@ -1,5 +1,6 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
+import pytest
 
 from backend.ai.companion.tier1.tier1_processor import Tier1Processor
 from backend.ai.companion.core.models import ClassifiedRequest, IntentCategory, ComplexityLevel, ProcessingTier
@@ -34,7 +35,8 @@ class TestTier1Processor(unittest.TestCase):
         self.assertEqual(processor.enabled, self.mock_config["enabled"])
         self.assertEqual(processor.default_model, self.mock_config["default_model"])
     
-    def test_tier1_processor_respects_enabled_flag(self):
+    @pytest.mark.asyncio
+    async def test_tier1_processor_respects_enabled_flag(self):
         """Test that Tier1Processor respects the enabled flag from configuration."""
         # Set enabled to False
         self.mock_get_config.return_value = {"enabled": False}
@@ -54,7 +56,7 @@ class TestTier1Processor(unittest.TestCase):
         request.extracted_entities = {}
         
         # Check that processing is skipped when disabled
-        response = processor.process(request)
+        response = await processor.process(request)
         self.assertIn("disabled", response.lower())
         
         # Set enabled to True and check that processing happens
@@ -69,7 +71,7 @@ class TestTier1Processor(unittest.TestCase):
              patch.object(processor, '_process_with_patterns', return_value="Test response"):
             
             # Process the request
-            response = processor.process(request)
+            response = await processor.process(request)
             
             # Verify that the processor attempted to process the request
             processor._get_tree_name_for_intent.assert_called_once_with(request.intent)

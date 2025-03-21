@@ -451,7 +451,7 @@ class TestTier2Processor:
         with patch.object(processor.ollama_client, 'generate') as mock_generate:
             await processor.process(sample_request)
             args, kwargs = mock_generate.call_args
-            assert kwargs.get('model') == "llama3"
+            assert kwargs.get('model') == "deepseek-coder"
         
         # Test with MODERATE complexity
         sample_request.complexity = ComplexityLevel.MODERATE
@@ -459,7 +459,7 @@ class TestTier2Processor:
         with patch.object(processor.ollama_client, 'generate') as mock_generate:
             await processor.process(sample_request)
             args, kwargs = mock_generate.call_args
-            assert kwargs.get('model') == "llama3"
+            assert kwargs.get('model') == "deepseek-coder"
         
         # Test with COMPLEX complexity
         sample_request.complexity = ComplexityLevel.COMPLEX
@@ -467,7 +467,7 @@ class TestTier2Processor:
         with patch.object(processor.ollama_client, 'generate') as mock_generate:
             await processor.process(sample_request)
             args, kwargs = mock_generate.call_args
-            assert kwargs.get('model') == "llama3:8b"  # Using 8b model for complex requests
+            assert kwargs.get('model') == "deepseek-r1"  # Using deepseek-r1 model for complex requests
     
     @pytest.mark.asyncio
     async def test_should_fallback_to_tier1(self, sample_request):

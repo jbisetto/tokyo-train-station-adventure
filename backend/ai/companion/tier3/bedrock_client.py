@@ -37,6 +37,8 @@ class BedrockError(Exception):
     AUTHENTICATION_ERROR = "authentication_error"
     QUOTA_ERROR = "quota_exceeded"
     TIMEOUT_ERROR = "timeout"
+    CONNECTION_ERROR = "connection_error"
+    MODEL_ERROR = "model_error"
     UNKNOWN_ERROR = "unknown_error"
     
     def __init__(self, message: str, error_type: str = UNKNOWN_ERROR):
@@ -336,6 +338,10 @@ class BedrockClient:
                     self.logger.info(f"Usage: {input_tokens} input tokens, {output_tokens} output tokens")
             
             return text
+        except BedrockError as e:
+            # Preserve the original error type
+            self.logger.error(f"Error generating text: {str(e)}")
+            raise  # Re-raise the original BedrockError with its type intact
         except Exception as e:
             self.logger.error(f"Error generating text: {str(e)}")
             raise BedrockError(f"Error generating text: {str(e)}", BedrockError.API_ERROR)

@@ -182,10 +182,20 @@ class CompanionAssistResponseAdapter(ResponseAdapter[CompanionResponse, Companio
         Returns:
             The API processing tier
         """
+        # First check if tier is a ProcessingTier enum
+        if hasattr(tier, 'value'):
+            tier = tier.value  # Convert enum to its string value
+        
+        # Now tier should be a string value like 'tier_1', 'tier_2', etc.
         tier_mapping = {
+            # Enum names
             "TIER_1": "rule",
             "TIER_2": "local",
-            "TIER_3": "cloud"
+            "TIER_3": "cloud",
+            # Enum values
+            "tier_1": "rule",
+            "tier_2": "local",
+            "tier_3": "cloud"
         }
         
         return tier_mapping.get(tier, "rule") 

@@ -153,31 +153,23 @@ class RequestHandler:
             # Return a fallback response
             return f"I'm sorry, I encountered an error while processing your request. Please try again."
     
-    async def _process_with_cascade(self, request: ClassifiedRequest, starting_tier: ProcessingTier) -> str:
+    async def _process_with_cascade(self, request: ClassifiedRequest, initial_tier: ProcessingTier) -> Dict[str, Any]:
         """
-        Process a request with the specified tier, falling back to simpler tiers if needed.
+        Process a request with the specified tier, cascading to lower tiers if needed.
         
         Args:
             request: The request to process
-            starting_tier: The tier to start processing with
+            initial_tier: The initial processing tier to try
             
         Returns:
-            The generated response
+            The processor response
         """
-        # Try each tier in order, starting with the specified tier
-        current_tier = starting_tier
+        # Get the cascade order
+        tier_progression = self._get_cascade_order(initial_tier)
         
-        # Define tier progression to ensure proper cascading
-        tier_progression = [
-            ProcessingTier.TIER_1,
-            ProcessingTier.TIER_2,
-            ProcessingTier.TIER_3,
-            ProcessingTier.RULE
-        ]
-        
-        # Find starting position in progression
+        # Start from the initial tier's position in the progression
         try:
-            start_index = tier_progression.index(current_tier)
+            start_index = tier_progression.index(initial_tier)
         except ValueError:
             # If not found, start with tier 1
             start_index = 0
@@ -190,14 +182,18 @@ class RequestHandler:
                 # Attempt to process with the current tier
                 self.logger.debug(f"Attempting to process request {request.request_id} with {current_tier}")
                 
-                # Get a processor for the current tier
-                processor = self.processor_factory.get_processor(current_tier)
-                self.logger.debug(f"Got processor of type {type(processor).__name__} for {current_tier}")
-                
-                # Check if the processor is enabled via its attribute
-                if hasattr(processor, 'enabled') and not processor.enabled:
-                    self.logger.warning(f"Processor for {current_tier} is disabled, will cascade to next tier")
-                    continue  # Try the next tier in the progression
+                # Try to get a processor for the current tier
+                try:
+                    processor = self.processor_factory.get_processor(current_tier)
+                    self.logger.debug(f"Got processor of type {type(processor).__name__} for {current_tier}")
+                except ValueError as e:
+                    # If the tier is disabled in configuration, log and skip to next tier
+                    if "disabled in configuration" in str(e):
+                        self.logger.warning(f"Tier {current_tier} is disabled in configuration, skipping to next tier")
+                        continue
+                    else:
+                        # Other ValueError, re-raise
+                        raise
                 
                 # Process the request
                 self.logger.info(f"Processing request {request.request_id} with {current_tier} processor")
@@ -210,7 +206,7 @@ class RequestHandler:
             except Exception as e:
                 # Log the error and try the next tier
                 self.logger.warning(f"Failed to process request {request.request_id} with {current_tier} processor: {str(e)}")
-                # Continue to next tier in progression (no need to calculate)
+                # Continue to next tier in progression
         
         # If we've tried all tiers and none worked, generate a fallback response
         self.logger.warning(f"All processing tiers failed for request {request.request_id}, generating fallback response")
@@ -237,11 +233,20 @@ class RequestHandler:
         
         # Add the remaining tiers in a sensible order
         if preferred_tier == ProcessingTier.TIER_1:
-            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_3])
+            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_3, ProcessingTier.RULE])
         elif preferred_tier == ProcessingTier.TIER_2:
-            order.extend([ProcessingTier.TIER_3, ProcessingTier.TIER_1])
-        else:  # TIER_3
-            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_1])
+            order.extend([ProcessingTier.TIER_3, ProcessingTier.TIER_1, ProcessingTier.RULE])
+        elif preferred_tier == ProcessingTier.TIER_3:
+            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_1, ProcessingTier.RULE])
+        else:  # RULE or unknown
+            order = [ProcessingTier.TIER_1, ProcessingTier.TIER_2, ProcessingTier.TIER_3, ProcessingTier.RULE]
+            # Remove the unknown tier if it's in the list and not RULE
+            if preferred_tier != ProcessingTier.RULE and preferred_tier in order:
+                order.remove(preferred_tier)
+            # Ensure RULE is always last
+            if ProcessingTier.RULE in order and order[-1] != ProcessingTier.RULE:
+                order.remove(ProcessingTier.RULE)
+                order.append(ProcessingTier.RULE)
         
         return order
 

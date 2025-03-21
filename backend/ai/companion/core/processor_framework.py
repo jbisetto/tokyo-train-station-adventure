@@ -246,11 +246,14 @@ class ProcessorFactory:
         if isinstance(tier_value, str) and not any(tier_value == t.value for t in ProcessingTier):
             raise ValueError(f"Unknown processing tier: {tier}")
         
-        # Check if the tier is enabled
-        tier_config_key = tier_value  # Use the actual tier value as the config key
-        tier_config = get_config(tier_config_key, {})
+        # Map the tier value to the config section name
+        # The config sections use 'tier1', 'tier2', 'tier3' format instead of 'tier_1', etc.
+        config_section = tier_value.replace('_', '') if isinstance(tier_value, str) else tier_value
         
-        logger.info(f"Tier {tier_value} config: {tier_config}")
+        # Check if the tier is enabled in configuration
+        tier_config = get_config(config_section, {})
+        
+        logger.info(f"Tier {tier_value} config section '{config_section}': {tier_config}")
         
         # If tier config exists and enabled is False, raise an error
         if tier_config is not None and tier_config.get('enabled') is False:

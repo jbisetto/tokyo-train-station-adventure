@@ -32,6 +32,7 @@ class OllamaError(Exception):
     CONTENT_ERROR = "content_error"
     MEMORY_ERROR = "memory_error"
     UNKNOWN_ERROR = "unknown_error"
+    INVALID_RESPONSE = "invalid_response"
     
     def __init__(self, message: str, error_type: str = None):
         """
@@ -72,20 +73,28 @@ class OllamaError(Exception):
             return self.CONTENT_ERROR
         elif any(term in message_lower for term in ["memory", "resources", "capacity"]):
             return self.MEMORY_ERROR
+        elif any(term in message_lower for term in ["invalid", "malformed"]):
+            return self.INVALID_RESPONSE
         else:
             return self.UNKNOWN_ERROR
     
     def is_transient(self) -> bool:
         """
-        Check if this error is likely transient and can be retried.
+        Determine if the error is transient and should be retried.
         
         Returns:
             True if the error is transient, False otherwise
         """
-        return self.error_type in [
+        # Connection errors and timeouts are transient
+        if self.error_type in [
             self.CONNECTION_ERROR,
-            self.TIMEOUT_ERROR
-        ]
+            self.TIMEOUT_ERROR,
+            self.INVALID_RESPONSE   # Malformed responses might be random issues, so retry
+        ]:
+            return True
+        
+        # Most other errors are not transient (e.g., model errors)
+        return False
     
     def is_model_related(self) -> bool:
         """
@@ -274,9 +283,9 @@ class OllamaClient:
     
     def _remove_thinking_tags(self, text):
         """
-        Remove <think>...</think> tags and their content from the response.
+        Clean the response by removing <think> tags and their content.
         
-        This is specifically for models like DeepSeek-R1 that include their reasoning process
+        This is used to clean out any "thinking" or "deliberation" the model included
         in thinking tags that should not be shown to the user.
         
         Args:
@@ -286,6 +295,43 @@ class OllamaClient:
             Cleaned text with thinking tags and their content removed
         """
         return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+        
+    def _validate_response(self, response: str) -> str:
+        """
+        Validate the response for common formatting issues with Ollama models.
+        
+        This checks for and fixes several common issues:
+        1. Responses with just "Hachi: √" or similar patterns
+        2. Responses with excessive repetition of the character name
+        3. Responses that are too short or contain malformed content
+        
+        Args:
+            response: The response text to validate
+            
+        Returns:
+            The validated response, or raises OllamaError if invalid
+        """
+        # Check for empty responses
+        if not response or len(response.strip()) < 10:
+            raise OllamaError("Response too short or empty", OllamaError.INVALID_RESPONSE)
+            
+        # Check for responses that just contain the character name and a check mark
+        if re.search(r'Hachi:\s*[√✓]', response):
+            raise OllamaError("Malformed response with check mark", OllamaError.INVALID_RESPONSE)
+            
+        # Check for responses that are just repeating "Hachi:" multiple times
+        hachi_count = response.count("Hachi:")
+        if hachi_count > 2:
+            # If there are multiple "Hachi:" but little actual content
+            content = response.replace("Hachi:", "").strip()
+            if len(content) < 20 or content.count("√") > 0 or content.count("✓") > 0:
+                raise OllamaError("Malformed response with repetitive character name", OllamaError.INVALID_RESPONSE)
+                
+        # Check for responses with other special symbols that indicate malformed content
+        if "√" in response or "✓" in response or "✗" in response:
+            raise OllamaError("Response contains invalid symbols", OllamaError.INVALID_RESPONSE)
+            
+        return response
 
     async def _call_ollama_api(
         self,
@@ -359,7 +405,9 @@ class OllamaClient:
                         
                         # Clean the response by removing thinking tags if present
                         clean_response = self._remove_thinking_tags(complete_response)
-                        return clean_response
+                        
+                        # Validate the response before returning
+                        return self._validate_response(clean_response)
                     else:
                         # Handle regular JSON response
                         try:
@@ -367,7 +415,9 @@ class OllamaClient:
                             response = data.get("response", "")
                             # Clean the response by removing thinking tags if present
                             clean_response = self._remove_thinking_tags(response)
-                            return clean_response
+                            
+                            # Validate the response before returning
+                            return self._validate_response(clean_response)
                         except json.JSONDecodeError as e:
                             raise OllamaError(f"Invalid JSON response: {str(e)}", OllamaError.CONTENT_ERROR)
                     
