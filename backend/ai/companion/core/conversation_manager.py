@@ -119,6 +119,9 @@ class ConversationManager:
             entry["timestamp"] = datetime.now().isoformat()
         
         # Add the entry
+        if "entries" not in context:
+            context["entries"] = []
+            
         context["entries"].append(entry)
         
         # Trim history if it exceeds the maximum size
@@ -187,7 +190,7 @@ class ConversationManager:
         # Default to new topic
         return ConversationState.NEW_TOPIC
     
-    def generate_contextual_prompt(
+    async def generate_contextual_prompt(
         self,
         request: ClassifiedRequest,
         conversation_history: List[Dict[str, Any]],
@@ -244,6 +247,9 @@ class ConversationManager:
         elif state == ConversationState.CLARIFICATION:
             prompt += "\nThe player is asking for clarification about something in the previous exchanges.\n"
             prompt += "Please provide a more detailed explanation of the most recent topic.\n"
+        
+        # Add the current request if not already included in the prompt
+        prompt += f"\n\nCurrent request: {request.player_input}\n\nYour response:"
         
         return prompt
     
@@ -305,7 +311,7 @@ class ConversationManager:
             The updated conversation history
         """
         # Get the current conversation history
-        conversation_history = await self.get_entries(conversation_id)
+        context = await self.get_or_create_context(conversation_id)
         
         # Create a user message entry
         user_entry = {
@@ -325,9 +331,9 @@ class ConversationManager:
         }
         await self.add_entry(conversation_id, assistant_entry)
         
-        # Get the updated history
-        updated_history = await self.get_entries(conversation_id)
-        return updated_history
+        # Get the updated entries and return them
+        updated_context = await self.get_or_create_context(conversation_id)
+        return updated_context.get("entries", [])
     
     async def process_with_history(
         self,
@@ -355,7 +361,7 @@ class ConversationManager:
         state = self.detect_conversation_state(request, conversation_history)
         
         # Generate a contextual prompt
-        contextual_prompt = self.generate_contextual_prompt(
+        contextual_prompt = await self.generate_contextual_prompt(
             request,
             conversation_history,
             state,

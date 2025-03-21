@@ -433,68 +433,41 @@ REMEMBER:
 
     async def create_contextual_prompt(self, request: ClassifiedRequest, conversation_id=None) -> str:
         """
-        Create a prompt with conversation history context.
+        Create a prompt that includes conversation history context.
         
         Args:
-            request: The companion request
-            conversation_id: Conversation ID to fetch history
+            request: The classified request
+            conversation_id: Optional conversation ID to retrieve history
             
         Returns:
-            A prompt with conversation history
+            A prompt with conversation history context
         """
-        # Create a base prompt
+        # Start with the base prompt
         prompt = self.create_prompt(request)
         
-        # Skip conversation context if no manager or conversation_id
+        # If no conversation manager or conversation ID, just return the base prompt
         if not self.conversation_manager or not conversation_id:
-            # Just add the current request directly
-            prompt += f"\n\nCurrent request: {request.player_input}\n\nYour response:"
-            return prompt
+            return f"{prompt}\n\nCurrent request: {request.player_input}\n\nYour response:"
         
         try:
             # Get the conversation context
             context = await self.conversation_manager.get_or_create_context(conversation_id)
-            
-            # Get the conversation entries
             conversation_history = context.get("entries", [])
             
-            # Check the conversation state
-            conversation_state = self.conversation_manager.detect_conversation_state(request, conversation_history)
+            # Detect the conversation state
+            state = self.conversation_manager.detect_conversation_state(request, conversation_history)
             
-            # If it's a follow-up question, include the conversation history
-            if conversation_state == ConversationState.FOLLOW_UP:
-                # Format the conversation history in OpenAI-style format
-                history_text = "\n\nPrevious conversation (in OpenAI conversation format):\n"
-                history_text += "```json\n[\n"
-                
-                for entry in conversation_history:
-                    if entry.get("type") == "user_message":
-                        history_text += '  {\n'
-                        history_text += '    "role": "user",\n'
-                        # Escape quotes properly
-                        content = entry.get("text", "").replace('"', '\\"')
-                        history_text += f'    "content": "{content}"\n'
-                        history_text += '  },\n'
-                    elif entry.get("type") == "assistant_message":
-                        history_text += '  {\n'
-                        history_text += '    "role": "assistant",\n'
-                        # Escape quotes properly
-                        content = entry.get("text", "").replace('"', '\\"')
-                        history_text += f'    "content": "{content}"\n'
-                        history_text += '  },\n'
-                
-                # Close the JSON array
-                history_text += "]\n```\n"
-                
-                # Add the conversation history to the prompt
-                prompt += history_text
-                
-                # Add a note that this is a follow-up question
-                prompt += "\n\nThe user is asking a follow-up question to the previous conversation.\n"
+            # Generate a contextual prompt from the conversation manager
+            contextual_format = await self.conversation_manager.generate_contextual_prompt(
+                request,
+                conversation_history,
+                state,
+                prompt
+            )
+            
+            return contextual_format
+            
         except Exception as e:
-            logger.error(f"Error getting conversation history: {e}")
-        
-        # Add the current query
-        prompt += f"\n\nCurrent request: {request.player_input}\n\nYour response:"
-        
-        return prompt 
+            logger.error(f"Error creating contextual prompt: {e}")
+            # Fallback to the base prompt if something goes wrong
+            return f"{prompt}\n\nCurrent request: {request.player_input}\n\nYour response:" 

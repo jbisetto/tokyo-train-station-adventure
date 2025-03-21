@@ -295,28 +295,30 @@ class TestOllamaClient:
         """Test that cache entries expire based on TTL."""
         from backend.ai.companion.tier2.ollama_client import OllamaClient
         import time
-        
+    
         # Create client with a very short TTL for testing
         client = OllamaClient(cache_enabled=True, cache_ttl=1)  # 1 second TTL
+    
+        # Use a mock for time.time to control the timeline
+        current_time = 1000.0  # Starting time
         
-        # Mock the cache methods
-        with patch.object(client, '_save_to_cache') as mock_save, \
-             patch.object(client, '_get_from_cache', return_value=None):
-            
-            # Add an entry to the memory cache directly
+        with patch('time.time', return_value=current_time):
+            # Add an entry to the memory cache directly with our controlled timestamp
             request_hash = client._hash_request(sample_request, client.default_model)
             client._memory_cache[request_hash] = {
                 "response": sample_cache_entry["response"],
-                "timestamp": time.time()
+                "timestamp": current_time  # Current time
             }
             
             # Verify it's in the cache
             assert request_hash in client._memory_cache
             
-            # Wait for TTL to expire
-            time.sleep(1.1)
-            
-            # The entry should be considered expired
+            # The entry should not be expired yet
+            assert not client._is_cache_entry_expired(client._memory_cache[request_hash])
+        
+        # Now advance time by 1.1 seconds and check again
+        with patch('time.time', return_value=current_time + 1.1):
+            # The entry should now be considered expired
             assert client._is_cache_entry_expired(client._memory_cache[request_hash])
 
     def test_cache_stats(self, sample_request, sample_ollama_response):

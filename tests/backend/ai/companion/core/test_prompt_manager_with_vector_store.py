@@ -197,6 +197,20 @@ class TestPromptManagerWithVectorStore:
             from backend.ai.companion.core.conversation_manager import ConversationState
             manager_instance.detect_conversation_state.return_value = ConversationState.FOLLOW_UP
             
+            # Mock the generate_contextual_prompt method with a proper async function
+            async def mock_generate_contextual_prompt(request, conversation_history, state, base_prompt):
+                return base_prompt + "\n\nPrevious conversation (in OpenAI conversation format):\n[\n" + \
+                       '  {"role": "user", "content": "What does kippu mean?"}\n' + \
+                       '  {"role": "assistant", "content": "Kippu (切符) means ticket in Japanese."}\n' + \
+                       "]\n\nThe player is asking a follow-up question related to the previous exchanges.\n" + \
+                       "Please provide a response that takes into account the conversation history.\n" + \
+                       "\n\nRelevant Game World Information:\n" + \
+                       "[Vocabulary] 切符 (kippu) means 'ticket' in Japanese.\n" + \
+                       "[Location] Tokyo Station is one of Japan's busiest railway stations."
+            
+            # Set the side_effect of generate_contextual_prompt to our async function
+            manager_instance.generate_contextual_prompt.side_effect = mock_generate_contextual_prompt
+            
             # Set up the mock constructor to return our configured instance
             mock.return_value = manager_instance
             

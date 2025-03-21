@@ -154,11 +154,13 @@ class TestPromptProfileIntegration:
     async def test_contextual_prompt(self, prompt_manager, sample_request):
         """Test that contextual prompt includes conversation history."""
         # Mock conversation manager
-        mock_conv_manager = MagicMock()
+        from unittest.mock import AsyncMock
+        from backend.ai.companion.core.conversation_manager import ConversationState
+        
+        mock_conv_manager = AsyncMock()
         prompt_manager.conversation_manager = mock_conv_manager
         
         # Mock conversation state
-        from backend.ai.companion.core.conversation_manager import ConversationState
         mock_conv_manager.detect_conversation_state.return_value = ConversationState.FOLLOW_UP
         
         # Mock conversation context
@@ -168,12 +170,20 @@ class TestPromptProfileIntegration:
                 {"type": "assistant_message", "text": "Hello is こんにちは (konnichiwa)."}
             ]
         }
+        
         # Create a coroutine mock that can be awaited
         async def mock_get_context(*args, **kwargs):
             return mock_context
         
         # Set the mock to return the coroutine function
         mock_conv_manager.get_or_create_context = mock_get_context
+        
+        # Mock generate_contextual_prompt to return a formatted string with conversation history
+        async def mock_generate_contextual_prompt(*args, **kwargs):
+            history_text = "Previous conversation:\nUser: How do I say hello in Japanese?\nAssistant: Hello is こんにちは (konnichiwa)."
+            return f"This is a follow-up question.\n\n{history_text}"
+            
+        mock_conv_manager.generate_contextual_prompt = mock_generate_contextual_prompt
         
         # Create a contextual prompt
         prompt = await prompt_manager.create_contextual_prompt(sample_request, "conv123")
