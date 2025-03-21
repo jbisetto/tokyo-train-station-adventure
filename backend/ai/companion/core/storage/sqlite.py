@@ -173,56 +173,86 @@ class SQLiteConversationStorage(ConversationStorage):
         # Separate metadata from core fields
         metadata = {k: v for k, v in context_copy.items() if k not in ('conversation_id', 'timestamp')}
         
+        logger.debug(f"Saving context for {conversation_id} with {len(entries)} entries")
+        
+        # Start transaction
         async with aiosqlite.connect(self.database_path) as db:
-            # Insert or update the conversation
-            await db.execute(
-                """
-                INSERT OR REPLACE INTO conversations (conversation_id, timestamp, metadata)
-                VALUES (?, ?, ?)
-                """,
-                (
-                    conversation_id,
-                    context_copy.get('timestamp'),
-                    json.dumps(metadata) if metadata else None
-                )
-            )
-            
-            # Delete existing entries for this conversation
-            await db.execute(
-                "DELETE FROM entries WHERE conversation_id = ?",
-                (conversation_id,)
-            )
-            
-            # Insert new entries
-            for entry in entries:
-                entry_type = entry.get('type', 'unknown')
-                timestamp = entry.get('timestamp', datetime.now().isoformat())
+            try:
+                # Start an explicit transaction
+                await db.execute("BEGIN EXCLUSIVE TRANSACTION")
                 
-                # Handle different entry types
-                if entry_type == 'user_message' or entry_type == 'assistant_message':
-                    content = entry.get('text', '')
-                else:
-                    content = entry.get('content', '')
-                
-                # Separate metadata from core fields
-                metadata = {k: v for k, v in entry.items() 
-                           if k not in ('type', 'timestamp', 'text', 'content')}
-                
+                # Insert or update the conversation
                 await db.execute(
                     """
-                    INSERT INTO entries (conversation_id, timestamp, type, content, metadata)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO conversations (conversation_id, timestamp, metadata)
+                    VALUES (?, ?, ?)
                     """,
                     (
                         conversation_id,
-                        timestamp,
-                        entry_type,
-                        content,
+                        context_copy.get('timestamp'),
                         json.dumps(metadata) if metadata else None
                     )
                 )
-            
-            await db.commit()
+                
+                # Only insert new entries, don't delete existing ones
+                for entry in entries:
+                    entry_type = entry.get('type', 'unknown')
+                    timestamp = entry.get('timestamp', datetime.now().isoformat())
+                    
+                    # Handle different entry types
+                    if entry_type in ('user_message', 'assistant_message'):
+                        content = entry.get('text', '')
+                    else:
+                        content = entry.get('content', '')
+                    
+                    # Separate metadata from core fields
+                    metadata = {k: v for k, v in entry.items() 
+                               if k not in ('type', 'timestamp', 'text', 'content')}
+                    
+                    # Check if this entry already exists to avoid duplicates
+                    async with db.execute(
+                        """
+                        SELECT id FROM entries 
+                        WHERE conversation_id = ? AND timestamp = ? AND type = ? AND content = ?
+                        """,
+                        (conversation_id, timestamp, entry_type, content)
+                    ) as cursor:
+                        existing = await cursor.fetchone()
+                    
+                    # Only insert if the entry doesn't exist
+                    if not existing:
+                        logger.debug(f"Adding new entry for {conversation_id} of type {entry_type}")
+                        await db.execute(
+                            """
+                            INSERT INTO entries (conversation_id, timestamp, type, content, metadata)
+                            VALUES (?, ?, ?, ?, ?)
+                            """,
+                            (
+                                conversation_id,
+                                timestamp,
+                                entry_type,
+                                content,
+                                json.dumps(metadata) if metadata else None
+                            )
+                        )
+                
+                # Commit the transaction to save all changes
+                await db.commit()
+                logger.debug(f"Successfully saved context for {conversation_id}")
+                
+            except Exception as e:
+                # If any error occurs, roll back the transaction
+                await db.execute("ROLLBACK")
+                logger.error(f"Error saving context for {conversation_id}: {e}")
+                raise
+        
+        # Verify the entries were saved correctly by retrieving them
+        saved_context = await self.get_context(conversation_id)
+        if saved_context:
+            saved_entries_count = len(saved_context.get('entries', []))
+            logger.debug(f"Verified saved context for {conversation_id} has {saved_entries_count} entries")
+        else:
+            logger.warning(f"Failed to verify saved context for {conversation_id}")
     
     async def delete_context(self, conversation_id: str) -> None:
         """
@@ -310,4 +340,36 @@ class SQLiteConversationStorage(ConversationStorage):
             
             await db.commit()
         
-        return count 
+        return count
+    
+    async def clear_entries(self, conversation_id: str) -> None:
+        """
+        Clear all entries for a specific conversation ID.
+        
+        Args:
+            conversation_id: The ID of the conversation to clear entries for
+        """
+        await self._init_db()
+        
+        logger.debug(f"Clearing entries for conversation {conversation_id}")
+        
+        async with aiosqlite.connect(self.database_path) as db:
+            try:
+                # Start an explicit transaction
+                await db.execute("BEGIN EXCLUSIVE TRANSACTION")
+                
+                # Delete all entries for this conversation
+                await db.execute(
+                    "DELETE FROM entries WHERE conversation_id = ?",
+                    (conversation_id,)
+                )
+                
+                # Commit the transaction
+                await db.commit()
+                logger.debug(f"Successfully cleared entries for {conversation_id}")
+                
+            except Exception as e:
+                # If any error occurs, roll back the transaction
+                await db.execute("ROLLBACK")
+                logger.error(f"Error clearing entries for {conversation_id}: {e}")
+                raise 

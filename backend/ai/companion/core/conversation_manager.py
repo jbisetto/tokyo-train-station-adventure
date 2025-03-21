@@ -260,38 +260,15 @@ class ConversationManager:
         response: str
     ) -> List[Dict[str, Any]]:
         """
-        Add a request-response pair to the conversation history.
+        DEPRECATED: Use async add_to_history method instead.
         
-        Args:
-            conversation_history: The current conversation history
-            request: The current request
-            response: The response to the request
-        
-        Returns:
-            The updated conversation history
+        This method is kept for backward compatibility but will raise an error
+        to help identify places where it needs to be updated.
         """
-        # Create a new history entry using role/content format for consistency
-        entry = {
-            "role": "user",
-            "content": request.player_input,
-            "timestamp": request.timestamp.isoformat() if hasattr(request, 'timestamp') else datetime.now().isoformat(),
-            "intent": request.intent.value if hasattr(request, 'intent') else None,
-            "entities": request.extracted_entities if hasattr(request, 'extracted_entities') else {}
-        }
-        
-        # Add the user's request to the history
-        conversation_history.append(entry)
-        
-        # Add the assistant's response to the history
-        response_entry = {
-            "role": "assistant",
-            "content": response,
-            "timestamp": datetime.now().isoformat()
-        }
-        conversation_history.append(response_entry)
-        
-        # Return the updated history
-        return conversation_history
+        raise NotImplementedError(
+            "The synchronous add_to_history method is deprecated. "
+            "Use the async version with conversation_id instead."
+        )
     
     async def add_to_history(
         self,
@@ -310,8 +287,7 @@ class ConversationManager:
         Returns:
             The updated conversation history
         """
-        # Get the current conversation history
-        context = await self.get_or_create_context(conversation_id)
+        logger.debug(f"Adding request-response pair to history for conversation {conversation_id}")
         
         # Create a user message entry
         user_entry = {
@@ -321,7 +297,6 @@ class ConversationManager:
             "intent": request.intent.value if hasattr(request, 'intent') else None,
             "entities": request.extracted_entities if hasattr(request, 'extracted_entities') else {}
         }
-        await self.add_entry(conversation_id, user_entry)
         
         # Create an assistant message entry
         assistant_entry = {
@@ -329,11 +304,35 @@ class ConversationManager:
             "text": response,
             "timestamp": datetime.now().isoformat()
         }
-        await self.add_entry(conversation_id, assistant_entry)
         
-        # Get the updated entries and return them
-        updated_context = await self.get_or_create_context(conversation_id)
-        return updated_context.get("entries", [])
+        # Get the current conversation context or create a new one
+        context = await self.get_or_create_context(conversation_id)
+        logger.debug(f"Retrieved context for {conversation_id} with {len(context.get('entries', []))} existing entries")
+        
+        # Directly add entries to the context
+        if "entries" not in context:
+            context["entries"] = []
+        
+        # Add new entries
+        context["entries"].append(user_entry)
+        context["entries"].append(assistant_entry)
+        logger.debug(f"Added entries to context, now has {len(context['entries'])} entries")
+        
+        # Save the updated context
+        await self.storage.save_context(conversation_id, context)
+        
+        # Force a refetch of the context to ensure we have the latest state
+        # This ensures any storage-specific behaviors are accounted for
+        fresh_context = await self.storage.get_context(conversation_id)
+        if not fresh_context or not fresh_context.get("entries"):
+            logger.warning(f"Failed to retrieve updated entries for conversation {conversation_id}")
+            # Return the entries we just added as a fallback
+            return [user_entry, assistant_entry]
+        
+        # Return the updated entries from the storage
+        entries = fresh_context.get("entries", [])
+        logger.debug(f"Retrieved {len(entries)} entries after saving")
+        return entries
     
     async def process_with_history(
         self,
