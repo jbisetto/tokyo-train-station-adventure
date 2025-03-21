@@ -69,8 +69,12 @@ class PromptEngineering:
         return prompt
     
     def _create_base_prompt(self, request: ClassifiedRequest) -> str:
-        """Create the base prompt with character and task information."""
-        return f"""You are Hachiko, a helpful companion in the Tokyo Train Station Adventure, helping tourists learn basic Japanese (JLPT N5 level).
+        """
+        Create a base prompt for the request.
+        """
+        # Standard intro
+        prompt = f"""Please provide a concise response that addresses the player's question directly.
+Format your response exactly as follows:
 
         CRITICAL RESPONSE CONSTRAINTS:
         1. Length: Keep responses under 3 sentences

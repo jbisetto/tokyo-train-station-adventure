@@ -24,89 +24,41 @@ from backend.ai.companion.tier3.usage_tracker import (
     UsageTracker,
     default_tracker
 )
+from backend.ai.companion.utils.retry import RetryConfig, retry_async
 
 logger = logging.getLogger(__name__)
 
 
 class BedrockError(Exception):
-    """Exception raised for errors in the Amazon Bedrock API."""
+    """Error that occurred when calling the Bedrock API."""
     
-    # Error type constants
-    CONNECTION_ERROR = "connection_error"
-    MODEL_ERROR = "model_error"
-    TIMEOUT_ERROR = "timeout_error"
-    CONTENT_ERROR = "content_error"
-    QUOTA_ERROR = "quota_error"
+    # Error types
+    API_ERROR = "api_error"
+    AUTHENTICATION_ERROR = "authentication_error"
+    QUOTA_ERROR = "quota_exceeded"
+    TIMEOUT_ERROR = "timeout"
     UNKNOWN_ERROR = "unknown_error"
     
-    def __init__(self, message: str, error_type: str = None):
-        """
-        Initialize the BedrockError.
-        
-        Args:
-            message: The error message
-            error_type: The type of error (one of the constants defined above)
-        """
+    def __init__(self, message: str, error_type: str = UNKNOWN_ERROR):
+        """Initialize the error."""
         super().__init__(message)
         self.message = message
-        
-        # Determine error type from message if not provided
-        if error_type is None:
-            self.error_type = self._determine_error_type(message)
-        else:
-            self.error_type = error_type
-    
-    def _determine_error_type(self, message: str) -> str:
-        """
-        Determine the error type from the message.
-        
-        Args:
-            message: The error message
-            
-        Returns:
-            The error type
-        """
-        message_lower = message.lower()
-        
-        if any(term in message_lower for term in ["connect", "connection", "network", "unreachable", "refused"]):
-            return self.CONNECTION_ERROR
-        elif any(term in message_lower for term in ["model", "not found", "doesn't exist"]):
-            return self.MODEL_ERROR
-        elif any(term in message_lower for term in ["timeout", "timed out", "too long"]):
-            return self.TIMEOUT_ERROR
-        elif any(term in message_lower for term in ["content", "filter", "safety", "inappropriate"]):
-            return self.CONTENT_ERROR
-        elif any(term in message_lower for term in ["quota", "limit", "throttle", "rate"]):
-            return self.QUOTA_ERROR
-        else:
-            return self.UNKNOWN_ERROR
-    
-    def is_transient(self) -> bool:
-        """
-        Check if this error is likely transient and can be retried.
-        
-        Returns:
-            True if the error is transient, False otherwise
-        """
-        return self.error_type in [
-            self.CONNECTION_ERROR,
-            self.TIMEOUT_ERROR,
-            self.QUOTA_ERROR
-        ]
+        self.error_type = error_type
 
 
 class BedrockClient:
     """
-    Client for interacting with Amazon Bedrock.
+    Client for Amazon Bedrock.
     
-    This class provides methods for generating responses using Amazon Bedrock models.
+    This class provides a simplified interface for generating text with Amazon Bedrock.
+    It handles authentication, model selection, and usage tracking.
     """
     
     def __init__(
         self,
         region_name: str = "us-east-1",
         model_id: str = "amazon.nova-micro-v1:0",
-        max_tokens: int = 1000,
+        max_tokens: int = 512,
         usage_tracker: Optional[UsageTracker] = None
     ):
         """
@@ -114,172 +66,224 @@ class BedrockClient:
         
         Args:
             region_name: The AWS region to use
-            model_id: The model ID to use
+            model_id: The default model ID to use
             max_tokens: The maximum number of tokens to generate
-            usage_tracker: The usage tracker to use (defaults to the global instance)
+            usage_tracker: The usage tracker to use
         """
-        self.region_name = region_name
-        self.model_id = model_id
-        self.max_tokens = max_tokens
         self.logger = logging.getLogger(__name__)
+        self.region_name = region_name
+        self.default_model = model_id
+        self.max_tokens = max_tokens
         self.usage_tracker = usage_tracker or default_tracker
         
-        # Log initialization
-        self.logger.info(f"Initialized BedrockClient with model {model_id} in region {region_name}")
+        # Create the Bedrock client
+        try:
+            self.logger.debug(f"Creating Bedrock client in region {region_name}")
+            self.client = boto3.client(service_name="bedrock-runtime", region_name=region_name)
+            self.logger.debug("Bedrock client created successfully")
+        except Exception as e:
+            self.logger.error(f"Error creating Bedrock client: {str(e)}")
+            raise BedrockError(f"Error creating Bedrock client: {str(e)}", BedrockError.API_ERROR)
+
+    def _pretty_print_json(self, data):
+        """Helper method to pretty-print JSON with Unicode characters."""
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except:
+                return data
         
-        # Get AWS credentials
-        self.session = boto3.Session(region_name=region_name)
-        self.credentials = self.session.get_credentials()
+        return json.dumps(data, ensure_ascii=False, indent=2)
     
+    def _call_bedrock_api(self, model_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Call the Amazon Bedrock API with the provided model ID and payload.
+        
+        Args:
+            model_id: The model ID to use
+            payload: The request payload
+            
+        Returns:
+            The response from the API
+        """
+        # Log the request payload in detail for debugging
+        self.logger.debug(f"Request model_id: {model_id}")
+        self.logger.debug(f"Request payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
+        
+        try:
+            # Call the API
+            self.logger.debug(f"Calling Bedrock API with model {model_id}")
+            response = self.client.invoke_model(
+                modelId=model_id,
+                body=json.dumps(payload),
+                contentType="application/json",
+                accept="application/json"
+            )
+            
+            # Parse the response
+            response_body = response["body"].read().decode("utf-8")
+            response_json = json.loads(response_body)
+            
+            # Log the complete raw response for debugging
+            self.logger.debug(f"Raw response: {json.dumps(response_json, indent=2, ensure_ascii=False)}")
+            
+            return response_json
+        except Exception as e:
+            # Log detailed error information
+            self.logger.error(f"Error calling Bedrock API: {str(e)}")
+            self.logger.error(f"Model ID: {model_id}")
+            self.logger.error(f"Request payload: {self._pretty_print_json(payload)}")
+            
+            # Check for specific error types
+            error_type = BedrockError.API_ERROR
+            error_msg = str(e)
+            
+            if "AccessDeniedException" in error_msg:
+                error_type = BedrockError.AUTHENTICATION_ERROR
+            elif "ValidationException" in error_msg:
+                # Log more details about validation errors
+                self.logger.error(f"Validation error details: Request format may be incorrect for model {model_id}")
+            elif "ThrottlingException" in error_msg or "TooManyRequestsException" in error_msg:
+                error_type = BedrockError.QUOTA_ERROR
+            elif "Timeout" in error_msg:
+                error_type = BedrockError.TIMEOUT_ERROR
+                
+            raise BedrockError(f"Error calling Bedrock API: {error_msg}", error_type)
+
     async def generate(
-        self,
+        self, 
         request: CompanionRequest,
         model_id: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        prompt: Optional[str] = None
+        prompt: str = ""
     ) -> str:
         """
-        Generate a response to the request.
+        Generate text with Amazon Bedrock.
         
         Args:
-            request: The request to process
-            model_id: The model ID to use (defaults to self.model_id)
+            request: The request to generate text for
+            model_id: The model ID to use (optional, defaults to the default model)
             temperature: The temperature to use for generation
-            max_tokens: The maximum number of tokens to generate (defaults to self.max_tokens)
-            prompt: A custom prompt to use (if None, one will be created from the request)
+            max_tokens: The maximum number of tokens to generate
+            prompt: The prompt to use
             
         Returns:
-            The generated response
-            
-        Raises:
-            BedrockError: If there is an error generating the response
+            The generated text
         """
         # Use default values if not provided
-        model_id = model_id or self.model_id
+        model_id = model_id or self.default_model
         max_tokens = max_tokens or self.max_tokens
         
-        # Create a prompt if one wasn't provided
-        if prompt is None:
-            # Use the prompt optimizer to create a cost-effective prompt
-            prompt = create_optimized_prompt(request, max_tokens=max(200, max_tokens // 5))
-            self.logger.debug(f"Created optimized prompt with {len(prompt)} characters")
-            
-        # Estimate the number of tokens in the prompt
-        estimated_input_tokens = len(prompt) // 4  # Simple estimation
-        estimated_output_tokens = max_tokens
+        # Log the generation request
+        self.logger.info(f"Generating text for request {request.request_id} with model {model_id}")
+        self.logger.debug(f"Prompt: {prompt}")
+        self.logger.debug(f"Temperature: {temperature}, max_tokens: {max_tokens}")
         
-        # Check if the request would exceed the quota
-        allowed, reason = await check_quota(
-            model_id=model_id,
-            estimated_tokens=estimated_input_tokens + estimated_output_tokens,
-            tracker=self.usage_tracker
-        )
+        # Create the payload based on the model type
+        if "claude" in model_id.lower():
+            # Claude-specific payload
+            payload = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            }
+        elif "nova" in model_id.lower():
+            # Nova-specific payload using Converse API format
+            payload = {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [{"text": prompt}]
+                    }
+                ],
+                "inferenceConfig": {
+                    "maxTokens": max_tokens,
+                    "temperature": temperature,
+                    "topP": 0.9
+                }
+            }
+        else:
+            # Default payload for other models (text completion format)
+            payload = {
+                "inputText": prompt,
+                "textGenerationConfig": {
+                    "maxTokenCount": max_tokens,
+                    "temperature": temperature,
+                    "topP": 0.9,
+                    "stopSequences": []
+                }
+            }
         
-        if not allowed:
-            self.logger.warning(f"Quota exceeded for request {request.request_id}: {reason}")
-            raise BedrockError(
-                f"Quota exceeded: {reason}",
-                error_type=BedrockError.QUOTA_ERROR
-            )
-            
         try:
-            # Record the start time
-            start_time = time.time()
-            
             # Call the API
-            self.logger.info(f"Generating response for request {request.request_id} with model {model_id}")
-            response = await self._call_bedrock_api(
-                prompt=prompt,
-                model_id=model_id,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
+            response_json = self._call_bedrock_api(model_id, payload)
             
-            # Calculate the duration
-            duration_ms = int((time.time() - start_time) * 1000)
-            
-            # Extract the completion from the response
-            model_provider = model_id.split('.')[0]
-            
-            if model_provider == "anthropic":
-                # For Anthropic models, the completion is in the 'completion' field
-                completion = response.get("completion", "")
-            elif model_provider == "amazon":
-                # For Amazon models, the completion is already extracted in _call_bedrock_api
-                completion = response.get("completion", "")
+            # Extract the generated text based on the model type
+            if "claude" in model_id.lower():
+                # Claude-specific response format
+                content = response_json.get("content", [])
+                if isinstance(content, list) and len(content) > 0:
+                    text = content[0].get("text", "")
+                else:
+                    text = response_json.get("output", {}).get("message", {}).get("content", "")
+            elif "nova" in model_id.lower():
+                # Nova-specific response format from Converse API
+                output = response_json.get("output", {})
+                if "message" in output:
+                    message = output["message"]
+                    if isinstance(message, dict) and "content" in message:
+                        content = message["content"]
+                        if isinstance(content, list) and len(content) > 0:
+                            # Content is a list of content blocks
+                            text_blocks = []
+                            for block in content:
+                                if isinstance(block, dict) and "text" in block:
+                                    text_blocks.append(block["text"])
+                            if text_blocks:
+                                text = " ".join(text_blocks)
+                            else:
+                                text = str(content)
+                        else:
+                            text = str(content)
+                    else:
+                        text = str(message)
+                else:
+                    # Fallback for other response formats
+                    text = str(output)
             else:
-                # For other models, try to extract the completion from common fields
-                completion = (
-                    response.get("completion", "") or
-                    response.get("content", "") or
-                    response.get("text", "") or
-                    response.get("generated_text", "") or
-                    response.get("output", "") or
-                    str(response)
-                )
-                
-            # Get token usage from the response
-            input_tokens = response.get("usage", {}).get("input_tokens", estimated_input_tokens)
-            output_tokens = response.get("usage", {}).get("output_tokens", len(completion) // 4)
+                # Default response format for other models
+                text = response_json.get("outputText", response_json.get("results", [{}])[0].get("outputText", ""))
             
-            # Track the usage
-            await track_request(
-                request_id=request.request_id,
-                model_id=model_id,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                duration_ms=duration_ms,
-                success=True,
-                tracker=self.usage_tracker
-            )
-                
-            # Log token usage if available
-            if "usage" in response:
-                self.logger.info(
-                    f"Token usage for request {request.request_id}: "
-                    f"Input={input_tokens}, "
-                    f"Output={output_tokens}"
-                )
-                
-            self.logger.info(f"Generated {len(completion)} characters for request {request.request_id}")
-            return completion
+            # Log the generated text
+            self.logger.debug(f"Generated text: {text}")
             
-        except BedrockError as e:
-            # Track the failed request
-            await track_request(
-                request_id=request.request_id,
-                model_id=model_id,
-                input_tokens=estimated_input_tokens,
-                output_tokens=0,
-                duration_ms=0,
-                success=False,
-                error_type=e.error_type,
-                tracker=self.usage_tracker
-            )
+            # Track usage
+            if "usage" in response_json:
+                input_tokens = response_json["usage"].get("inputTokens", 0)
+                output_tokens = response_json["usage"].get("outputTokens", 0)
+                
+                # Check if the usage_tracker has the record_usage method
+                if hasattr(self.usage_tracker, 'record_usage'):
+                    self.usage_tracker.record_usage(
+                        model_id=model_id,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens
+                    )
+                else:
+                    # Log usage information without tracking
+                    self.logger.info(f"Usage: {input_tokens} input tokens, {output_tokens} output tokens")
             
-            # Re-raise BedrockError
-            raise
+            return text
         except Exception as e:
-            # Handle unexpected errors
-            self.logger.error(f"Unexpected error generating response: {str(e)}")
-            
-            # Track the failed request
-            await track_request(
-                request_id=request.request_id,
-                model_id=model_id,
-                input_tokens=estimated_input_tokens,
-                output_tokens=0,
-                duration_ms=0,
-                success=False,
-                error_type=BedrockError.UNKNOWN_ERROR,
-                tracker=self.usage_tracker
-            )
-            
-            raise BedrockError(
-                f"Unexpected error generating response: {str(e)}",
-                error_type=BedrockError.UNKNOWN_ERROR
-            )
+            self.logger.error(f"Error generating text: {str(e)}")
+            raise BedrockError(f"Error generating text: {str(e)}", BedrockError.API_ERROR)
     
     async def get_available_models(self) -> List[Dict[str, Any]]:
         """
@@ -310,233 +314,3 @@ class BedrockClient:
             # Wrap exceptions in BedrockError
             logger.error(f"Error getting available models: {e}")
             raise BedrockError(f"Error getting available models: {e}")
-    
-    async def _call_bedrock_api(
-        self,
-        prompt: str,
-        model_id: str,
-        temperature: float,
-        max_tokens: int
-    ) -> Dict[str, Any]:
-        """
-        Call the Amazon Bedrock API.
-        
-        Args:
-            prompt: The prompt to send to the API
-            model_id: The model ID to use
-            temperature: The temperature to use
-            max_tokens: The maximum number of tokens to generate
-            
-        Returns:
-            The API response
-            
-        Raises:
-            BedrockError: If there is an error calling the API
-        """
-        # Determine the model provider from the model ID
-        model_provider = model_id.split('.')[0]
-        
-        # Create the appropriate payload based on the model provider
-        if model_provider == "anthropic":
-            payload = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ]
-            }
-        elif model_id.startswith("amazon"):
-            payload = {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "text": prompt
-                            }
-                        ]
-                    }
-                ],
-                "inferenceConfig": {
-                    "temperature": temperature,
-                    "topP": 0.9,
-                    "maxTokens": max_tokens
-                } 
-            }
-        else:
-            raise BedrockError(f"Unsupported model provider: {model_provider}")
-        
-        # Convert the payload to JSON
-        payload_json = json.dumps(payload)
-        
-        # Debug log for payload
-        self.logger.debug(f"Request payload: {payload_json}")
-        
-        # Create the URL
-        url = f"https://bedrock-runtime.{self.region_name}.amazonaws.com/model/{model_id}/invoke"
-        
-        # Get the authentication headers
-        headers = self._get_auth_headers(url, payload_json)
-        
-        try:
-            # Make the API call
-            self.logger.debug(f"Calling Bedrock API with model {model_id}")
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    url,
-                    headers=headers,
-                    data=payload_json,
-                    timeout=30
-                ) as response:
-                    # Check for errors
-                    if response.status != 200:
-                        error_text = await response.text()
-                        self.logger.error(f"Bedrock API error: {response.status} - {error_text}")
-                        raise BedrockError(
-                            f"Bedrock API error: {response.status} - {error_text}",
-                            error_type=BedrockError.MODEL_ERROR
-                        )
-                    
-                    # Parse the response
-                    response_data = json.loads(await response.read())
-                    self.logger.debug(f"Raw response: {json.dumps(response_data)}")
-                    
-                    # Extract the completion based on the model provider
-                    if model_provider == "anthropic":
-                        return response_data
-                    elif model_provider == "amazon":
-                        # Handle the response based on model provider
-                        # Check for new format with output.message
-                        if "output" in response_data and "message" in response_data["output"]:
-                            message = response_data["output"]["message"]
-                            content = message.get("content", [])
-                            
-                            if content and isinstance(content, list) and len(content) > 0:
-                                if isinstance(content[0], dict) and "text" in content[0]:
-                                    completion = content[0].get("text", "")
-                                else:
-                                    completion = " ".join(str(item) for item in content)
-                            else:
-                                completion = ""
-                            
-                            stop_reason = response_data.get("stopReason", "")
-                            usage = {
-                                "input_tokens": response_data.get("usage", {}).get("inputTokens", 0),
-                                "output_tokens": response_data.get("usage", {}).get("outputTokens", 0)
-                            }
-                        # Check for messages array format
-                        elif "messages" in response_data:
-                            messages = response_data.get("messages", [])
-                            if len(messages) > 0 and "content" in messages[-1]:
-                                # Handle content as either string or array
-                                content = messages[-1].get("content", "")
-                                if isinstance(content, list) and len(content) > 0:
-                                    # Content is an array
-                                    if isinstance(content[0], dict) and "text" in content[0]:
-                                        # Array of objects with text field
-                                        text_blocks = [block.get("text", "") for block in content if "text" in block]
-                                        completion = " ".join(text_blocks)
-                                    else:
-                                        # Array of strings or other objects
-                                        completion = " ".join(str(item) for item in content)
-                                elif isinstance(content, str):
-                                    # Content is a simple string
-                                    completion = content
-                                else:
-                                    completion = str(content)
-                            else:
-                                # Fallback if no messages or content
-                                completion = ""
-                            
-                            stop_reason = response_data.get("stopReason", "")
-                            usage = {
-                                "input_tokens": response_data.get("usage", {}).get("inputTokens", 0),
-                                "output_tokens": response_data.get("usage", {}).get("outputTokens", 0)
-                            }
-                        else:
-                            # Fallback for unknown format
-                            completion = str(response_data)
-                            stop_reason = ""
-                            usage = {
-                                "input_tokens": 0,
-                                "output_tokens": 0
-                            }
-                        
-                        return {
-                            "completion": completion,
-                            "stop_reason": stop_reason,
-                            "usage": usage
-                        }
-                    
-                    return response_data
-                    
-        except aiohttp.ClientError as e:
-            self.logger.error(f"Connection error calling Bedrock API: {str(e)}")
-            raise BedrockError(
-                f"Connection error calling Bedrock API: {str(e)}",
-                error_type=BedrockError.CONNECTION_ERROR
-            )
-        except asyncio.TimeoutError:
-            self.logger.error("Timeout calling Bedrock API")
-            raise BedrockError(
-                "Timeout calling Bedrock API",
-                error_type=BedrockError.TIMEOUT_ERROR
-            )
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Error parsing Bedrock API response: {str(e)}")
-            raise BedrockError(
-                f"Error parsing Bedrock API response: {str(e)}",
-                error_type=BedrockError.CONTENT_ERROR
-            )
-        except Exception as e:
-            self.logger.error(f"Unexpected error calling Bedrock API: {str(e)}")
-            raise BedrockError(
-                f"Unexpected error calling Bedrock API: {str(e)}",
-                error_type=BedrockError.UNKNOWN_ERROR
-            )
-    
-    def _get_auth_headers(self, url: str, body: str) -> Dict[str, str]:
-        """
-        Get headers with AWS SigV4 authentication.
-        
-        Args:
-            url: The URL for the API call
-            body: The request body
-            
-        Returns:
-            Headers with authentication
-        """
-        # Create an AWS request
-        request = AWSRequest(
-            method='POST',
-            url=url,
-            data=body.encode('utf-8')
-        )
-        
-        # Add content type header
-        request.headers.add_header('Content-Type', 'application/json')
-        
-        # Sign the request with SigV4
-        SigV4Auth(self.credentials, 'bedrock', self.region_name).add_auth(request)
-        
-        # Return the headers
-        return dict(request.headers)
-    
-    def _create_prompt(self, request: CompanionRequest) -> str:
-        """
-        Create a prompt for the Bedrock API.
-        
-        Args:
-            request: The request to process
-            
-        Returns:
-            A prompt string
-        """
-        # Create a simple prompt format that works well with Amazon models
-        return (
-            "You are a helpful bilingual dog companion in a Japanese train station. "
-            f"The player has asked: \"{request.player_input}\" "
-            "Your role is to assist the player with language help, directions, and cultural information. "
-            "Provide a helpful, concise response in English."
-        )

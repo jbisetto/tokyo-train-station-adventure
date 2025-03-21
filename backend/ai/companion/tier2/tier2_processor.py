@@ -97,7 +97,7 @@ class Tier2Processor(Processor):
         
         logger.debug("Initialized Tier2Processor with common components")
     
-    async def process(self, request: ClassifiedRequest) -> str:
+    async def process(self, request: ClassifiedRequest) -> Dict[str, Any]:
         """
         Process a request using the Ollama client.
         
@@ -170,7 +170,28 @@ class Tier2Processor(Processor):
                 
                 # Store the processing tier in additional params so it's available to the API
                 request.additional_params["processing_tier"] = ProcessingTier.TIER_2.value
-                return response
+                
+                # Return in the same format as Tier3
+                if isinstance(response, tuple) and len(response) > 0:
+                    response_text = response[0]
+                else:
+                    response_text = response
+                
+                # Handle case where response_text is a dictionary
+                if isinstance(response_text, dict):
+                    # Try to extract text from common fields
+                    for field in ['text', 'content', 'response', 'generated_text']:
+                        if field in response_text:
+                            response_text = response_text[field]
+                            break
+                    else:
+                        # If no recognized fields, use the string representation
+                        response_text = str(response_text)
+                
+                return {
+                    'response_text': response_text,
+                    'processing_tier': ProcessingTier.TIER_2.value
+                }
             
             # If we got a model-related error, try with a simpler model
             config = get_config('tier2', {})
@@ -204,7 +225,10 @@ class Tier2Processor(Processor):
                     success = True
                     # Store the processing tier in additional params so it's available to the API
                     request.additional_params["processing_tier"] = ProcessingTier.TIER_2.value
-                    return response
+                    return {
+                        'response_text': response,
+                        'processing_tier': ProcessingTier.TIER_2.value
+                    }
             
             # If we still don't have a response, check if we should fall back to tier1
             if error and self._should_fallback_to_tier1(error):
@@ -223,7 +247,10 @@ class Tier2Processor(Processor):
                 request.additional_params["processing_tier"] = ProcessingTier.TIER_1.value
                 
                 success = True
-                return response
+                return {
+                    'response_text': response,
+                    'processing_tier': ProcessingTier.TIER_1.value
+                }
             
             # If all else fails, generate a fallback response
             logger.warning(f"All attempts failed for request {request.request_id}, generating fallback response")
@@ -236,7 +263,10 @@ class Tier2Processor(Processor):
             request.additional_params["processing_tier"] = ProcessingTier.RULE.value
             
             success = True
-            return response
+            return {
+                'response_text': response,
+                'processing_tier': ProcessingTier.RULE.value
+            }
             
         except Exception as e:
             logger.error(f"Error processing request {request.request_id}: {str(e)}")
@@ -245,7 +275,10 @@ class Tier2Processor(Processor):
             # Store the processing tier in additional params
             request.additional_params["processing_tier"] = ProcessingTier.RULE.value
             
-            return self._generate_fallback_response(request, e)
+            return {
+                'response_text': self._generate_fallback_response(request, e),
+                'processing_tier': ProcessingTier.RULE.value
+            }
             
         finally:
             end_time = time.time()
@@ -302,31 +335,19 @@ class Tier2Processor(Processor):
                 
                 logger.debug(f"Full response from LLM: {raw_response}")
                 
-                # Ensure raw_response is a dictionary
-                if isinstance(raw_response, str):
-                    logger.error("Received response is a string, expected a dictionary.")
-                    return None, OllamaError("Invalid response format from LLM.")
+                # LLMs should always return strings
+                if not isinstance(raw_response, str):
+                    logger.error(f"Invalid response type from LLM: {type(raw_response)}")
+                    raise OllamaError(f"Expected string response from LLM, got {type(raw_response)}", 
+                                      OllamaError.INVALID_RESPONSE)
                 
-                # Parse the response
-                parsed_response = self.response_parser.parse_response(
-                    raw_response=raw_response,
-                    request=request,
-                    format="markdown",
-                    highlight_key_terms=False,
-                    simplify=False,
-                    add_learning_cues=False
-                )
+                # Process the string response
+                return {
+                    'response_text': raw_response,
+                    'model': model,
+                    'processing_tier': ProcessingTier.TIER_2.value
+                }
                 
-                logger.debug(f"Parsed response: {parsed_response}")
-                
-                # Extract Japanese text and pronunciation
-                japanese_text = parsed_response.get("japanese", "")
-                pronunciation = parsed_response.get("pronunciation", "")
-                
-                if not japanese_text or not pronunciation:
-                    logger.warning("Missing Japanese text or pronunciation in the response.")
-                
-                return parsed_response
             except Exception as e:
                 logger.error(f"Error in generate_and_parse: {str(e)}")
                 raise

@@ -29,11 +29,12 @@ async def test_bedrock():
         # Debug: Add a hook to print raw API response
         original_call_bedrock_api = client._call_bedrock_api
         
-        async def debug_call_bedrock_api(*args, **kwargs):
+        def debug_call_bedrock_api(model_id, payload):
             try:
-                raw_response = await original_call_bedrock_api(*args, **kwargs)
+                # Call the original method (not async in this context)
+                raw_response = original_call_bedrock_api(model_id, payload)
                 print("\nRAW API RESPONSE:")
-                print(json.dumps(raw_response, indent=2))
+                print(json.dumps(raw_response, indent=2, ensure_ascii=False))
                 return raw_response
             except Exception as e:
                 print(f"Error in API call: {e}")
@@ -44,7 +45,8 @@ async def test_bedrock():
         
         # Generate a response
         print("Generating response...")
-        response = await client.generate(request)
+        prompt = "Answer in a helpful way: " + request.player_input
+        response = await client.generate(request, prompt=prompt)
         
         # Print the response
         print("\nResponse from Bedrock API:")

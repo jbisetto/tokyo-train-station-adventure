@@ -499,4 +499,21 @@ REMEMBER:
                 prompt += "\nThe player is asking for clarification about something in the previous exchanges.\n"
                 prompt += "Please provide a more detailed explanation of the most recent topic.\n"
         
+        # Add player history if available
+        player_history = request.additional_params.get("player_history", [])
+        
+        if player_history and len(player_history) > 0:
+            # Add a section for player history
+            prompt += "\n\nPrevious conversations with this player:\n"
+            
+            # Add the most recent interactions (limit to 3-5 for context)
+            for i, entry in enumerate(reversed(player_history[-5:])):
+                user_query = entry.get("user_query", "")
+                assistant_response = entry.get("assistant_response", "")
+                
+                prompt += f"\nPlayer: {user_query}\n"
+                prompt += f"You (Hachi): {assistant_response}\n"
+            
+            prompt += "\nRemember the context from these previous interactions when responding."
+        
         return prompt 

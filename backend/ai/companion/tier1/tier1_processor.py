@@ -35,17 +35,21 @@ class Tier1Processor(Processor):
         self.logger = logging.getLogger(__name__)
         self.decision_trees = {}
         
-        # Load configuration
+        # Load the configuration - try both with and without underscore
         config = get_config('tier1', {})
-        self.enabled = True if config is None else config.get('enabled', True)
+        
+        # Store the enabled state from the config
+        self.enabled = config.get('enabled', True)
+        
+        logger.debug(f"Initialized Tier1Processor (enabled: {self.enabled})")
+        
         self.default_model = "rule-based" if config is None else config.get('default_model', "rule-based")
         
         self._load_default_trees()
-        self.logger.debug(f"Initialized Tier1Processor (enabled: {self.enabled}, model: {self.default_model})")
     
-    def process(self, request: ClassifiedRequest) -> str:
+    async def process(self, request: ClassifiedRequest) -> str:
         """
-        Process a request using rule-based techniques.
+        Process a request using the Tier 1 processor.
         
         Args:
             request: The classified request to process
@@ -53,12 +57,13 @@ class Tier1Processor(Processor):
         Returns:
             The generated response
         """
-        self.logger.info(f"Processing request {request.request_id} with Tier 1 processor")
+        logger.info(f"Processing request {request.request_id} with Tier 1 processor")
         
         # Check if processor is enabled
         if not self.enabled:
-            self.logger.warning("Tier 1 processor is disabled in configuration")
-            return "Sorry, the Tier 1 processor is currently disabled."
+            logger.warning("Tier 1 processor is disabled in configuration")
+            # Raise an exception to trigger the cascade to the next tier
+            raise Exception("Tier 1 processor is disabled in configuration")
         
         # Create a companion request from the classified request
         companion_request = self._create_companion_request(request)

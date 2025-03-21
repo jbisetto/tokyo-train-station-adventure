@@ -97,11 +97,27 @@ class RequestHandler:
                 self.logger.warning(f"Returning error message directly: {processor_response}")
                 return processor_response
             
+            # Extract text from dictionary response if needed
+            if isinstance(processor_response, dict):
+                if 'response_text' in processor_response:
+                    response_text = processor_response['response_text']
+                else:
+                    # Try common fields
+                    for field in ['text', 'content', 'response', 'generated_text']:
+                        if field in processor_response:
+                            response_text = processor_response[field]
+                            break
+                    else:
+                        # If no recognized fields, convert to string
+                        response_text = str(processor_response)
+            else:
+                response_text = processor_response
+            
             # Format the response
             self.logger.debug(f"Formatting response: {request_id}")
             format_start = time.time()
             response = self.response_formatter.format_response(
-                processor_response=processor_response,
+                processor_response=response_text,
                 classified_request=classified_request
             )
             format_time = time.time() - format_start
@@ -135,87 +151,75 @@ class RequestHandler:
             # Return a fallback response
             return f"I'm sorry, I encountered an error while processing your request. Please try again."
     
-    async def _process_with_cascade(self, classified_request: ClassifiedRequest, 
-                             preferred_tier: ProcessingTier) -> str:
+    async def _process_with_cascade(self, request: ClassifiedRequest, starting_tier: ProcessingTier) -> str:
         """
-        Process a request using the cascade pattern.
-        
-        This method attempts to process the request with the preferred tier.
-        If that fails (e.g., because the tier is disabled), it will try the next
-        tier in the cascade order.
+        Process a request with the specified tier, falling back to simpler tiers if needed.
         
         Args:
-            classified_request: The classified request to process
-            preferred_tier: The preferred processing tier
+            request: The request to process
+            starting_tier: The tier to start processing with
             
         Returns:
-            The processor response
-            
-        Raises:
-            Exception: If no processors are available or all processing attempts fail
+            The generated response
         """
-        # Define the cascade order based on the preferred tier
-        cascade_order = self._get_cascade_order(preferred_tier)
+        # Try each tier in order, starting with the specified tier
+        current_tier = starting_tier
         
-        # Try each tier in the cascade order
-        errors = []
-        for tier in cascade_order:
+        # Define tier progression to ensure proper cascading
+        tier_progression = [
+            ProcessingTier.TIER_1,
+            ProcessingTier.TIER_2,
+            ProcessingTier.TIER_3,
+            ProcessingTier.RULE
+        ]
+        
+        # Find starting position in progression
+        try:
+            start_index = tier_progression.index(current_tier)
+        except ValueError:
+            # If not found, start with tier 1
+            start_index = 0
+        
+        # Try tiers in progression order
+        for tier_index in range(start_index, len(tier_progression)):
+            current_tier = tier_progression[tier_index]
+            
             try:
-                self.logger.debug(f"Attempting to process request {classified_request.request_id} with {tier.name}")
+                # Attempt to process with the current tier
+                self.logger.debug(f"Attempting to process request {request.request_id} with {current_tier}")
                 
-                # Get a processor for this tier
-                processor = self.processor_factory.get_processor(tier)
-                self.logger.debug(f"Got processor of type {type(processor).__name__} for {tier.name}")
+                # Get a processor for the current tier
+                processor = self.processor_factory.get_processor(current_tier)
+                self.logger.debug(f"Got processor of type {type(processor).__name__} for {current_tier}")
                 
-                # Check if this tier is enabled before processing
-                if not self._is_tier_enabled(tier, processor):
-                    self.logger.warning(f"Tier {tier.name} is disabled, skipping to next tier")
-                    errors.append(f"{tier.name}: disabled in configuration")
-                    continue
+                # Check if the processor is enabled via its attribute
+                if hasattr(processor, 'enabled') and not processor.enabled:
+                    self.logger.warning(f"Processor for {current_tier} is disabled, will cascade to next tier")
+                    continue  # Try the next tier in the progression
                 
-                # Update the processing tier in the classified request
-                classified_request.processing_tier = tier
+                # Process the request
+                self.logger.info(f"Processing request {request.request_id} with {current_tier} processor")
+                response = await processor.process(request)
                 
-                # Log that we're using this tier
-                self.logger.info(f"Processing request {classified_request.request_id} with {tier.name} processor")
-                
-                # Check if the processor's process method is async
-                is_async = inspect.iscoroutinefunction(processor.process)
-                
-                if is_async:
-                    # If it's async, await it
-                    response = await processor.process(classified_request)
-                else:
-                    # If it's not async, call it normally
-                    response = processor.process(classified_request)
-                
-                # If response is a string, convert to dict with tier info
-                if isinstance(response, str):
-                    response = {
-                        'response_text': response,
-                        'processing_tier': tier  # Include the tier that processed it
-                    }
-                elif isinstance(response, dict) and 'processing_tier' not in response:
-                    response['processing_tier'] = tier  # Add tier if missing
-                
+                # Update the processing tier
+                request.processing_tier = current_tier
                 return response
                 
             except Exception as e:
-                # Log the error and continue with the next tier
-                self.logger.warning(f"Failed to process request {classified_request.request_id} with {tier.name} processor: {str(e)}")
-                errors.append(f"{tier.name}: {str(e)}")
+                # Log the error and try the next tier
+                self.logger.warning(f"Failed to process request {request.request_id} with {current_tier} processor: {str(e)}")
+                # Continue to next tier in progression (no need to calculate)
         
-        # If we get here, all tiers failed
-        self.logger.error(f"All processing tiers failed for request {classified_request.request_id}: {errors}")
-        
-        # Check if all errors are due to tiers being disabled
-        if all("disabled in configuration" in error for error in errors):
-            # If all tiers are disabled, return a direct error message without formatting
-            error_message = "All AI services are currently disabled. Please check your configuration."
-            return error_message
-        else:
-            raise Exception(f"Failed to process request with any tier: {errors}")
+        # If we've tried all tiers and none worked, generate a fallback response
+        self.logger.warning(f"All processing tiers failed for request {request.request_id}, generating fallback response")
+        request.processing_tier = ProcessingTier.RULE
+        return self._generate_fallback_response(request)
     
+    def _generate_fallback_response(self, request: ClassifiedRequest) -> str:
+        # Implement the logic to generate a fallback response based on the request
+        # This is a placeholder and should be replaced with the actual implementation
+        return "I'm sorry, I encountered an error while processing your request. Please try again."
+
     def _get_cascade_order(self, preferred_tier: ProcessingTier) -> list:
         """
         Get the cascade order for a preferred tier.
