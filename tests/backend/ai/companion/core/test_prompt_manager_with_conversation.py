@@ -96,8 +96,10 @@ async def test_create_contextual_prompt_no_history(sample_classified_request):
     # Check that create_prompt was called with the request
     prompt_manager.create_prompt.assert_called_once_with(sample_classified_request)
     
-    # Check that the prompt is the base prompt
-    assert prompt == "Base prompt"
+    # Check that the prompt contains the base prompt
+    assert "Base prompt" in prompt
+    assert "Current request" in prompt
+    assert sample_classified_request.player_input in prompt
     
     # Restore the original method
     prompt_manager.create_prompt = original_create_prompt
@@ -123,9 +125,12 @@ async def test_create_contextual_prompt_with_new_topic(sample_classified_request
     # Check that create_prompt was called with the request
     prompt_manager.create_prompt.assert_called_once_with(sample_classified_request)
     
-    # Check that the prompt does not contain conversation history
-    assert prompt == "Base prompt"
+    # Check that the prompt contains the base prompt but not conversation history
+    assert "Base prompt" in prompt
+    assert "Current request" in prompt
+    assert sample_classified_request.player_input in prompt
     assert "[{" not in prompt
+    assert "Previous conversation" not in prompt
     
     # Restore the original methods
     prompt_manager.create_prompt = original_create_prompt
@@ -160,12 +165,14 @@ async def test_create_contextual_prompt_with_follow_up(sample_classified_request
     # Check that create_prompt was called with the request
     prompt_manager.create_prompt.assert_called_once_with(sample_classified_request)
     
-    # Check that the prompt contains conversation history in OpenAI format
+    # Check that the prompt contains the base prompt and conversation history
     assert "Base prompt" in prompt
     assert "Previous conversation (in OpenAI conversation format)" in prompt
     assert '"role": "user"' in prompt
     assert '"content"' in prompt
     assert '"role": "assistant"' in prompt
+    assert "follow-up question" in prompt
+    assert sample_classified_request.player_input in prompt
     
     # Restore the original methods
     prompt_manager.create_prompt = original_create_prompt
@@ -209,8 +216,9 @@ async def test_end_to_end_conversation_flow():
     
     # Verify that the first prompt does not include conversation history
     # (as this is the first message in the conversation)
-    assert first_prompt == "Base prompt for test"
+    assert "Base prompt for test" in first_prompt
     assert "Previous conversation" not in first_prompt
+    assert first_request.player_input in first_prompt
     
     # Add an entry to the conversation history
     await conversation_manager.add_to_history(
@@ -242,6 +250,7 @@ async def test_end_to_end_conversation_flow():
     assert '"role": "assistant"' in second_prompt
     assert "What does 'kippu' mean?" in second_prompt
     assert "'Kippu'" in second_prompt
+    assert second_request.player_input in second_prompt
     
     # Verify that follow-up instructions are included
     assert "follow-up question" in second_prompt

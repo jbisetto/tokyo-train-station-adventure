@@ -28,7 +28,7 @@ class Processor(abc.ABC):
     """
     
     @abc.abstractmethod
-    def process(self, request: ClassifiedRequest) -> str:
+    async def process(self, request: ClassifiedRequest) -> str:
         """
         Process a request and generate a response.
         
@@ -57,7 +57,7 @@ class Tier1Processor(Processor):
         self._load_default_trees()
         self.logger.debug("Initialized Tier1Processor")
     
-    def process(self, request: ClassifiedRequest) -> str:
+    async def process(self, request: ClassifiedRequest) -> str:
         """
         Process a request using rule-based techniques.
         
@@ -255,8 +255,8 @@ class ProcessorFactory:
         
         logger.info(f"Tier {tier_value} config section '{config_section}': {tier_config}")
         
-        # If tier config exists and enabled is False, raise an error
-        if tier_config is not None and tier_config.get('enabled') is False:
+        # If tier config exists and enabled is explicitly False, raise an error
+        if 'enabled' in tier_config and tier_config.get('enabled') is False:
             logger.warning(f"Tier {tier_value} is explicitly disabled in configuration, raising exception")
             raise ValueError(f"{tier} is disabled in configuration")
         
@@ -270,6 +270,10 @@ class ProcessorFactory:
         elif tier == ProcessingTier.TIER_3:
             from backend.ai.companion.tier3.tier3_processor import Tier3Processor
             processor = Tier3Processor(player_history_manager=self.__class__._player_history_manager)
+        elif tier == ProcessingTier.RULE:
+            # Import the rule-based processor
+            from backend.ai.companion.rule.rule_processor import RuleProcessor
+            processor = RuleProcessor(player_history_manager=self.__class__._player_history_manager)
         else:
             raise ValueError(f"Unknown processing tier: {tier}")
         

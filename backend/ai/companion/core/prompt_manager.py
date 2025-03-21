@@ -431,13 +431,13 @@ REMEMBER:
         
         return compressed
 
-    def create_contextual_prompt(self, request: ClassifiedRequest, conversation_history=None) -> str:
+    async def create_contextual_prompt(self, request: ClassifiedRequest, conversation_id=None) -> str:
         """
         Create a prompt with conversation history context.
         
         Args:
             request: The companion request
-            conversation_history: Optional conversation history
+            conversation_id: Conversation ID to fetch history
             
         Returns:
             A prompt with conversation history
@@ -445,50 +445,56 @@ REMEMBER:
         # Create a base prompt
         prompt = self.create_prompt(request)
         
-        # Get player history from additional_params if available
-        player_history = request.additional_params.get("player_history", [])
+        # Skip conversation context if no manager or conversation_id
+        if not self.conversation_manager or not conversation_id:
+            # Just add the current request directly
+            prompt += f"\n\nCurrent request: {request.player_input}\n\nYour response:"
+            return prompt
         
-        # If no direct conversation history was provided but player history exists, use that
-        if not conversation_history and player_history:
-            # Format the player history into a conversation format for the prompt
-            history_text = "\n\nPrevious conversation history:\n"
+        try:
+            # Get the conversation context
+            context = await self.conversation_manager.get_or_create_context(conversation_id)
             
-            # Add the most recent interactions (limit to 5 for context length)
-            for idx, entry in enumerate(player_history[-5:]):
-                history_text += f"User: {entry.get('user_query', '')}\n"
-                history_text += f"Assistant: {entry.get('assistant_response', '')}\n\n"
+            # Get the conversation entries
+            conversation_history = context.get("entries", [])
             
-            # Add the history to the prompt
-            prompt += history_text
-        # If direct conversation history was provided, format it
-        elif conversation_history:
-            history_text = "\n\nPrevious conversation history:\n"
+            # Check the conversation state
+            conversation_state = self.conversation_manager.detect_conversation_state(request, conversation_history)
             
-            # Check for different history formats and handle accordingly
-            for entry in conversation_history:
-                if isinstance(entry, dict):
-                    # Format based on entry structure - check for different keys
-                    if "type" in entry:
-                        # Tier2 format
-                        if entry.get("type") == "user_message":
-                            history_text += f"User: {entry.get('text', '')}\n"
-                        elif entry.get("type") == "assistant_message":
-                            history_text += f"Assistant: {entry.get('text', '')}\n\n"
-                    elif "role" in entry:
-                        # Tier3 format
-                        if entry.get("role") == "user":
-                            history_text += f"User: {entry.get('content', '')}\n"
-                        elif entry.get("role") == "assistant":
-                            history_text += f"Assistant: {entry.get('content', '')}\n\n"
-                    elif "user_query" in entry:
-                        # Direct player history format
-                        history_text += f"User: {entry.get('user_query', '')}\n"
-                        history_text += f"Assistant: {entry.get('assistant_response', '')}\n\n"
-            
-            # Add the history to the prompt
-            prompt += history_text
+            # If it's a follow-up question, include the conversation history
+            if conversation_state == ConversationState.FOLLOW_UP:
+                # Format the conversation history in OpenAI-style format
+                history_text = "\n\nPrevious conversation (in OpenAI conversation format):\n"
+                history_text += "```json\n[\n"
+                
+                for entry in conversation_history:
+                    if entry.get("type") == "user_message":
+                        history_text += '  {\n'
+                        history_text += '    "role": "user",\n'
+                        # Escape quotes properly
+                        content = entry.get("text", "").replace('"', '\\"')
+                        history_text += f'    "content": "{content}"\n'
+                        history_text += '  },\n'
+                    elif entry.get("type") == "assistant_message":
+                        history_text += '  {\n'
+                        history_text += '    "role": "assistant",\n'
+                        # Escape quotes properly
+                        content = entry.get("text", "").replace('"', '\\"')
+                        history_text += f'    "content": "{content}"\n'
+                        history_text += '  },\n'
+                
+                # Close the JSON array
+                history_text += "]\n```\n"
+                
+                # Add the conversation history to the prompt
+                prompt += history_text
+                
+                # Add a note that this is a follow-up question
+                prompt += "\n\nThe user is asking a follow-up question to the previous conversation.\n"
+        except Exception as e:
+            logger.error(f"Error getting conversation history: {e}")
         
         # Add the current query
-        prompt += f"\nCurrent request: {request.player_input}\n\nYour response:"
+        prompt += f"\n\nCurrent request: {request.player_input}\n\nYour response:"
         
         return prompt 

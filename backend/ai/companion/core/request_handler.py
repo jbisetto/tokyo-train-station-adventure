@@ -231,22 +231,16 @@ class RequestHandler:
         # Start with the preferred tier
         order = [preferred_tier]
         
-        # Add the remaining tiers in a sensible order
+        # Add the remaining tiers in a sensible order based on the preferred tier
         if preferred_tier == ProcessingTier.TIER_1:
-            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_3, ProcessingTier.RULE])
+            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_3])
         elif preferred_tier == ProcessingTier.TIER_2:
-            order.extend([ProcessingTier.TIER_3, ProcessingTier.TIER_1, ProcessingTier.RULE])
+            order.extend([ProcessingTier.TIER_3, ProcessingTier.TIER_1])
         elif preferred_tier == ProcessingTier.TIER_3:
-            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_1, ProcessingTier.RULE])
-        else:  # RULE or unknown
+            order.extend([ProcessingTier.TIER_2, ProcessingTier.TIER_1])
+        elif preferred_tier == ProcessingTier.RULE:
+            # If RULE is preferred, try the AI tiers first in order of complexity
             order = [ProcessingTier.TIER_1, ProcessingTier.TIER_2, ProcessingTier.TIER_3, ProcessingTier.RULE]
-            # Remove the unknown tier if it's in the list and not RULE
-            if preferred_tier != ProcessingTier.RULE and preferred_tier in order:
-                order.remove(preferred_tier)
-            # Ensure RULE is always last
-            if ProcessingTier.RULE in order and order[-1] != ProcessingTier.RULE:
-                order.remove(ProcessingTier.RULE)
-                order.append(ProcessingTier.RULE)
         
         return order
 
