@@ -69,3 +69,4 @@ Thumbs.db
 # Project specific ignores
 docs/design/system/rest/ 
 *.log
+/data/player_history
