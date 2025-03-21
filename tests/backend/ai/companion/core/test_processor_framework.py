@@ -80,7 +80,8 @@ class TestTier1Processor:
         assert processor is not None
         assert hasattr(processor, 'process')
     
-    def test_tier1_processor_process(self, sample_classified_request, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_tier1_processor_process(self, sample_classified_request, monkeypatch):
         """Test processing a request with the Tier1Processor."""
         from backend.ai.companion.tier1.tier1_processor import Tier1Processor
     
@@ -100,12 +101,13 @@ class TestTier1Processor:
         monkeypatch.setattr(processor, '_process_with_decision_tree', lambda tree, request: "'kippu' means 'ticket' in Japanese.")
     
         # Process a request
-        response = processor.process(sample_classified_request)
+        response = await processor.process(sample_classified_request)
     
         # Check that the response is correct
         assert response == "'kippu' means 'ticket' in Japanese."
     
-    def test_tier1_processor_with_pattern_match(self, sample_classified_request, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_tier1_processor_with_pattern_match(self, sample_classified_request, monkeypatch):
         """Test processing a request with pattern matching."""
         from backend.ai.companion.tier1.tier1_processor import Tier1Processor
     
@@ -140,12 +142,13 @@ class TestTier1Processor:
         monkeypatch.setattr(processor, '_load_decision_tree', lambda tree_name: mock_tree)
     
         # Process a request
-        response = processor.process(sample_classified_request)
+        response = await processor.process(sample_classified_request)
     
         # Check that the response is correct
         assert response == "'kippu' means 'ticket' in Japanese."
     
-    def test_tier1_processor_with_decision_tree(self, sample_classified_request, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_tier1_processor_with_decision_tree(self, sample_classified_request, monkeypatch):
         """Test processing a request with a decision tree."""
         from backend.ai.companion.tier1.tier1_processor import Tier1Processor
     
@@ -188,7 +191,7 @@ class TestTier1Processor:
         monkeypatch.setattr(processor, '_load_decision_tree', lambda tree_name: mock_tree)
     
         # Process a request
-        response = processor.process(sample_classified_request)
+        response = await processor.process(sample_classified_request)
     
         # Check that the response is correct
         assert response == "'Kippu' means 'ticket' in Japanese."
@@ -387,23 +390,23 @@ class TestProcessorFactory:
         # Clear the factory cache to ensure we don't have any cached processors
         ProcessorFactory.clear_cache()
 
-        # Test with a mock that allows us to see what's being passed
+        # Use a patch for the config.get_config function
         with patch('backend.ai.companion.config.get_config') as mock_get_config:
-            # Add a debug print to track calls
-            def config_side_effect(section, default=None):
-                print(f"Section requested: {section}")
-                if section == 'tier_1':  # Use the correct tier value format from the enum
+            # Configure the mock to return disabled for tier1 section
+            def mock_config_side_effect(section, default=None):
+                # The ProcessorFactory converts tier_1 to tier1 for config lookup
+                if section == 'tier1':
                     return {'enabled': False}
                 return {'enabled': True}
+                
+            mock_get_config.side_effect = mock_config_side_effect
 
-            mock_get_config.side_effect = config_side_effect
-
+            # Create a factory and try to get a processor for the disabled tier
             factory = ProcessorFactory()
-
-            # Try to get a processor for the disabled tier
+            
+            # This should raise a ValueError because the tier is disabled
             with pytest.raises(ValueError) as excinfo:
-                result = factory.get_processor(ProcessingTier.TIER_1)  # Use the actual enum
-                print(f"Result: {result}")  # This should not execute if the exception is raised
-
-            # Check that the error message says the tier is disabled
+                factory.get_processor(ProcessingTier.TIER_1)
+                
+            # Verify the error message
             assert "disabled in configuration" in str(excinfo.value) 
