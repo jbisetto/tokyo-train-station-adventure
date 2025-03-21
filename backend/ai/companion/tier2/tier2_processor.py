@@ -8,6 +8,7 @@ It uses the Ollama client to generate responses using local language models.
 import logging
 import time
 from typing import Dict, Any, Optional, List, Tuple
+from datetime import datetime
 
 from backend.ai.companion.core.models import ClassifiedRequest, ComplexityLevel, ProcessingTier
 from backend.ai.companion.core.processor_framework import Processor, ProcessorFactory
@@ -19,6 +20,7 @@ from backend.ai.companion.tier2.response_parser import ResponseParser
 from backend.ai.companion.utils.monitoring import ProcessorMonitor
 from backend.ai.companion.utils.retry import RetryConfig, retry_async
 from backend.ai.companion.config import get_config
+from backend.ai.companion.core.player_history_manager import PlayerHistoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +47,8 @@ class Tier2Processor(Processor):
     def __init__(
         self, 
         retry_config: Optional[RetryConfig] = None,
-        context_manager: Optional[ContextManager] = None
+        context_manager: Optional[ContextManager] = None,
+        player_history_manager: Optional[PlayerHistoryManager] = None
     ):
         """
         Initialize the Tier 2 processor.
@@ -53,6 +56,7 @@ class Tier2Processor(Processor):
         Args:
             retry_config: Configuration for retry behavior (optional)
             context_manager: Context manager for tracking conversation context (optional)
+            player_history_manager: Player history manager for tracking player interactions (optional)
         """
         # Load configuration
         config = get_config('tier2', {})
@@ -95,36 +99,62 @@ class Tier2Processor(Processor):
         # Initialize conversation history storage
         self.conversation_histories = {}
         
+        # Initialize player history manager
+        self.player_history_manager = player_history_manager
+        
         logger.debug("Initialized Tier2Processor with common components")
     
     async def process(self, request: ClassifiedRequest) -> Dict[str, Any]:
         """
-        Process a request using the Ollama client.
+        Process a request with the Tier 2 processor.
         
         Args:
             request: The classified request to process
             
         Returns:
-            The generated response
+            A dictionary containing the response and metadata
         """
-        logger.info(f"Processing request {request.request_id} with Tier 2 processor")
-        
-        # Check if processor is enabled
-        if not self.enabled:
-            logger.warning("Tier 2 processor is disabled in configuration")
-            raise Exception("Tier 2 processor is disabled in configuration")
-            
-        self.monitor.track_request("tier2", request.request_id)
-        
-        start_time = time.time()
         success = False
-        used_processing_tier = ProcessingTier.TIER_2  # Default to Tier 2
+        error = None
+        response = None
+        
+        # Check if the tier is enabled
+        if not self.enabled:
+            logger.warning("Tier 2 processor is disabled in the configuration")
+            raise RuntimeError("Tier 2 processor is disabled")
+        
+        # Default to Tier 2
         
         try:
             # Get or create conversation history
             conversation_id = request.additional_params.get("conversation_id", request.request_id)
+            player_id = request.additional_params.get("player_id")
+            
+            # Use player history if available
+            player_history = []
+            if player_id and hasattr(self, 'player_history_manager'):
+                player_history = self.player_history_manager.get_player_history(player_id)
+                logger.debug(f"Retrieved player history for {player_id}, found {len(player_history)} entries")
+            
+            # Initialize conversation history from player history if not already in cache
             if conversation_id not in self.conversation_histories:
                 self.conversation_histories[conversation_id] = []
+                # If we have player history, convert it to the format expected by this processor
+                if player_history:
+                    for entry in player_history:
+                        if 'user_query' in entry and 'assistant_response' in entry:
+                            # Use role/content format like Tier3 instead of type/text for consistency
+                            self.conversation_histories[conversation_id].append({
+                                "role": "user",
+                                "content": entry['user_query'],
+                                "timestamp": entry.get('timestamp', datetime.now().isoformat())
+                            })
+                            self.conversation_histories[conversation_id].append({
+                                "role": "assistant",
+                                "content": entry['assistant_response'],
+                                "timestamp": entry.get('timestamp', datetime.now().isoformat())
+                            })
+            
             conversation_history = self.conversation_histories[conversation_id]
             
             # Select the appropriate model based on complexity
@@ -134,14 +164,10 @@ class Tier2Processor(Processor):
             # Create a prompt using the common prompt manager
             base_prompt = self.prompt_manager.create_prompt(request)
             
-            # Detect conversation state and generate contextual prompt if needed
-            state = self.conversation_manager.detect_conversation_state(request, conversation_history)
-            prompt = self.conversation_manager.generate_contextual_prompt(
-                request, 
-                conversation_history, 
-                state, 
-                base_prompt
-            )
+            # Instead of using ConversationManager to generate the prompt,
+            # use the PromptManager's create_contextual_prompt method directly
+            prompt = self.prompt_manager.create_contextual_prompt(request, conversation_history)
+            logger.debug(f"Created contextual prompt using player history with {len(conversation_history)} entries")
             
             # Try to generate a response with retries for transient errors
             logger.info(f"Attempting to generate response for request {request.request_id} with model {model}")
@@ -164,6 +190,19 @@ class Tier2Processor(Processor):
                         request.additional_params["conversation_id"],
                         request,
                         response
+                    )
+                
+                # Update player history if we have player_id and player_history_manager
+                if player_id and hasattr(self, 'player_history_manager'):
+                    self.player_history_manager.add_interaction(
+                        player_id=player_id,
+                        user_query=request.player_input,
+                        assistant_response=response if isinstance(response, str) else str(response),
+                        session_id=request.additional_params.get("session_id"),
+                        metadata={
+                            "processing_tier": ProcessingTier.TIER_2.value,
+                            "complexity": request.complexity.value if hasattr(request, 'complexity') else None
+                        }
                     )
                 
                 success = True

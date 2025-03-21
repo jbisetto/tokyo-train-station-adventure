@@ -43,7 +43,8 @@ class Tier3Processor(Processor):
     def __init__(
         self,
         usage_tracker: Optional[UsageTracker] = None,
-        context_manager: Optional[ContextManager] = None
+        context_manager: Optional[ContextManager] = None,
+        player_history_manager=None
     ):
         """
         Initialize the Tier 3 processor.
@@ -51,6 +52,7 @@ class Tier3Processor(Processor):
         Args:
             usage_tracker: The usage tracker for monitoring API usage
             context_manager: Context manager for tracking conversation context
+            player_history_manager: Player history manager for tracking player interactions
         """
         # Initialize logger
         self.logger = logging.getLogger(__name__)
@@ -62,6 +64,7 @@ class Tier3Processor(Processor):
         self.scenario_detector = ScenarioDetector()
         self.context_manager = context_manager or default_context_manager
         self.monitor = ProcessorMonitor()
+        self.player_history_manager = player_history_manager
         
         # Initialize storage
         self.conversation_histories = {}
@@ -140,7 +143,29 @@ class Tier3Processor(Processor):
             
             # Get conversation history if a conversation ID is provided
             conversation_id = request.additional_params.get("conversation_id")
-            if conversation_id:
+            player_id = request.additional_params.get("player_id")
+            
+            # Use player history if available
+            player_history = []
+            if player_id and self.player_history_manager:
+                player_history = self.player_history_manager.get_player_history(player_id)
+                self.logger.debug(f"Retrieved player history for {player_id}, found {len(player_history)} entries")
+                
+                # If we have player history, convert it to conversation history format
+                if player_history and not conversation_history:
+                    for entry in player_history:
+                        if 'user_query' in entry and 'assistant_response' in entry:
+                            conversation_history.append({
+                                "role": "user",
+                                "content": entry['user_query']
+                            })
+                            conversation_history.append({
+                                "role": "assistant",
+                                "content": entry['assistant_response']
+                            })
+            
+            # If we have a conversation ID but no conversation history yet, check the context manager
+            if conversation_id and not conversation_history:
                 try:
                     # Try to use get_or_create_context if available
                     context = self.context_manager.get_or_create_context(conversation_id)
@@ -155,7 +180,14 @@ class Tier3Processor(Processor):
             
             # For testing, we'll just use a simple state and the base prompt
             state = ConversationState.NEW_TOPIC
-            prompt = base_prompt
+            
+            # Use contextual prompt with conversation history if available
+            if conversation_history:
+                self.logger.debug(f"Using contextual prompt with {len(conversation_history)} history entries")
+                prompt = self.prompt_manager.create_contextual_prompt(request, conversation_history)
+            else:
+                # If no conversation history, use the base prompt
+                prompt = base_prompt
             
             # Generate a response using the Bedrock client
             try:
@@ -201,6 +233,19 @@ class Tier3Processor(Processor):
                 
                 # Parse the response
                 parsed_response = self._parse_response(response)
+                
+                # Update player history if we have player_id and player_history_manager
+                if player_id and self.player_history_manager:
+                    self.player_history_manager.add_interaction(
+                        player_id=player_id,
+                        user_query=request.player_input,
+                        assistant_response=parsed_response,
+                        session_id=request.additional_params.get("session_id"),
+                        metadata={
+                            "processing_tier": ProcessingTier.TIER_3.value,
+                            "complexity": request.complexity.value if hasattr(request, 'complexity') else None
+                        }
+                    )
                 
                 return {
                     'response_text': parsed_response,

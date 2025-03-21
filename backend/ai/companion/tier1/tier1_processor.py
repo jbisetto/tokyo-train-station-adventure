@@ -31,7 +31,9 @@ class Tier1Processor(Processor):
     """
     
     def __init__(self):
-        """Initialize the Tier 1 processor."""
+        """
+        Initialize the Tier 1 processor.
+        """
         self.logger = logging.getLogger(__name__)
         self.decision_trees = {}
         

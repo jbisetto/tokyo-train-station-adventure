@@ -192,12 +192,27 @@ class ProcessorFactory:
     
     _instance = None
     _processors = {}
+    _player_history_manager = None
     
-    def __new__(cls):
+    def __new__(cls, *args, **kwargs):
         """Create a singleton instance of the factory."""
         if cls._instance is None:
             cls._instance = super(ProcessorFactory, cls).__new__(cls)
+            # Store the player history manager if provided
+            if 'player_history_manager' in kwargs:
+                cls._player_history_manager = kwargs['player_history_manager']
         return cls._instance
+    
+    def __init__(self, player_history_manager=None):
+        """
+        Initialize the factory.
+        
+        Args:
+            player_history_manager: Optional player history manager to pass to processors
+        """
+        # Only set player_history_manager if it's not already set
+        if player_history_manager and not self.__class__._player_history_manager:
+            self.__class__._player_history_manager = player_history_manager
     
     @classmethod
     def clear_cache(cls):
@@ -235,8 +250,11 @@ class ProcessorFactory:
         tier_config_key = tier_value  # Use the actual tier value as the config key
         tier_config = get_config(tier_config_key, {})
         
+        logger.info(f"Tier {tier_value} config: {tier_config}")
+        
         # If tier config exists and enabled is False, raise an error
         if tier_config is not None and tier_config.get('enabled') is False:
+            logger.warning(f"Tier {tier_value} is explicitly disabled in configuration, raising exception")
             raise ValueError(f"{tier} is disabled in configuration")
         
         # Create a new processor
@@ -245,10 +263,10 @@ class ProcessorFactory:
             processor = Tier1Processor()
         elif tier == ProcessingTier.TIER_2:
             from backend.ai.companion.tier2.tier2_processor import Tier2Processor
-            processor = Tier2Processor()
+            processor = Tier2Processor(player_history_manager=self.__class__._player_history_manager)
         elif tier == ProcessingTier.TIER_3:
             from backend.ai.companion.tier3.tier3_processor import Tier3Processor
-            processor = Tier3Processor()
+            processor = Tier3Processor(player_history_manager=self.__class__._player_history_manager)
         else:
             raise ValueError(f"Unknown processing tier: {tier}")
         

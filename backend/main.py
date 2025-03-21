@@ -6,6 +6,7 @@ import uvicorn
 import logging
 import logging.config
 from backend.api import create_app  # Use absolute import
+from backend.ai.companion.utils.log_filter import install_sensitive_data_filter
 
 # Configure logging
 logging_config = {
@@ -42,6 +43,16 @@ logging_config = {
             "level": "DEBUG",
             "handlers": ["console", "file"],
             "propagate": False
+        },
+        "boto3": {
+            "level": "INFO",  # Raise boto3 log level to reduce noise
+            "handlers": ["file"],
+            "propagate": False
+        },
+        "botocore": {
+            "level": "INFO",  # Raise botocore log level to reduce noise
+            "handlers": ["file"],
+            "propagate": False
         }
     },
     "root": {
@@ -52,6 +63,9 @@ logging_config = {
 
 # Apply the logging configuration
 logging.config.dictConfig(logging_config)
+
+# Install sensitive data filter for all logs
+install_sensitive_data_filter()
 
 # Create the FastAPI application
 app = create_app()

@@ -32,6 +32,7 @@ class CompanionAssistRequest(BaseModel):
     sessionId: str = Field(..., description="Current session identifier")
     gameContext: GameContext = Field(..., description="Current game state information")
     request: RequestDetails = Field(..., description="The assistance request details")
+    conversationId: Optional[str] = Field(None, description="Optional conversation ID for tracking specific conversations")
 
 
 class UIHighlight(BaseModel):

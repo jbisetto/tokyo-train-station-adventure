@@ -34,7 +34,7 @@ class RequestHandler:
     5. Tracking conversation context
     """
     
-    def __init__(self, intent_classifier, processor_factory, response_formatter):
+    def __init__(self, intent_classifier, processor_factory, response_formatter, player_history_manager=None):
         """
         Initialize the request handler.
         
@@ -42,10 +42,12 @@ class RequestHandler:
             intent_classifier: Component that classifies request intent and complexity
             processor_factory: Factory that provides processors for different tiers
             response_formatter: Component that formats responses
+            player_history_manager: Optional player history manager for tracking player interactions
         """
         self.intent_classifier = intent_classifier
         self.processor_factory = processor_factory
         self.response_formatter = response_formatter
+        self.player_history_manager = player_history_manager
         self.logger = logging.getLogger(__name__)
     
     async def handle_request(self, request: CompanionRequest, 

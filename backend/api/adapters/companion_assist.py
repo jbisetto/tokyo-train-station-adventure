@@ -56,8 +56,13 @@ class CompanionAssistRequestAdapter(RequestAdapter[CompanionAssistRequest, Compa
             "target_entity": request.request.targetEntity,
             "target_location": request.request.targetLocation,
             "language": request.request.language,
-            "session_id": request.sessionId
+            "session_id": request.sessionId,
+            "player_id": request.playerId  # Add player_id for player history lookup
         }
+        
+        # Add conversation_id if provided
+        if hasattr(request, 'conversationId') and request.conversationId:
+            additional_params["conversation_id"] = request.conversationId
         
         # Create the companion request
         companion_request = CompanionRequest(

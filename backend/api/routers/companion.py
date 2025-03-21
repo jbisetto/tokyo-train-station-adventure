@@ -5,10 +5,12 @@ Router for companion-related endpoints.
 import logging
 import uuid
 import json
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.models.companion_assist import CompanionAssistRequest, CompanionAssistResponse
 from backend.api.adapters.base import AdapterFactory
+from backend.ai.companion.core.player_history_manager import PlayerHistoryManager
 
 # Create a logger
 logger = logging.getLogger(__name__)
@@ -22,6 +24,9 @@ router = APIRouter(
         500: {"description": "Internal server error"}
     }
 )
+
+# Initialize the player history manager
+player_history_manager = PlayerHistoryManager()
 
 
 @router.post("/assist", response_model=CompanionAssistResponse)
@@ -51,17 +56,41 @@ async def companion_assist(request: CompanionAssistRequest):
         # Transform the request to internal format
         logger.debug(f"Adapting request to internal format (request_id: {request_id})")
         internal_request = request_adapter.adapt(request)
+        
+        # Add player history to the request's additional_params
+        player_id = request.playerId
+        player_history = player_history_manager.get_player_history(player_id)
+        internal_request.additional_params["player_history"] = player_history
+        internal_request.additional_params["player_id"] = player_id
+        internal_request.additional_params["session_id"] = request.sessionId
+        
+        # If conversationId is provided, add it to additional_params
+        if hasattr(request, 'conversationId') and request.conversationId:
+            internal_request.additional_params["conversation_id"] = request.conversationId
+            
         logger.debug(f"Internal request created with ID: {internal_request.request_id}")
         
         # Process the request
-        # For testing purposes, we'll create a mock response
-        # In production, this would call the actual companion AI system
         try:
             # Try to import and use the actual process_companion_request function
             logger.debug(f"Attempting to process request with companion AI (request_id: {request_id})")
             from backend.ai.companion import process_companion_request
             internal_response = await process_companion_request(internal_request)
             logger.debug(f"Successfully processed request with companion AI (request_id: {request_id})")
+            
+            # Store the interaction in player history
+            player_history_manager.add_interaction(
+                player_id=player_id,
+                user_query=request.request.text or "",
+                assistant_response=internal_response.response_text,
+                session_id=request.sessionId,
+                metadata={
+                    "location": request.gameContext.location,
+                    "request_type": request.request.type,
+                    "language": request.request.language if request.request.language else "english",
+                    "processing_tier": internal_response.processing_tier
+                }
+            )
         except (ImportError, TypeError) as e:
             # If the function is not available or not properly implemented,
             # create a mock response for testing
@@ -90,6 +119,21 @@ async def companion_assist(request: CompanionAssistRequest):
                             "duration": 3000
                         }
                     ]
+                }
+            )
+            
+            # Store the mock interaction in player history
+            player_history_manager.add_interaction(
+                player_id=player_id,
+                user_query=request.request.text or "",
+                assistant_response=internal_response.response_text,
+                session_id=request.sessionId,
+                metadata={
+                    "location": request.gameContext.location,
+                    "request_type": request.request.type,
+                    "language": request.request.language if request.request.language else "english",
+                    "processing_tier": "TIER_1",
+                    "is_mock": True
                 }
             )
         

@@ -195,7 +195,7 @@ class ConversationManager:
         base_prompt: str
     ) -> str:
         """
-        Generate a contextual prompt based on the conversation history and state.
+        Generate a contextual prompt based on the conversation state.
         
         Args:
             request: The current request
@@ -220,10 +220,16 @@ class ConversationManager:
             prompt += "[\n"
             
             for entry in recent_history:
-                if entry.get("type") == "user_message":
-                    prompt += f'  {{"role": "user", "content": "{entry.get("text", "").replace("\"", "\\\"")}"}},'
-                elif entry.get("type") == "assistant_message":
-                    prompt += f'  {{"role": "assistant", "content": "{entry.get("text", "").replace("\"", "\\\"")}"}},'
+                # Handle both old type/text format and new role/content format
+                if "role" in entry and "content" in entry:
+                    # New format
+                    prompt += f'  {{"role": "{entry.get("role")}", "content": "{entry.get("content", "").replace("\"", "\\\"")}"}},'
+                elif "type" in entry:
+                    # Old format
+                    if entry.get("type") == "user_message":
+                        prompt += f'  {{"role": "user", "content": "{entry.get("text", "").replace("\"", "\\\"")}"}},'
+                    elif entry.get("type") == "assistant_message":
+                        prompt += f'  {{"role": "assistant", "content": "{entry.get("text", "").replace("\"", "\\\"")}"}},'
                 prompt += "\n"
             
             # Remove trailing comma and close the array
@@ -241,9 +247,9 @@ class ConversationManager:
         
         return prompt
     
-    async def add_to_history(
+    def add_to_history(
         self,
-        conversation_id: str,
+        conversation_history: List[Dict[str, Any]],
         request: ClassifiedRequest,
         response: str
     ) -> List[Dict[str, Any]]:
@@ -251,21 +257,17 @@ class ConversationManager:
         Add a request-response pair to the conversation history.
         
         Args:
-            conversation_id: The conversation ID
+            conversation_history: The current conversation history
             request: The current request
             response: The response to the request
             
         Returns:
             The updated conversation history
         """
-        # Get the current conversation context
-        context = await self.get_or_create_context(conversation_id)
-        conversation_history = context.get("entries", [])
-        
-        # Create a new history entry
+        # Create a new history entry using role/content format for consistency
         entry = {
-            "type": "user_message",
-            "text": request.player_input,
+            "role": "user",
+            "content": request.player_input,
             "timestamp": request.timestamp.isoformat() if hasattr(request, 'timestamp') else datetime.now().isoformat(),
             "intent": request.intent.value if hasattr(request, 'intent') else None,
             "entities": request.extracted_entities if hasattr(request, 'extracted_entities') else {}
@@ -276,8 +278,8 @@ class ConversationManager:
         
         # Create the assistant's response entry
         response_entry = {
-            "type": "assistant_message",
-            "text": response,
+            "role": "assistant",
+            "content": response,
             "timestamp": datetime.now().isoformat(),
         }
         
@@ -285,13 +287,9 @@ class ConversationManager:
         conversation_history.append(response_entry)
         
         # Limit the history size if specified in the config
-        max_history = self.tier_specific_config.get('max_history_size', 10)
-        if len(conversation_history) > max_history:
-            conversation_history = conversation_history[-max_history:]
-        
-        # Update the context with the new history
-        context["entries"] = conversation_history
-        await self.storage.save_context(conversation_id, context)
+        max_history = self.tier_specific_config.get('max_history_size', 10) if hasattr(self, 'tier_specific_config') else 10
+        if len(conversation_history) > max_history * 2:  # Each exchange is 2 entries (user + assistant)
+            conversation_history = conversation_history[-(max_history * 2):]
         
         return conversation_history
     
@@ -333,8 +331,8 @@ class ConversationManager:
         response = await generate_response_func(prompt)
         
         # Add the request-response pair to the history
-        updated_history = await self.add_to_history(
-            conversation_id,
+        updated_history = self.add_to_history(
+            conversation_history,
             request,
             response
         )

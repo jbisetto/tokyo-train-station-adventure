@@ -431,89 +431,64 @@ REMEMBER:
         
         return compressed
 
-    async def create_contextual_prompt(
-        self, 
-        request: ClassifiedRequest, 
-        conversation_id: str
-    ) -> str:
+    def create_contextual_prompt(self, request: ClassifiedRequest, conversation_history=None) -> str:
         """
-        Create a prompt that includes conversation history and game world context when appropriate.
+        Create a prompt with conversation history context.
         
         Args:
-            request: The classified request
-            conversation_id: The conversation ID
+            request: The companion request
+            conversation_history: Optional conversation history
             
         Returns:
-            A prompt string for the language model with context
+            A prompt with conversation history
         """
-        # Start with the base prompt
+        # Create a base prompt
         prompt = self.create_prompt(request)
         
-        # If no conversation manager is provided, return the base prompt (with world context)
-        if not self.conversation_manager:
-            return prompt
-        
-        # Get the conversation context
-        context = await self.conversation_manager.get_or_create_context(conversation_id)
-        conversation_history = context.get("entries", [])
-        
-        # Detect the conversation state
-        state = self.conversation_manager.detect_conversation_state(request, conversation_history)
-        
-        # If this is a new topic, return the base prompt without conversation history
-        # (but still with world context added in create_prompt)
-        if state == ConversationState.NEW_TOPIC:
-            return prompt
-        
-        # Add conversation history if it's a follow-up or clarification (in OpenAI format)
-        if conversation_history and (state == ConversationState.FOLLOW_UP or state == ConversationState.CLARIFICATION):
-            prompt += "\nPrevious conversation (in OpenAI conversation format):\n"
-            
-            # Get the most recent entries (up to 6 entries = 3 exchanges)
-            recent_history = conversation_history[-6:]
-            
-            # Format conversation history in OpenAI format
-            openai_messages = []
-            
-            for entry in recent_history:
-                if entry.get("type") == "user_message":
-                    openai_messages.append({
-                        "role": "user",
-                        "content": entry.get("text", "")
-                    })
-                elif entry.get("type") == "assistant_message":
-                    openai_messages.append({
-                        "role": "assistant",
-                        "content": entry.get("text", "")
-                    })
-            
-            # Add the formatted history to the prompt
-            prompt += json.dumps(openai_messages, indent=2)
-            prompt += "\n"
-            
-            # Add specific instructions based on the conversation state
-            if state == ConversationState.FOLLOW_UP:
-                prompt += "\nThe player is asking a follow-up question related to the previous exchanges.\n"
-                prompt += "Please provide a response that takes into account the conversation history.\n"
-            elif state == ConversationState.CLARIFICATION:
-                prompt += "\nThe player is asking for clarification about something in the previous exchanges.\n"
-                prompt += "Please provide a more detailed explanation of the most recent topic.\n"
-        
-        # Add player history if available
+        # Get player history from additional_params if available
         player_history = request.additional_params.get("player_history", [])
         
-        if player_history and len(player_history) > 0:
-            # Add a section for player history
-            prompt += "\n\nPrevious conversations with this player:\n"
+        # If no direct conversation history was provided but player history exists, use that
+        if not conversation_history and player_history:
+            # Format the player history into a conversation format for the prompt
+            history_text = "\n\nPrevious conversation history:\n"
             
-            # Add the most recent interactions (limit to 3-5 for context)
-            for i, entry in enumerate(reversed(player_history[-5:])):
-                user_query = entry.get("user_query", "")
-                assistant_response = entry.get("assistant_response", "")
-                
-                prompt += f"\nPlayer: {user_query}\n"
-                prompt += f"You (Hachi): {assistant_response}\n"
+            # Add the most recent interactions (limit to 5 for context length)
+            for idx, entry in enumerate(player_history[-5:]):
+                history_text += f"User: {entry.get('user_query', '')}\n"
+                history_text += f"Assistant: {entry.get('assistant_response', '')}\n\n"
             
-            prompt += "\nRemember the context from these previous interactions when responding."
+            # Add the history to the prompt
+            prompt += history_text
+        # If direct conversation history was provided, format it
+        elif conversation_history:
+            history_text = "\n\nPrevious conversation history:\n"
+            
+            # Check for different history formats and handle accordingly
+            for entry in conversation_history:
+                if isinstance(entry, dict):
+                    # Format based on entry structure - check for different keys
+                    if "type" in entry:
+                        # Tier2 format
+                        if entry.get("type") == "user_message":
+                            history_text += f"User: {entry.get('text', '')}\n"
+                        elif entry.get("type") == "assistant_message":
+                            history_text += f"Assistant: {entry.get('text', '')}\n\n"
+                    elif "role" in entry:
+                        # Tier3 format
+                        if entry.get("role") == "user":
+                            history_text += f"User: {entry.get('content', '')}\n"
+                        elif entry.get("role") == "assistant":
+                            history_text += f"Assistant: {entry.get('content', '')}\n\n"
+                    elif "user_query" in entry:
+                        # Direct player history format
+                        history_text += f"User: {entry.get('user_query', '')}\n"
+                        history_text += f"Assistant: {entry.get('assistant_response', '')}\n\n"
+            
+            # Add the history to the prompt
+            prompt += history_text
+        
+        # Add the current query
+        prompt += f"\nCurrent request: {request.player_input}\n\nYour response:"
         
         return prompt 

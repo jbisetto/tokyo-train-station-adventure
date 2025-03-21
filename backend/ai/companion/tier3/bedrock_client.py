@@ -85,15 +85,70 @@ class BedrockClient:
             self.logger.error(f"Error creating Bedrock client: {str(e)}")
             raise BedrockError(f"Error creating Bedrock client: {str(e)}", BedrockError.API_ERROR)
 
-    def _pretty_print_json(self, data):
-        """Helper method to pretty-print JSON with Unicode characters."""
+    def _redact_sensitive_info(self, data):
+        """
+        Redact sensitive information from a dictionary or string.
+        
+        Args:
+            data: The data to redact
+            
+        Returns:
+            The redacted data
+        """
         if isinstance(data, str):
             try:
-                data = json.loads(data)
+                # Try to parse as JSON
+                data_dict = json.loads(data)
+                return self._redact_sensitive_info(data_dict)
             except:
+                # Not JSON, redact known patterns
                 return data
         
-        return json.dumps(data, ensure_ascii=False, indent=2)
+        if not isinstance(data, dict):
+            return data
+            
+        # Create a copy to avoid modifying the original
+        redacted = data.copy()
+        
+        # Keys to completely redact
+        sensitive_keys = [
+            "authentication", "credentials", "secret", "token", "signature",
+            "access_key", "secret_key", "password", "api_key", "auth"
+        ]
+        
+        # Keys to redact values
+        keys_to_check = sensitive_keys + ["inference_config", "parameters"]
+        
+        for key in list(redacted.keys()):
+            # If the key itself is sensitive, replace the entire value
+            if any(sensitive_word in key.lower() for sensitive_word in sensitive_keys):
+                redacted[key] = "[REDACTED]"
+            
+            # If the key might contain sensitive nested information
+            elif isinstance(redacted[key], dict):
+                redacted[key] = self._redact_sensitive_info(redacted[key])
+            
+            # If this is a list, check each item
+            elif isinstance(redacted[key], list):
+                redacted[key] = [
+                    self._redact_sensitive_info(item) if isinstance(item, (dict, list)) else item
+                    for item in redacted[key]
+                ]
+        
+        return redacted
+
+    def _pretty_print_json(self, data):
+        """Helper method to pretty-print JSON with Unicode characters, redacting sensitive info."""
+        # First redact sensitive information
+        redacted_data = self._redact_sensitive_info(data)
+        
+        if isinstance(redacted_data, str):
+            try:
+                redacted_data = json.loads(redacted_data)
+            except:
+                return redacted_data
+        
+        return json.dumps(redacted_data, ensure_ascii=False, indent=2)
     
     def _call_bedrock_api(self, model_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -106,9 +161,9 @@ class BedrockClient:
         Returns:
             The response from the API
         """
-        # Log the request payload in detail for debugging
+        # Log the request payload in detail for debugging, but redact sensitive info
         self.logger.debug(f"Request model_id: {model_id}")
-        self.logger.debug(f"Request payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
+        self.logger.debug(f"Request payload: {self._pretty_print_json(payload)}")
         
         try:
             # Call the API
@@ -124,12 +179,12 @@ class BedrockClient:
             response_body = response["body"].read().decode("utf-8")
             response_json = json.loads(response_body)
             
-            # Log the complete raw response for debugging
-            self.logger.debug(f"Raw response: {json.dumps(response_json, indent=2, ensure_ascii=False)}")
+            # Log the complete raw response for debugging, but redact sensitive info
+            self.logger.debug(f"Raw response: {self._pretty_print_json(response_json)}")
             
             return response_json
         except Exception as e:
-            # Log detailed error information
+            # Log detailed error information, but redact sensitive info
             self.logger.error(f"Error calling Bedrock API: {str(e)}")
             self.logger.error(f"Model ID: {model_id}")
             self.logger.error(f"Request payload: {self._pretty_print_json(payload)}")
