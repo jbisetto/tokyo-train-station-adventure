@@ -14,17 +14,17 @@ import logging
 import tempfile
 from pathlib import Path
 
-from src.ai.companion.core.models import (
+from ai.companion.core.models import (
     ClassifiedRequest,
     IntentCategory,
     ComplexityLevel,
     GameContext,
     ProcessingTier
 )
-from src.ai.companion.core.prompt_manager import PromptManager
-from src.ai.companion.core.conversation_manager import ConversationManager, ConversationState
-from src.ai.companion.core.storage.memory import InMemoryConversationStorage
-from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+from ai.companion.core.prompt_manager import PromptManager
+from ai.companion.core.conversation_manager import ConversationManager, ConversationState
+from ai.companion.core.storage.memory import InMemoryConversationStorage
+from ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
 
 
 # Configure logging

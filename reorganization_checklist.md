@@ -97,21 +97,22 @@
   - [x] Move any other `.py` files to appropriate subdirectories
 
 ## Step 7: Handle Additional Directories
-- [ ] Move simulator directory to src
-  - [ ] `mkdir -p src/simulator`
-  - [ ] `mv simulator/* src/simulator/`
-  - [ ] Remove empty simulator directory: `rmdir simulator`
-- [ ] Move examples directory to src
-  - [ ] `mkdir -p src/examples`
-  - [ ] `mv examples/* src/examples/`
-  - [ ] Remove empty examples directory: `rmdir examples`
-- [ ] Move docs directory to src (if not already there)
-  - [ ] `mkdir -p src/docs` (if it doesn't exist)
-  - [ ] `mv docs/* src/docs/`
-  - [ ] Remove empty docs directory: `rmdir docs`
-- [ ] Handle tokyo-py virtual environment
-  - [ ] Confirm it's a virtual environment: `cat tokyo-py/pyvenv.cfg`
-  - [ ] Add to .gitignore (already seems to be ignored) and exclude from reorganization
+- [x] Move simulator directory to src
+  - [x] `mkdir -p src/simulator`
+  - [x] `mv simulator/* src/simulator/`
+  - [x] Remove empty simulator directory: `rmdir simulator`
+- [x] Move examples directory to src
+  - [x] `mkdir -p src/examples`
+  - [x] `mv examples/* src/examples/`
+  - [x] Remove empty examples directory: `rmdir examples`
+  - [x] Update import paths in example files to use the new directory structure
+- [x] Move docs directory to src (if not already there)
+  - [x] `mkdir -p src/docs` (if it doesn't exist)
+  - [x] `mv docs/* src/docs/`
+  - [x] Remove empty docs directory: `rmdir docs`
+- [x] Handle tokyo-py virtual environment
+  - [x] Confirm it's a virtual environment: `cat tokyo-py/pyvenv.cfg`
+  - [x] Add to .gitignore (already seems to be ignored) and exclude from reorganization
 
 ## Step 8: Update Documentation
 - [ ] Update README.md to reflect new project structure
