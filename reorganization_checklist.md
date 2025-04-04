@@ -36,21 +36,21 @@
   - [x] Remove empty data directory: `rmdir data/player_history && rmdir data/usage && rmdir data`
 
 ## Step 4: Consolidate Tests
-- [ ] Create necessary subdirectories in src/tests if they don't exist
-  - [ ] `mkdir -p src/tests/fixtures`
-  - [ ] `mkdir -p src/tests/unit`
-  - [ ] `mkdir -p src/tests/integration`
-- [ ] Move test files from root to appropriate src locations
-  - [ ] `mv test_bedrock.py src/tests/integration/`
-  - [ ] `mv test_ollama_integration.py src/tests/integration/`
-  - [ ] `mv test_ollama_simple.py src/tests/integration/`
-  - [ ] `mv test_reorganization_plan.md src/docs/`
-- [ ] Move test_cache_dir to src if needed
-  - [ ] `mv test_cache_dir src/tests/`
-- [ ] Consolidate test fixtures and configuration
-  - [ ] Compare and merge `tests/fixtures` with `src/tests/fixtures` if needed
-  - [ ] Compare and merge `tests/conftest.py` with `src/tests/conftest.py` if needed
-  - [ ] Move unique test scripts: `mv tests/example_prompt.py src/tests/` and others as needed
+- [x] Create necessary subdirectories in src/tests if they don't exist
+  - [x] `mkdir -p src/tests/fixtures`
+  - [x] `mkdir -p src/tests/unit`
+  - [x] `mkdir -p src/tests/integration`
+- [x] Move test files from root to appropriate src locations
+  - [x] `mv test_bedrock.py src/tests/integration/`
+  - [x] `mv test_ollama_integration.py src/tests/integration/`
+  - [x] `mv test_ollama_simple.py src/tests/integration/`
+  - [x] `mv test_reorganization_plan.md src/docs/`
+- [x] Move test_cache_dir to src if needed
+  - [x] `mv test_cache_dir src/tests/`
+- [x] Consolidate test fixtures and configuration
+  - [X] Compare and merge `tests/fixtures` with `src/tests/fixtures` if needed
+  - [x] Compare and merge `tests/conftest.py` with `src/tests/conftest.py` if needed
+  - [x] Move unique test scripts: `mv tests/example_prompt.py src/tests/` and others as needed
 - [ ] Move testing utilities
   - [ ] `mv run_tests.sh src/`
   - [ ] `mv pytest.ini src/`

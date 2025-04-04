@@ -18,6 +18,20 @@ from src.ai.companion.core.models import (
 )
 
 
+@pytest.fixture
+def sample_game_context():
+    """Provide a sample game context for testing."""
+    return GameContext(
+        player_location="main_concourse",
+        current_objective="find_ticket_machine",
+        nearby_npcs=["station_attendant", "tourist"],
+        nearby_objects=["information_board", "ticket_machine"],
+        player_inventory=["wallet", "phone"],
+        language_proficiency={"vocabulary": 0.4, "grammar": 0.3, "reading": 0.5},
+        game_progress={"tutorial_completed": True, "tickets_purchased": 0}
+    )
+
+
 class TestEnums:
     """Tests for the enum classes."""
     
