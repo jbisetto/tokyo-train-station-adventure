@@ -1,12 +1,21 @@
+#!/usr/bin/env python
 """
 Tokyo Train Station Adventure - Backend Entry Point
 """
 
+import os
+import sys
 import uvicorn
 import logging
 import logging.config
 from src.api import create_app  # Use absolute import
 from src.ai.companion.utils.log_filter import install_sensitive_data_filter
+
+# Add the current directory to the Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 
 # Configure logging
 logging_config = {
@@ -39,7 +48,7 @@ logging_config = {
         }
     },
     "loggers": {
-        "backend": {
+        "src": {
             "level": "DEBUG",
             "handlers": ["console", "file"],
             "propagate": False
@@ -73,9 +82,10 @@ app = create_app()
 if __name__ == "__main__":
     # Run the application with uvicorn
     uvicorn.run(
-        "backend.main:app",  # Use the full module path
+        "src.main:app",  # Use the full module path
         host="0.0.0.0",
         port=8000,
         reload=True,
+        factory=False,  # No longer using factory since we create app above
         log_level="debug"
     )

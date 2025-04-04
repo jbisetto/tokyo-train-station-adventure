@@ -89,12 +89,12 @@
   - [x] Update `src/requirements.txt` with any missing dependencies
 
 ## Step 6: Handle Python Files
-- [ ] Compare root `main.py` with `src/main.py`
-  - [ ] Merge functionality if needed
-  - [ ] Remove duplicate at root: `rm main.py`
-- [ ] Move any other Python modules at root level to appropriate src locations
-  - [ ] Move `__pycache__` directory: `mv __pycache__ src/` (if needed)
-  - [ ] Move any other `.py` files to appropriate subdirectories
+- [x] Compare root `main.py` with `src/main.py`
+  - [x] Merge functionality if needed
+  - [x] Remove duplicate at root: `rm main.py`
+- [x] Move any other Python modules at root level to appropriate src locations
+  - [x] Move `__pycache__` directory: `mv __pycache__ src/` (if needed)
+  - [x] Move any other `.py` files to appropriate subdirectories
 
 ## Step 7: Handle Additional Directories
 - [ ] Move simulator directory to src
