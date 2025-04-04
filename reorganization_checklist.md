@@ -4,136 +4,151 @@
 - [ ] Create a git branch for the reorganization (`git checkout -b reorganize-project-structure`)
 - [ ] Commit current state before making any changes (`git add . && git commit -m "Save state before reorganization"`)
 
-## Step 2: Consolidate Data Directories
-- [ ] Create necessary subdirectories in backend/data if they don't exist
-  - [ ] `mkdir -p backend/data/profiles`
-  - [ ] `mkdir -p backend/data/prompt_templates`
-  - [ ] `mkdir -p backend/data/schemas`
-  - [ ] `mkdir -p backend/data/player_history`
-  - [ ] `mkdir -p backend/data/usage`
-- [ ] Move profile data to backend
-  - [ ] `mv profiles/* backend/data/profiles/`
+## Step 2: Rename Backend to Src
+- [ ] First run tests to verify current state: `cd backend && ./run_tests.sh`
+- [ ] Rename the backend directory to src: `mv backend src`
+- [ ] Update main imports in root-level files that might reference backend
+  - [ ] `grep -r "from backend" --include="*.py" .` to find references
+  - [ ] `grep -r "import backend" --include="*.py" .` to find additional references
+  - [ ] Update these critical imports to use 'src' instead
+- [ ] Run tests after renaming to ensure basic functionality still works: `cd src && ./run_tests.sh`
+- [ ] Commit this initial change: `git add . && git commit -m "Rename backend directory to src"`
+
+## Step 3: Consolidate Data Directories
+- [ ] Create necessary subdirectories in src/data if they don't exist
+  - [ ] `mkdir -p src/data/profiles`
+  - [ ] `mkdir -p src/data/prompt_templates`
+  - [ ] `mkdir -p src/data/schemas`
+  - [ ] `mkdir -p src/data/player_history`
+  - [ ] `mkdir -p src/data/usage`
+- [ ] Move profile data to src
+  - [ ] `mv profiles/* src/data/profiles/`
   - [ ] Remove empty profiles directory: `rmdir profiles`
-- [ ] Move prompt templates to backend
-  - [ ] `mv prompt_templates/* backend/data/prompt_templates/`
+- [ ] Move prompt templates to src
+  - [ ] `mv prompt_templates/* src/data/prompt_templates/`
   - [ ] Remove empty prompt_templates directory: `rmdir prompt_templates`
-- [ ] Move schemas to backend
-  - [ ] `mv schemas/* backend/data/schemas/`
+- [ ] Move schemas to src
+  - [ ] `mv schemas/* src/data/schemas/`
   - [ ] Remove empty schemas directory: `rmdir schemas`
-- [ ] Move data directory contents to backend
-  - [ ] `mv data/player_history/* backend/data/player_history/`
-  - [ ] `mv data/usage/* backend/data/usage/`
+- [ ] Move data directory contents to src
+  - [ ] `mv data/player_history/* src/data/player_history/`
+  - [ ] `mv data/usage/* src/data/usage/`
   - [ ] Remove empty data directory: `rmdir data/player_history data/usage data`
 
-## Step 3: Consolidate Tests
-- [ ] Create necessary subdirectories in backend/tests if they don't exist
-  - [ ] `mkdir -p backend/tests/fixtures`
-  - [ ] `mkdir -p backend/tests/unit`
-  - [ ] `mkdir -p backend/tests/integration`
-- [ ] Move test files from root to appropriate backend locations
-  - [ ] `mv test_bedrock.py backend/tests/integration/`
-  - [ ] `mv test_ollama_integration.py backend/tests/integration/`
-  - [ ] `mv test_ollama_simple.py backend/tests/integration/`
-- [ ] Move test_cache_dir to backend if needed
-  - [ ] `mv test_cache_dir backend/tests/`
+## Step 4: Consolidate Tests
+- [ ] Create necessary subdirectories in src/tests if they don't exist
+  - [ ] `mkdir -p src/tests/fixtures`
+  - [ ] `mkdir -p src/tests/unit`
+  - [ ] `mkdir -p src/tests/integration`
+- [ ] Move test files from root to appropriate src locations
+  - [ ] `mv test_bedrock.py src/tests/integration/`
+  - [ ] `mv test_ollama_integration.py src/tests/integration/`
+  - [ ] `mv test_ollama_simple.py src/tests/integration/`
+- [ ] Move test_cache_dir to src if needed
+  - [ ] `mv test_cache_dir src/tests/`
 - [ ] Consolidate test fixtures and configuration
-  - [ ] Compare and merge `tests/fixtures` with `backend/tests/fixtures` if needed
-  - [ ] Compare and merge `tests/conftest.py` with `backend/tests/conftest.py` if needed
-  - [ ] Move unique test scripts: `mv tests/*.py backend/tests/` (excluding duplicates)
+  - [ ] Compare and merge `tests/fixtures` with `src/tests/fixtures` if needed
+  - [ ] Compare and merge `tests/conftest.py` with `src/tests/conftest.py` if needed
+  - [ ] Move unique test scripts: `mv tests/*.py src/tests/` (excluding duplicates)
 - [ ] Move testing utilities
-  - [ ] `mv run_tests.sh backend/`
-  - [ ] `mv pytest.ini backend/`
-  - [ ] `mv tests/run_all_tests.sh backend/tests/`
+  - [ ] `mv run_tests.sh src/`
+  - [ ] `mv pytest.ini src/`
+  - [ ] `mv tests/run_all_tests.sh src/tests/`
 - [ ] Remove redundant root tests directory: `rm -rf tests` (after ensuring all content is safely moved)
 
-## Step 4: Consolidate Configuration
+## Step 5: Consolidate Configuration
 - [ ] Move configuration directory
-  - [ ] `mkdir -p backend/config` (if it doesn't exist)
-  - [ ] `mv config/* backend/config/`
+  - [ ] `mkdir -p src/config` (if it doesn't exist)
+  - [ ] `mv config/* src/config/`
   - [ ] Remove empty config directory: `rmdir config`
-- [ ] Copy environment variables to backend
-  - [ ] `cp .env backend/` (keeping the root copy if needed for top-level scripts)
+- [ ] Copy environment variables to src
+  - [ ] `cp .env src/` (keeping the root copy if needed for top-level scripts)
 - [ ] Consolidate requirements
-  - [ ] Compare and merge root `requirements.txt` with `backend/requirements.txt`
-  - [ ] Update `backend/requirements.txt` with any missing dependencies
+  - [ ] Compare and merge root `requirements.txt` with `src/requirements.txt`
+  - [ ] Update `src/requirements.txt` with any missing dependencies
 
-## Step 5: Handle Python Files
-- [ ] Compare root `main.py` with `backend/main.py`
+## Step 6: Handle Python Files
+- [ ] Compare root `main.py` with `src/main.py`
   - [ ] Merge functionality if needed
   - [ ] Remove duplicate at root: `rm main.py`
-- [ ] Move any other Python modules at root level to appropriate backend locations
+- [ ] Move any other Python modules at root level to appropriate src locations
   - [ ] Review each `.py` file and determine proper location
-  - [ ] Move to appropriate subdirectory in backend
+  - [ ] Move to appropriate subdirectory in src
 
-## Step 6: Handle Additional Directories
-- [ ] Move simulator directory to backend
-  - [ ] `mkdir -p backend/simulator`
-  - [ ] `mv simulator/* backend/simulator/`
+## Step 7: Handle Additional Directories
+- [ ] Move simulator directory to src
+  - [ ] `mkdir -p src/simulator`
+  - [ ] `mv simulator/* src/simulator/`
   - [ ] Remove empty simulator directory: `rmdir simulator`
-- [ ] Move examples directory to backend
-  - [ ] `mkdir -p backend/examples`
-  - [ ] `mv examples/* backend/examples/`
+- [ ] Move examples directory to src
+  - [ ] `mkdir -p src/examples`
+  - [ ] `mv examples/* src/examples/`
   - [ ] Remove empty examples directory: `rmdir examples`
 - [ ] Handle tokyo-py virtual environment
   - [ ] Determine if tokyo-py is a virtual environment or actual code
   - [ ] If it's a virtual environment, add to .gitignore and exclude from reorganization
-  - [ ] If it contains project code, move to appropriate location: `mv tokyo-py backend/tokyo-py`
-- [ ] Check for any other directories at root level that should be moved to backend
+  - [ ] If it contains project code, move to appropriate location: `mv tokyo-py src/tokyo-py`
+- [ ] Check for any other directories at root level that should be moved to src
+- [ ] Rename backend directory to src (if it exists already)
+  - [ ] `mv backend src`
 
-## Step 7: Update Documentation
+## Step 8: Update Documentation
 - [ ] Update README.md to reflect new project structure
 - [ ] Document any changed import paths or file locations
 - [ ] Create a migration guide if the reorganization affects other developers
-- [ ] Move project-specific documentation to `backend/docs/` if not already there
-  - [ ] Move markdown files like `TEST_REORGANIZATION.md`, `test_reorganization_plan.md`, `README-DEEPSEEK-OLLAMA.md` to `backend/docs/`
+- [ ] Move project-specific documentation to `src/docs/` if not already there
+  - [ ] Move markdown files like `TEST_REORGANIZATION.md`, `test_reorganization_plan.md`, `README-DEEPSEEK-OLLAMA.md` to `src/docs/`
 
-## Step 8: Update Import Statements
+## Step 9: Update Import Statements
 - [ ] Scan all Python files for imports that need updating due to moved files
-  - [ ] Use a tool like `grep -r "from " --include="*.py" backend/` to find all import statements
-  - [ ] Use `grep -r "import " --include="*.py" backend/` to find additional imports
+  - [ ] Use a tool like `grep -r "from " --include="*.py" src/` to find all import statements
+  - [ ] Use `grep -r "import " --include="*.py" src/` to find additional imports
   - [ ] Update import paths in affected files
 - [ ] Pay special attention to cross-directory imports that may break
+- [ ] Update any imports that reference `backend` to use `src` instead
 
-## Step 9: Update File References
+## Step 10: Update File References
 - [ ] Check for hardcoded file paths that may need updating
   - [ ] Look for `open()` calls, `os.path` usages, etc.
   - [ ] Update any absolute or relative paths that refer to moved files
+  - [ ] Replace any 'backend/' path references with 'src/'
 
-## Step 10: Test the Reorganized Structure
-- [ ] Run all tests to ensure they pass: `cd backend && ./run_tests.sh`
-- [ ] Verify the application starts correctly: `cd backend && python main.py`
+## Step 11: Test the Reorganized Structure
+- [ ] Run all tests to ensure they pass: `cd src && ./run_tests.sh`
+- [ ] Verify the application starts correctly: `cd src && python main.py`
 - [ ] Check for any runtime errors related to missing files or incorrect paths
-- [ ] Test simulator functionality: `cd backend && python -m simulator.app`
+- [ ] Test simulator functionality: `cd src && python -m simulator.app`
 - [ ] Test any examples to ensure they still work
 
-## Step 11: Update .gitignore
+## Step 12: Update .gitignore
 - [ ] Update `.gitignore` to reflect the new directory structure
   - [ ] Remove entries for directories that no longer exist at root
   - [ ] Add entries for new directory structure
   - [ ] Ensure virtual environments are properly ignored
+  - [ ] Replace any 'backend/' references with 'src/'
 
-## Step 12: Create Script for Running from Root (Optional)
-- [ ] Create a simple shell script in the root to run the backend application
-  - [ ] `echo '#!/bin/bash\ncd backend && python main.py' > run.sh && chmod +x run.sh`
+## Step 13: Create Script for Running from Root (Optional)
+- [ ] Create a simple shell script in the root to run the src application
+  - [ ] `echo '#!/bin/bash\ncd src && python main.py' > run.sh && chmod +x run.sh`
 - [ ] Consider creating other convenience scripts for common operations
 
-## Step 13: Commit and Review
+## Step 14: Commit and Review
 - [ ] Commit changes: `git add . && git commit -m "Reorganize project structure"`
 - [ ] Push changes to remote: `git push origin reorganize-project-structure`
 - [ ] Create a pull request for review
 - [ ] Address any feedback from review
 
-## Step 14: Documentation Updates
+## Step 15: Documentation Updates
 - [ ] Update any external documentation that refers to the old structure
 - [ ] Update CI/CD pipeline configurations if needed
 - [ ] Update deployment scripts if they reference specific file paths
 
-## Step 15: Final Cleanup
+## Step 16: Final Cleanup
 - [ ] Remove any temporary files created during the reorganization
 - [ ] Remove any now-empty directories
 - [ ] Final check for any overlooked files that should be moved
 
-## Step 16: Release and Communication
+## Step 17: Release and Communication
 - [ ] Tag a new release after the reorganization is complete
 - [ ] Communicate changes to all team members
 - [ ] Provide guidance on how to adapt to the new structure 
