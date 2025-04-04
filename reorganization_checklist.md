@@ -1,17 +1,17 @@
 # Project Reorganization Checklist
 
 ## Step 1: Create Backup
-- [ ] Create a git branch for the reorganization (`git checkout -b reorganize-project-structure`)
-- [ ] Commit current state before making any changes (`git add . && git commit -m "Save state before reorganization"`)
+- [x] Create a git branch for the reorganization (`git checkout -b reorganize-project-structure`)
+- [x] Commit current state before making any changes (`git add . && git commit -m "Save state before reorganization"`)
 
 ## Step 2: Rename Backend to Src
-- [ ] First run tests to verify current state: `cd backend && ./run_tests.sh`
+- [ ] First run tests to verify current state: `./run_tests.sh`
 - [ ] Rename the backend directory to src: `mv backend src`
 - [ ] Update main imports in root-level files that might reference backend
   - [ ] `grep -r "from backend" --include="*.py" .` to find references
   - [ ] `grep -r "import backend" --include="*.py" .` to find additional references
   - [ ] Update these critical imports to use 'src' instead
-- [ ] Run tests after renaming to ensure basic functionality still works: `cd src && ./run_tests.sh`
+- [ ] Run tests after renaming to ensure basic functionality still works: `./run_tests.sh`
 - [ ] Commit this initial change: `git add . && git commit -m "Rename backend directory to src"`
 
 ## Step 3: Consolidate Data Directories
@@ -33,7 +33,7 @@
 - [ ] Move data directory contents to src
   - [ ] `mv data/player_history/* src/data/player_history/`
   - [ ] `mv data/usage/* src/data/usage/`
-  - [ ] Remove empty data directory: `rmdir data/player_history data/usage data`
+  - [ ] Remove empty data directory: `rmdir data/player_history && rmdir data/usage && rmdir data`
 
 ## Step 4: Consolidate Tests
 - [ ] Create necessary subdirectories in src/tests if they don't exist
@@ -44,12 +44,13 @@
   - [ ] `mv test_bedrock.py src/tests/integration/`
   - [ ] `mv test_ollama_integration.py src/tests/integration/`
   - [ ] `mv test_ollama_simple.py src/tests/integration/`
+  - [ ] `mv test_reorganization_plan.md src/docs/`
 - [ ] Move test_cache_dir to src if needed
   - [ ] `mv test_cache_dir src/tests/`
 - [ ] Consolidate test fixtures and configuration
   - [ ] Compare and merge `tests/fixtures` with `src/tests/fixtures` if needed
   - [ ] Compare and merge `tests/conftest.py` with `src/tests/conftest.py` if needed
-  - [ ] Move unique test scripts: `mv tests/*.py src/tests/` (excluding duplicates)
+  - [ ] Move unique test scripts: `mv tests/example_prompt.py src/tests/` and others as needed
 - [ ] Move testing utilities
   - [ ] `mv run_tests.sh src/`
   - [ ] `mv pytest.ini src/`
@@ -72,8 +73,8 @@
   - [ ] Merge functionality if needed
   - [ ] Remove duplicate at root: `rm main.py`
 - [ ] Move any other Python modules at root level to appropriate src locations
-  - [ ] Review each `.py` file and determine proper location
-  - [ ] Move to appropriate subdirectory in src
+  - [ ] Move `__pycache__` directory: `mv __pycache__ src/` (if needed)
+  - [ ] Move any other `.py` files to appropriate subdirectories
 
 ## Step 7: Handle Additional Directories
 - [ ] Move simulator directory to src
@@ -84,24 +85,25 @@
   - [ ] `mkdir -p src/examples`
   - [ ] `mv examples/* src/examples/`
   - [ ] Remove empty examples directory: `rmdir examples`
+- [ ] Move docs directory to src (if not already there)
+  - [ ] `mkdir -p src/docs` (if it doesn't exist)
+  - [ ] `mv docs/* src/docs/`
+  - [ ] Remove empty docs directory: `rmdir docs`
 - [ ] Handle tokyo-py virtual environment
-  - [ ] Determine if tokyo-py is a virtual environment or actual code
-  - [ ] If it's a virtual environment, add to .gitignore and exclude from reorganization
-  - [ ] If it contains project code, move to appropriate location: `mv tokyo-py src/tokyo-py`
-- [ ] Check for any other directories at root level that should be moved to src
-- [ ] Rename backend directory to src (if it exists already)
-  - [ ] `mv backend src`
+  - [ ] Confirm it's a virtual environment: `cat tokyo-py/pyvenv.cfg`
+  - [ ] Add to .gitignore (already seems to be ignored) and exclude from reorganization
 
 ## Step 8: Update Documentation
 - [ ] Update README.md to reflect new project structure
 - [ ] Document any changed import paths or file locations
 - [ ] Create a migration guide if the reorganization affects other developers
-- [ ] Move project-specific documentation to `src/docs/` if not already there
-  - [ ] Move markdown files like `TEST_REORGANIZATION.md`, `test_reorganization_plan.md`, `README-DEEPSEEK-OLLAMA.md` to `src/docs/`
+- [ ] Move project-specific documentation to `src/docs/` if not already done
+  - [ ] Move markdown files like `TEST_REORGANIZATION.md` to `src/docs/`
+  - [ ] Move `README-DEEPSEEK-OLLAMA.md` to `src/docs/`
 
 ## Step 9: Update Import Statements
 - [ ] Scan all Python files for imports that need updating due to moved files
-  - [ ] Use a tool like `grep -r "from " --include="*.py" src/` to find all import statements
+  - [ ] Use `grep -r "from " --include="*.py" src/` to find all import statements
   - [ ] Use `grep -r "import " --include="*.py" src/` to find additional imports
   - [ ] Update import paths in affected files
 - [ ] Pay special attention to cross-directory imports that may break
@@ -109,12 +111,13 @@
 
 ## Step 10: Update File References
 - [ ] Check for hardcoded file paths that may need updating
-  - [ ] Look for `open()` calls, `os.path` usages, etc.
+  - [ ] Look for file operations: `grep -r "open(" --include="*.py" src/`
+  - [ ] Look for path operations: `grep -r "os.path" --include="*.py" src/`
   - [ ] Update any absolute or relative paths that refer to moved files
   - [ ] Replace any 'backend/' path references with 'src/'
 
 ## Step 11: Test the Reorganized Structure
-- [ ] Run all tests to ensure they pass: `cd src && ./run_tests.sh`
+- [ ] Run tests to ensure they pass: `cd src && python -m pytest`
 - [ ] Verify the application starts correctly: `cd src && python main.py`
 - [ ] Check for any runtime errors related to missing files or incorrect paths
 - [ ] Test simulator functionality: `cd src && python -m simulator.app`
