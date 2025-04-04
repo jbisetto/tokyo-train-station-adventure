@@ -11,7 +11,7 @@ from unittest.mock import patch, mock_open, MagicMock
 from src.ai.companion.core.npc.profile_loader import ProfileLoader
 
 # Define test data paths
-TEST_PROFILES_DIR = os.path.join(os.getcwd(), "profiles")
+TEST_PROFILES_DIR = os.path.join(os.getcwd(), "src/data/profiles")
 
 class TestProfileLoader:
     """Test the ProfileLoader class."""

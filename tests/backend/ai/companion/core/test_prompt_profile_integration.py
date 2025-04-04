@@ -27,7 +27,7 @@ class TestPromptProfileIntegration:
     @pytest.fixture
     def profiles_dir(self):
         """Fixture for profiles directory path."""
-        return os.path.join(os.getcwd(), "profiles")
+        return os.path.join(os.getcwd(), "src/data/profiles")
     
     @pytest.fixture
     def templates_dir(self):
