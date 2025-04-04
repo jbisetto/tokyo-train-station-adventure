@@ -1,5 +1,3 @@
-![Tokyo Train Station Adventure Banner](assets/images/banner.jpeg)
-
 # Tokyo Train Station Adventure
 
 A language learning game that helps players learn Japanese through an immersive pixel art adventure. The player, an English speaker with JLPT N5 level Japanese knowledge, navigates a Tokyo train station with a bilingual companion dog to purchase a ticket to Odawara.
