@@ -78,15 +78,15 @@
 - [x] Remove redundant root tests directory: `rm -rf tests` (after ensuring all content is safely moved)
 
 ## Step 5: Consolidate Configuration
-- [ ] Move configuration directory
-  - [ ] `mkdir -p src/config` (if it doesn't exist)
-  - [ ] `mv config/* src/config/`
-  - [ ] Remove empty config directory: `rmdir config`
-- [ ] Copy environment variables to src
-  - [ ] `cp .env src/` (keeping the root copy if needed for top-level scripts)
-- [ ] Consolidate requirements
-  - [ ] Compare and merge root `requirements.txt` with `src/requirements.txt`
-  - [ ] Update `src/requirements.txt` with any missing dependencies
+- [x] Move configuration directory
+  - [x] `mkdir -p src/config` (if it doesn't exist)
+  - [x] `mv config/* src/config/`
+  - [x] Remove empty config directory: `rmdir config`
+- [x] Copy environment variables to src
+  - [x] `cp .env src/` (keeping the root copy if needed for top-level scripts)
+- [x] Consolidate requirements
+  - [x] Compare and merge root `requirements.txt` with `src/requirements.txt`
+  - [x] Update `src/requirements.txt` with any missing dependencies
 
 ## Step 6: Handle Python Files
 - [ ] Compare root `main.py` with `src/main.py`
@@ -174,4 +174,4 @@
 ## Step 17: Release and Communication
 - [ ] Tag a new release after the reorganization is complete
 - [ ] Communicate changes to all team members
-- [ ] Provide guidance on how to adapt to the new structure 
+- [ ] Provide guidance on how to adapt to the new structure
