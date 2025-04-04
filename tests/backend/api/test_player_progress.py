@@ -5,7 +5,7 @@ Tests for the player progress API endpoint.
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api import create_app
+from src.api import create_app
 
 
 @pytest.fixture

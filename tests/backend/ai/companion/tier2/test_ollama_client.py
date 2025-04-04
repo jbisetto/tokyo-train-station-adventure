@@ -10,7 +10,7 @@ import json
 from unittest.mock import patch, MagicMock, AsyncMock
 import time
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     CompanionRequest,
     IntentCategory,
     ComplexityLevel
@@ -69,7 +69,7 @@ class TestOllamaClient:
 
     def test_initialization(self):
         """Test that the OllamaClient can be initialized."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
 
         client = OllamaClient()
         
@@ -93,7 +93,7 @@ class TestOllamaClient:
     @pytest.mark.asyncio
     async def test_generate(self, sample_request, sample_ollama_response):
         """Test generating a response from Ollama."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         # Disable caching for this test
         client = OllamaClient(cache_enabled=False)
@@ -118,7 +118,7 @@ class TestOllamaClient:
     @pytest.mark.asyncio
     async def test_generate_with_custom_model(self, sample_request, sample_ollama_response):
         """Test generating a response with a custom model."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         # Disable caching for this test
         client = OllamaClient(cache_enabled=False)
@@ -136,7 +136,7 @@ class TestOllamaClient:
     @pytest.mark.asyncio
     async def test_generate_with_error(self, sample_request, sample_ollama_error_response):
         """Test handling errors from Ollama."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
+        from src.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
         
         # Disable caching for this test
         client = OllamaClient(cache_enabled=False)
@@ -156,7 +156,7 @@ class TestOllamaClient:
     @pytest.mark.asyncio
     async def test_get_available_models(self):
         """Test getting available models from Ollama."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         client = OllamaClient()
         
@@ -193,7 +193,7 @@ class TestOllamaClient:
     @pytest.mark.asyncio
     async def test_cache_hit(self, sample_request, sample_cache_entry):
         """Test that the cache is used when available."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         client = OllamaClient(cache_enabled=True)
         
@@ -214,7 +214,7 @@ class TestOllamaClient:
     @pytest.mark.asyncio
     async def test_cache_miss(self, sample_request, sample_ollama_response):
         """Test that the API is called when the cache is missed."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         client = OllamaClient(cache_enabled=True)
         
@@ -236,7 +236,7 @@ class TestOllamaClient:
     @pytest.mark.asyncio
     async def test_cache_update(self, sample_request, sample_ollama_response):
         """Test that the cache is updated after an API call."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         client = OllamaClient(cache_enabled=True)
         
@@ -258,7 +258,7 @@ class TestOllamaClient:
     @pytest.mark.asyncio
     async def test_memory_cache(self, sample_request, sample_ollama_response):
         """Test that the memory cache is used before disk cache."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         client = OllamaClient(cache_enabled=True)
         
@@ -293,7 +293,7 @@ class TestOllamaClient:
 
     def test_cache_ttl(self, sample_request, sample_cache_entry):
         """Test that cache entries expire based on TTL."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         import time
     
         # Create client with a very short TTL for testing
@@ -323,7 +323,7 @@ class TestOllamaClient:
 
     def test_cache_stats(self, sample_request, sample_ollama_response):
         """Test that cache statistics are tracked correctly."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         client = OllamaClient(cache_enabled=True)
         
@@ -365,7 +365,7 @@ class TestOllamaClient:
 
     def test_clear_cache(self):
         """Test clearing the cache."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         import os
         
         # Create a client with a test cache directory
@@ -393,7 +393,7 @@ class TestOllamaClient:
 
     def test_prune_cache(self):
         """Test pruning old cache entries."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         import time
         
         # Create client with cache enabled
@@ -432,7 +432,7 @@ class TestOllamaClient:
     @pytest.mark.asyncio
     async def test_cache_size_limit(self, sample_request, sample_ollama_response):
         """Test that the cache respects size limits."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         # Create client with a small cache size limit
         client = OllamaClient(cache_enabled=True, max_cache_entries=2)
@@ -466,7 +466,7 @@ class TestOllamaClient:
 
     def test_create_prompt(self, sample_request):
         """Test creating a prompt for Ollama."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         client = OllamaClient()
         
@@ -480,7 +480,7 @@ class TestOllamaClient:
 
     def test_hash_request(self, sample_request):
         """Test hashing a request for cache lookup."""
-        from backend.ai.companion.tier2.ollama_client import OllamaClient
+        from src.ai.companion.tier2.ollama_client import OllamaClient
         
         client = OllamaClient()
         

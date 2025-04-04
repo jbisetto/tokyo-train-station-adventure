@@ -3,14 +3,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     CompanionRequest, 
     ProcessingTier,
     IntentCategory,
     ComplexityLevel
 )
-from backend.ai.companion.core.processor_framework import ProcessorFactory
-from backend.ai.companion.core.request_handler import RequestHandler
+from src.ai.companion.core.processor_framework import ProcessorFactory
+from src.ai.companion.core.request_handler import RequestHandler
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def sample_request():
 @pytest.fixture
 def config_patch():
     """Patch the config module."""
-    with patch('backend.ai.companion.config.get_config') as mock_get_config:
+    with patch('src.ai.companion.config.get_config') as mock_get_config:
         # Set default config values
         mock_get_config.return_value = {
             'enabled': True

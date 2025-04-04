@@ -11,14 +11,14 @@ from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
 import asyncio
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.tier3.context_manager import (
+from src.ai.companion.tier3.context_manager import (
     ConversationContext,
     ContextManager,
     ContextEntry
@@ -67,7 +67,7 @@ class TestScenarioDetector:
     
     def test_scenario_detector_creation(self):
         """Test that a ScenarioDetector can be created."""
-        from backend.ai.companion.tier3.scenario_detection import ScenarioDetector
+        from src.ai.companion.tier3.scenario_detection import ScenarioDetector
         
         detector = ScenarioDetector()
         
@@ -77,7 +77,7 @@ class TestScenarioDetector:
     
     def test_detect_ticket_purchase_scenario(self, sample_classified_request):
         """Test detecting a ticket purchase scenario."""
-        from backend.ai.companion.tier3.scenario_detection import (
+        from src.ai.companion.tier3.scenario_detection import (
             ScenarioDetector,
             ScenarioType
         )
@@ -95,7 +95,7 @@ class TestScenarioDetector:
     
     def test_detect_navigation_scenario(self, sample_classified_request):
         """Test detecting a navigation scenario."""
-        from backend.ai.companion.tier3.scenario_detection import (
+        from src.ai.companion.tier3.scenario_detection import (
             ScenarioDetector,
             ScenarioType
         )
@@ -113,7 +113,7 @@ class TestScenarioDetector:
     
     def test_detect_vocabulary_scenario(self, sample_classified_request):
         """Test detecting a vocabulary help scenario."""
-        from backend.ai.companion.tier3.scenario_detection import (
+        from src.ai.companion.tier3.scenario_detection import (
             ScenarioDetector,
             ScenarioType
         )
@@ -131,7 +131,7 @@ class TestScenarioDetector:
     
     def test_detect_grammar_scenario(self, sample_classified_request):
         """Test detecting a grammar explanation scenario."""
-        from backend.ai.companion.tier3.scenario_detection import (
+        from src.ai.companion.tier3.scenario_detection import (
             ScenarioDetector,
             ScenarioType
         )
@@ -149,7 +149,7 @@ class TestScenarioDetector:
     
     def test_detect_cultural_scenario(self, sample_classified_request):
         """Test detecting a cultural information scenario."""
-        from backend.ai.companion.tier3.scenario_detection import (
+        from src.ai.companion.tier3.scenario_detection import (
             ScenarioDetector,
             ScenarioType
         )
@@ -167,7 +167,7 @@ class TestScenarioDetector:
     
     def test_get_scenario_handler(self, sample_classified_request):
         """Test getting a handler for a detected scenario."""
-        from backend.ai.companion.tier3.scenario_detection import (
+        from src.ai.companion.tier3.scenario_detection import (
             ScenarioDetector,
             ScenarioType
         )
@@ -188,7 +188,7 @@ class TestScenarioDetector:
     @pytest.mark.asyncio
     async def test_handle_scenario(self, sample_classified_request, sample_context):
         """Test handling a detected scenario."""
-        from backend.ai.companion.tier3.scenario_detection import ScenarioDetector
+        from src.ai.companion.tier3.scenario_detection import ScenarioDetector
         
         detector = ScenarioDetector()
         context_manager = MagicMock()
@@ -214,7 +214,7 @@ class TestScenarioDetector:
     @pytest.mark.asyncio
     async def test_integration_with_tier3_processor(self, sample_classified_request):
         """Test integration with the Tier3Processor."""
-        from backend.ai.companion.tier3.scenario_detection import (
+        from src.ai.companion.tier3.scenario_detection import (
             ScenarioDetector,
             ScenarioType
         )

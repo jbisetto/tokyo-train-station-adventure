@@ -11,7 +11,7 @@ import json
 from unittest.mock import patch, mock_open
 from enum import Enum
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
     IntentCategory,
@@ -126,7 +126,7 @@ class TestPatternMatcher:
     
     def test_initialization(self):
         """Test that the PatternMatcher can be initialized."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher()
         
@@ -136,7 +136,7 @@ class TestPatternMatcher:
     
     def test_load_patterns_from_file(self):
         """Test loading patterns from a file."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         # Mock the open function to return a sample patterns file
         mock_patterns = json.dumps({
@@ -156,7 +156,7 @@ class TestPatternMatcher:
     
     def test_load_patterns_from_dict(self, sample_patterns):
         """Test loading patterns from a dictionary."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -168,7 +168,7 @@ class TestPatternMatcher:
     
     def test_match_exact_vocabulary(self, sample_patterns):
         """Test matching exact vocabulary."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -190,7 +190,7 @@ class TestPatternMatcher:
     
     def test_match_grammar_patterns(self, sample_patterns):
         """Test matching grammar patterns."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -207,7 +207,7 @@ class TestPatternMatcher:
     
     def test_match_phrases(self, sample_patterns):
         """Test matching common phrases."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -226,7 +226,7 @@ class TestPatternMatcher:
     
     def test_match_with_context(self, sample_patterns):
         """Test matching with context."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -245,7 +245,7 @@ class TestPatternMatcher:
     
     def test_fuzzy_matching(self, sample_patterns):
         """Test fuzzy matching for typos and variations."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -264,7 +264,7 @@ class TestPatternMatcher:
     
     def test_match_multiple_patterns(self, sample_patterns):
         """Test matching multiple patterns in a single input."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -279,7 +279,7 @@ class TestPatternMatcher:
     
     def test_match_with_confidence(self, sample_patterns):
         """Test that matches include confidence scores."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -293,7 +293,7 @@ class TestPatternMatcher:
     
     def test_no_matches(self, sample_patterns):
         """Test behavior when no patterns match."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -307,7 +307,7 @@ class TestPatternMatcher:
     
     def test_extract_entities(self, sample_patterns):
         """Test extracting entities from matches."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -331,7 +331,7 @@ class TestPatternMatcher:
     
     def test_jlpt_n5_vocabulary_recognition(self, sample_jlpt_n5_vocab):
         """Test recognition of JLPT N5 vocabulary."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(jlpt_n5_vocab=sample_jlpt_n5_vocab)
         
@@ -355,7 +355,7 @@ class TestPatternMatcher:
     
     def test_save_patterns(self, sample_patterns, tmp_path):
         """Test saving patterns to a file."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -377,7 +377,7 @@ class TestPatternMatcher:
     
     def test_add_pattern(self, sample_patterns):
         """Test adding a new pattern."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -396,7 +396,7 @@ class TestPatternMatcher:
     
     def test_remove_pattern(self, sample_patterns):
         """Test removing a pattern."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
         
         matcher = PatternMatcher(patterns=sample_patterns)
         
@@ -418,9 +418,9 @@ class TestPatternMatchingIntegration:
     
     def test_integration_with_intent_classifier(self, sample_patterns):
         """Test integration with the intent classifier."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
-        from backend.ai.companion.core.models import ClassifiedRequest
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.models import ClassifiedRequest
         
         matcher = PatternMatcher(patterns=sample_patterns)
         classifier = IntentClassifier()
@@ -459,8 +459,8 @@ class TestPatternMatchingIntegration:
     
     def test_integration_with_template_system(self, sample_patterns):
         """Test integration with the template system."""
-        from backend.ai.companion.tier1.pattern_matching import PatternMatcher
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.pattern_matching import PatternMatcher
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         matcher = PatternMatcher(patterns=sample_patterns)
         template_system = TemplateSystem()

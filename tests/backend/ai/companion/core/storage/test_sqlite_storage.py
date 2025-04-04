@@ -8,7 +8,7 @@ import tempfile
 import pytest_asyncio
 from datetime import datetime, timedelta
 
-from backend.ai.companion.core.storage.sqlite import SQLiteConversationStorage
+from src.ai.companion.core.storage.sqlite import SQLiteConversationStorage
 
 
 @pytest_asyncio.fixture

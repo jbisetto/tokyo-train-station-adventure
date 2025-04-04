@@ -7,15 +7,15 @@ import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.tier3.tier3_processor import Tier3Processor
-from backend.ai.companion.tier3.bedrock_client import BedrockError
-from backend.ai.companion.core.context_manager import ContextManager
+from src.ai.companion.tier3.tier3_processor import Tier3Processor
+from src.ai.companion.tier3.bedrock_client import BedrockError
+from src.ai.companion.core.context_manager import ContextManager
 
 
 class TestTier3Processor:
@@ -61,7 +61,7 @@ class TestTier3Processor:
 
     def test_tier3_processor_creation(self):
         """Test creating a Tier3Processor."""
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient'):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient'):
             processor = Tier3Processor()
             assert processor is not None
             assert hasattr(processor, 'client')
@@ -72,7 +72,7 @@ class TestTier3Processor:
 
     def test_create_prompt(self):
         """Test creating a prompt."""
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient'):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient'):
             processor = Tier3Processor()
             request = ClassifiedRequest(
                 request_id="test-123",
@@ -95,7 +95,7 @@ class TestTier3Processor:
 
     def test_parse_response(self):
         """Test parsing a response."""
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient'):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient'):
             processor = Tier3Processor()
             
             # Test with a clean response
@@ -112,7 +112,7 @@ class TestTier3Processor:
 
     def test_generate_fallback_response(self, sample_classified_request):
         """Test generating a fallback response."""
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient'):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient'):
             processor = Tier3Processor()
             
             # Create a test error
@@ -135,7 +135,7 @@ class TestTier3Processor:
     @pytest.mark.asyncio
     async def test_process(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
         """Test processing a request."""
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
             # Set up the mock bedrock client to return a response
             mock_bedrock_client.generate.return_value = "'Kippu' means 'ticket' in Japanese."
             
@@ -158,7 +158,7 @@ class TestTier3Processor:
     @pytest.mark.asyncio
     async def test_process_existing_loop(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
         """Test processing a request with an existing event loop."""
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
             # Set up the mock bedrock client to return a response
             mock_bedrock_client.generate.return_value = "'Kippu' means 'ticket' in Japanese."
             
@@ -181,7 +181,7 @@ class TestTier3Processor:
     @pytest.mark.asyncio
     async def test_process_with_error(self, sample_classified_request, mock_context_manager):
         """Test processing a request when the client raises an error."""
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient') as mock_client_class:
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient') as mock_client_class:
             # Set up the mock client to raise an error
             mock_client = mock_client_class.return_value
             mock_client.generate = AsyncMock(side_effect=BedrockError("Test error"))
@@ -204,14 +204,14 @@ class TestTier3Processor:
     @pytest.mark.asyncio
     async def test_process_with_conversation_history(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
         """Test processing a request with conversation history."""
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
             # Mock the scenario detector
-            with patch('backend.ai.companion.tier3.tier3_processor.ScenarioDetector') as mock_detector_class:
+            with patch('src.ai.companion.tier3.tier3_processor.ScenarioDetector') as mock_detector_class:
                 # Create a mock detector
                 mock_detector = mock_detector_class.return_value
                 
                 # Set up the mock detector to return UNKNOWN scenario type
-                from backend.ai.companion.tier3.scenario_detection import ScenarioType
+                from src.ai.companion.tier3.scenario_detection import ScenarioType
                 mock_detector.detect_scenario.return_value = ScenarioType.UNKNOWN
                 
                 # Define the expected response
@@ -245,14 +245,14 @@ class TestTier3Processor:
     @pytest.mark.asyncio
     async def test_process_with_scenario_detection(self, sample_classified_request, mock_bedrock_client, mock_context_manager):
         """Test processing a request with scenario detection."""
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
             # Mock the scenario detector
-            with patch('backend.ai.companion.tier3.tier3_processor.ScenarioDetector') as mock_detector_class:
+            with patch('src.ai.companion.tier3.tier3_processor.ScenarioDetector') as mock_detector_class:
                 # Create a mock detector
                 mock_detector = mock_detector_class.return_value
                 
                 # Set up the mock detector to detect a scenario
-                from backend.ai.companion.tier3.scenario_detection import ScenarioType
+                from src.ai.companion.tier3.scenario_detection import ScenarioType
                 mock_detector.detect_scenario.return_value = ScenarioType.VOCABULARY_HELP
                 mock_detector.handle_scenario = AsyncMock(return_value="'Kippu' means 'ticket' in Japanese. (From specialized handler)")
                 

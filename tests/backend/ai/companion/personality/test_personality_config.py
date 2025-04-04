@@ -13,7 +13,7 @@ from typing import Dict, Any
 
 # Import the module we're testing
 # These imports will be implemented later
-from backend.ai.companion.personality.config import (
+from src.ai.companion.personality.config import (
     PersonalityConfig,
     PersonalityTrait,
     PersonalityProfile,

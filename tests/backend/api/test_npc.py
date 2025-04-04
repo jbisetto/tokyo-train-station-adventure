@@ -5,8 +5,8 @@ Tests for the NPC Information API.
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api import create_app
-from backend.data.npc import _npcs, _npc_configs, _interaction_states
+from src.api import create_app
+from src.data.npc import _npcs, _npc_configs, _interaction_states
 
 
 @pytest.fixture

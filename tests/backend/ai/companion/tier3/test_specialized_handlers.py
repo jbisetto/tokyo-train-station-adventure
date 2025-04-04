@@ -8,14 +8,14 @@ import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
 from datetime import datetime
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.tier3.bedrock_client import BedrockClient, BedrockError
+from src.ai.companion.tier3.bedrock_client import BedrockClient, BedrockError
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ class TestSpecializedHandlerRegistry:
     
     def test_registry_initialization(self):
         """Test that the SpecializedHandlerRegistry can be initialized."""
-        from backend.ai.companion.tier3.specialized_handlers import SpecializedHandlerRegistry
+        from src.ai.companion.tier3.specialized_handlers import SpecializedHandlerRegistry
         
         registry = SpecializedHandlerRegistry()
         
@@ -93,7 +93,7 @@ class TestSpecializedHandlerRegistry:
     
     def test_register_handler(self):
         """Test registering a handler with the registry."""
-        from backend.ai.companion.tier3.specialized_handlers import (
+        from src.ai.companion.tier3.specialized_handlers import (
             SpecializedHandlerRegistry,
             SpecializedHandler,
             GrammarExplanationHandler
@@ -108,7 +108,7 @@ class TestSpecializedHandlerRegistry:
     
     def test_get_handler(self):
         """Test getting a handler from the registry."""
-        from backend.ai.companion.tier3.specialized_handlers import (
+        from src.ai.companion.tier3.specialized_handlers import (
             SpecializedHandlerRegistry,
             SpecializedHandler,
             GrammarExplanationHandler,
@@ -127,7 +127,7 @@ class TestSpecializedHandlerRegistry:
     
     def test_get_handler_fallback(self):
         """Test getting a handler for an intent that doesn't have a specialized handler."""
-        from backend.ai.companion.tier3.specialized_handlers import (
+        from src.ai.companion.tier3.specialized_handlers import (
             SpecializedHandlerRegistry,
             DefaultHandler
         )
@@ -144,7 +144,7 @@ class TestSpecializedHandler:
     
     def test_specialized_handler_interface(self):
         """Test that the SpecializedHandler defines the required interface."""
-        from backend.ai.companion.tier3.specialized_handlers import SpecializedHandler
+        from src.ai.companion.tier3.specialized_handlers import SpecializedHandler
         
         # SpecializedHandler is an abstract base class, so we can't instantiate it directly
         # Instead, we check that it has the required methods
@@ -154,7 +154,7 @@ class TestSpecializedHandler:
     
     def test_default_handler(self):
         """Test the DefaultHandler implementation."""
-        from backend.ai.companion.tier3.specialized_handlers import DefaultHandler
+        from src.ai.companion.tier3.specialized_handlers import DefaultHandler
         
         handler = DefaultHandler()
         
@@ -170,7 +170,7 @@ class TestGrammarExplanationHandler:
     
     def test_can_handle(self):
         """Test that the GrammarExplanationHandler can handle grammar explanation requests."""
-        from backend.ai.companion.tier3.specialized_handlers import GrammarExplanationHandler
+        from src.ai.companion.tier3.specialized_handlers import GrammarExplanationHandler
         
         handler = GrammarExplanationHandler()
         
@@ -179,7 +179,7 @@ class TestGrammarExplanationHandler:
     
     def test_create_prompt(self, sample_grammar_request):
         """Test creating a prompt for a grammar explanation request."""
-        from backend.ai.companion.tier3.specialized_handlers import GrammarExplanationHandler
+        from src.ai.companion.tier3.specialized_handlers import GrammarExplanationHandler
         
         handler = GrammarExplanationHandler()
         
@@ -194,7 +194,7 @@ class TestGrammarExplanationHandler:
     
     def test_process_response(self, sample_grammar_request):
         """Test processing a response for a grammar explanation request."""
-        from backend.ai.companion.tier3.specialized_handlers import GrammarExplanationHandler
+        from src.ai.companion.tier3.specialized_handlers import GrammarExplanationHandler
         
         handler = GrammarExplanationHandler()
         
@@ -229,7 +229,7 @@ class TestTranslationHandler:
     
     def test_can_handle(self):
         """Test that the TranslationHandler can handle translation requests."""
-        from backend.ai.companion.tier3.specialized_handlers import TranslationHandler
+        from src.ai.companion.tier3.specialized_handlers import TranslationHandler
         
         handler = TranslationHandler()
         
@@ -238,7 +238,7 @@ class TestTranslationHandler:
     
     def test_create_prompt(self, sample_translation_request):
         """Test creating a prompt for a translation request."""
-        from backend.ai.companion.tier3.specialized_handlers import TranslationHandler
+        from src.ai.companion.tier3.specialized_handlers import TranslationHandler
         
         handler = TranslationHandler()
         
@@ -253,7 +253,7 @@ class TestTranslationHandler:
     
     def test_process_response(self, sample_translation_request):
         """Test processing a response for a translation request."""
-        from backend.ai.companion.tier3.specialized_handlers import TranslationHandler
+        from src.ai.companion.tier3.specialized_handlers import TranslationHandler
         
         handler = TranslationHandler()
         
@@ -287,7 +287,7 @@ class TestConversationContextHandler:
     
     def test_can_handle_with_context(self, sample_grammar_request, sample_conversation_context):
         """Test that the ConversationContextHandler can handle requests with conversation context."""
-        from backend.ai.companion.tier3.specialized_handlers import ConversationContextHandler
+        from src.ai.companion.tier3.specialized_handlers import ConversationContextHandler
         
         handler = ConversationContextHandler()
         
@@ -298,7 +298,7 @@ class TestConversationContextHandler:
     
     def test_create_prompt_with_context(self, sample_grammar_request, sample_conversation_context):
         """Test creating a prompt for a request with conversation context."""
-        from backend.ai.companion.tier3.specialized_handlers import ConversationContextHandler
+        from src.ai.companion.tier3.specialized_handlers import ConversationContextHandler
         
         handler = ConversationContextHandler()
         
@@ -317,7 +317,7 @@ class TestConversationContextHandler:
     @pytest.mark.asyncio
     async def test_handle_request_with_context(self, sample_grammar_request, sample_conversation_context, mock_bedrock_client):
         """Test handling a request with conversation context."""
-        from backend.ai.companion.tier3.specialized_handlers import ConversationContextHandler
+        from src.ai.companion.tier3.specialized_handlers import ConversationContextHandler
         
         handler = ConversationContextHandler(bedrock_client=mock_bedrock_client)
         

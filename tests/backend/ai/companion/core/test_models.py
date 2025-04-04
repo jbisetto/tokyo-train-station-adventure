@@ -6,7 +6,7 @@ import pytest
 from datetime import datetime, timedelta
 import uuid
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     IntentCategory,
     ComplexityLevel,
     ProcessingTier,

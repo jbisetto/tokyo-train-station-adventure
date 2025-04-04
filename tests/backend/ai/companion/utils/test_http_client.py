@@ -7,7 +7,7 @@ import httpx
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from backend.ai.companion.utils.http_client import make_api_request
+from src.ai.companion.utils.http_client import make_api_request
 
 
 class MockAsyncClient:

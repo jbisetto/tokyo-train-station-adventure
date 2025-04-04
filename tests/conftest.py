@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 @pytest.fixture
 def sample_game_context():
     """Provide a sample game context for testing."""
-    from backend.ai.companion.core.models import GameContext
+    from src.ai.companion.core.models import GameContext
     
     return GameContext(
         player_location="main_concourse",
@@ -32,7 +32,7 @@ def sample_game_context():
 @pytest.fixture
 def sample_companion_request():
     """Provide a sample companion request for testing."""
-    from backend.ai.companion.core.models import CompanionRequest
+    from src.ai.companion.core.models import CompanionRequest
     import uuid
     
     return CompanionRequest(

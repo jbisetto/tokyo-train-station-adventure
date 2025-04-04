@@ -8,7 +8,7 @@ to create effective prompts for local language models.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     CompanionRequest,
     ClassifiedRequest,
     IntentCategory,
@@ -71,7 +71,7 @@ class TestPromptManager:
     
     def test_initialization(self):
         """Test that the PromptManager can be initialized."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         prompt_manager = PromptManager()
         
@@ -80,7 +80,7 @@ class TestPromptManager:
     
     def test_create_prompt_basic(self, sample_request):
         """Test creating a basic prompt."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         prompt_manager = PromptManager()
         
@@ -100,7 +100,7 @@ class TestPromptManager:
     
     def test_create_prompt_with_context(self, sample_request_with_context):
         """Test creating a prompt with game context."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         prompt_manager = PromptManager()
         
@@ -114,7 +114,7 @@ class TestPromptManager:
     
     def test_create_prompt_with_intent(self, sample_request):
         """Test creating a prompt with intent information."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         prompt_manager = PromptManager()
         
@@ -129,7 +129,7 @@ class TestPromptManager:
     
     def test_create_prompt_with_complexity(self, sample_request):
         """Test creating a prompt with complexity information."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         prompt_manager = PromptManager()
         
@@ -147,7 +147,7 @@ class TestPromptManager:
     
     def test_create_prompt_with_entities(self, sample_request):
         """Test creating a prompt with extracted entities."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         prompt_manager = PromptManager()
         
@@ -166,8 +166,8 @@ class TestPromptManager:
     
     def test_create_prompt_for_different_request_types(self):
         """Test creating prompts for different request types."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
-        from backend.ai.companion.core.models import ClassifiedRequest, IntentCategory, ComplexityLevel, ProcessingTier
+        from src.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.models import ClassifiedRequest, IntentCategory, ComplexityLevel, ProcessingTier
         
         prompt_manager = PromptManager()
         
@@ -198,7 +198,7 @@ class TestPromptManager:
     
     def test_prompt_includes_guardrails(self, sample_request):
         """Test that the prompt includes topic boundaries and redirection instructions."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         prompt_manager = PromptManager()
         prompt = prompt_manager.create_prompt(sample_request)

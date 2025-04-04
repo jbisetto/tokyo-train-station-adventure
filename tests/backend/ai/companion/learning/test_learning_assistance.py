@@ -11,17 +11,17 @@ import uuid
 from unittest.mock import MagicMock, patch
 from typing import Dict, List, Any
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.learning.hint_progression import HintProgressionManager
-from backend.ai.companion.learning.vocabulary_tracker import VocabularyTracker
-from backend.ai.companion.learning.grammar_templates import GrammarTemplateManager
-from backend.ai.companion.learning.learning_pace import LearningPaceAdapter
+from src.ai.companion.learning.hint_progression import HintProgressionManager
+from src.ai.companion.learning.vocabulary_tracker import VocabularyTracker
+from src.ai.companion.learning.grammar_templates import GrammarTemplateManager
+from src.ai.companion.learning.learning_pace import LearningPaceAdapter
 
 
 class TestHintProgressionManager:

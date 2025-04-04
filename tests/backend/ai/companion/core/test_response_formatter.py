@@ -6,16 +6,16 @@ import pytest
 import uuid
 from unittest.mock import MagicMock, patch
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.config import PERSONALITY_TRAITS
-from backend.ai.companion.core.response_formatter import ResponseFormatter
-from backend.ai.companion.personality.config import PersonalityConfig, PersonalityProfile
+from src.ai.companion.config import PERSONALITY_TRAITS
+from src.ai.companion.core.response_formatter import ResponseFormatter
+from src.ai.companion.personality.config import PersonalityConfig, PersonalityProfile
 
 
 @pytest.fixture

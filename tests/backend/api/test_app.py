@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 # Add the project root to the path so we can import the backend modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
-from backend.main import app
+from src.main import app
 
 
 @pytest.fixture

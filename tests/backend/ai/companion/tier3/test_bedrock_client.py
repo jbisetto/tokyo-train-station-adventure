@@ -11,8 +11,8 @@ import boto3
 from unittest.mock import patch, MagicMock, AsyncMock
 import datetime
 
-from backend.ai.companion.core.models import CompanionRequest
-from backend.ai.companion.tier3.bedrock_client import BedrockClient, BedrockError
+from src.ai.companion.core.models import CompanionRequest
+from src.ai.companion.tier3.bedrock_client import BedrockClient, BedrockError
 
 
 @pytest.fixture

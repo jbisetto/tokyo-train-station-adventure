@@ -33,7 +33,7 @@ import time
 
 # Apply module-level patches to prevent any real connection attempts to Ollama
 # This ensures tests run quickly and don't depend on external services
-ollama_api_patch = patch('backend.ai.companion.tier2.ollama_client.aiohttp.ClientSession.post')
+ollama_api_patch = patch('src.ai.companion.tier2.ollama_client.aiohttp.ClientSession.post')
 mock_ollama_api = ollama_api_patch.start()
 # Configure mock to return a valid response
 mock_response = MagicMock()
@@ -46,15 +46,15 @@ mock_response.__aexit__ = AsyncMock(return_value=None)
 mock_ollama_api.return_value = mock_response
 
 # Patch any direct network connections or timeouts
-timeout_patch = patch('backend.ai.companion.tier2.ollama_client.aiohttp.ClientSession')
+timeout_patch = patch('src.ai.companion.tier2.ollama_client.aiohttp.ClientSession')
 timeout_patch.start()
 
 # Also patch conversation manager to prevent warnings
-conversation_manager_patch = patch('backend.ai.companion.core.conversation_manager.ConversationManager.add_to_history', new_callable=AsyncMock)
+conversation_manager_patch = patch('src.ai.companion.core.conversation_manager.ConversationManager.add_to_history', new_callable=AsyncMock)
 mock_add_to_history = conversation_manager_patch.start()
 
 # Patch context manager update_context method directly in the processor module
-processor_update_context_patch = patch('backend.ai.companion.tier2.tier2_processor.ContextManager.update_context', new_callable=AsyncMock)
+processor_update_context_patch = patch('src.ai.companion.tier2.tier2_processor.ContextManager.update_context', new_callable=AsyncMock)
 processor_update_context_patch.start()
 
 # Patch sleep to make the tests run faster
@@ -77,20 +77,20 @@ def teardown_module(module):
     time_sleep_patch.stop()
     asyncio_sleep_patch.stop()
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     CompanionRequest,
     ClassifiedRequest,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.core.prompt_manager import PromptManager
-from backend.ai.companion.core.conversation_manager import ConversationManager
-from backend.ai.companion.core.context_manager import ContextManager
-from backend.ai.companion.tier2.ollama_client import OllamaError, OllamaClient
-from backend.ai.companion.tier2.tier2_processor import Tier2Processor
-from backend.ai.companion.core.processor_framework import ProcessorFactory
-from backend.ai.companion.utils.retry import RetryConfig
+from src.ai.companion.core.prompt_manager import PromptManager
+from src.ai.companion.core.conversation_manager import ConversationManager
+from src.ai.companion.core.context_manager import ContextManager
+from src.ai.companion.tier2.ollama_client import OllamaError, OllamaClient
+from src.ai.companion.tier2.tier2_processor import Tier2Processor
+from src.ai.companion.core.processor_framework import ProcessorFactory
+from src.ai.companion.utils.retry import RetryConfig
 
 
 @pytest.fixture
@@ -136,7 +136,7 @@ class TestTier2Processor(unittest.TestCase):
 
     def setUp(self):
         # Create a mock for get_config
-        self.get_config_patcher = patch('backend.ai.companion.tier2.tier2_processor.get_config')
+        self.get_config_patcher = patch('src.ai.companion.tier2.tier2_processor.get_config')
         self.mock_get_config = self.get_config_patcher.start()
         
         # Mock config
@@ -153,7 +153,7 @@ class TestTier2Processor(unittest.TestCase):
         self.mock_get_config.return_value = self.mock_config
         
         # Mock OllamaClient
-        self.ollama_client_patcher = patch('backend.ai.companion.tier2.tier2_processor.OllamaClient')
+        self.ollama_client_patcher = patch('src.ai.companion.tier2.tier2_processor.OllamaClient')
         self.mock_ollama_client_class = self.ollama_client_patcher.start()
         self.mock_ollama_client = MagicMock(spec=OllamaClient)
         self.mock_ollama_client_class.return_value = self.mock_ollama_client
@@ -239,7 +239,7 @@ class TestTier2Processor:
     
     def test_initialization(self):
         """Test that a Tier2Processor can be initialized."""
-        with patch('backend.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client:
+        with patch('src.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client:
             processor = Tier2Processor()
             
             assert processor is not None
@@ -251,9 +251,9 @@ class TestTier2Processor:
     @pytest.mark.asyncio
     async def test_process(self, sample_request, sample_ollama_response, mock_context_manager):
         """Test processing a request."""
-        with patch('backend.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
-             patch('backend.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class, \
-             patch('backend.ai.companion.tier2.tier2_processor.get_config') as mock_get_config:
+        with patch('src.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
+             patch('src.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class, \
+             patch('src.ai.companion.tier2.tier2_processor.get_config') as mock_get_config:
             
             # Mock the configuration
             mock_get_config.return_value = {
@@ -320,9 +320,9 @@ class TestTier2Processor:
     @pytest.mark.asyncio
     async def test_process_with_conversation_history(self, sample_request, sample_ollama_response, mock_context_manager):
         """Test processing a request with conversation history."""
-        with patch('backend.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
-             patch('backend.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class, \
-             patch('backend.ai.companion.tier2.tier2_processor.get_config') as mock_get_config:
+        with patch('src.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
+             patch('src.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class, \
+             patch('src.ai.companion.tier2.tier2_processor.get_config') as mock_get_config:
             
             # Mock the configuration
             mock_get_config.return_value = {
@@ -358,9 +358,9 @@ class TestTier2Processor:
     @pytest.mark.asyncio
     async def test_process_with_retry(self, sample_request, sample_ollama_response, mock_context_manager):
         """Test processing a request with retries."""
-        with patch('backend.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
-             patch('backend.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class, \
-             patch('backend.ai.companion.tier2.tier2_processor.get_config') as mock_get_config:
+        with patch('src.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
+             patch('src.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class, \
+             patch('src.ai.companion.tier2.tier2_processor.get_config') as mock_get_config:
             
             # Mock the configuration
             mock_get_config.return_value = {
@@ -410,7 +410,7 @@ class TestTier2Processor:
     @pytest.mark.asyncio
     async def test_process_with_error(self, sample_request, mock_context_manager):
         """Test processing a request when the client raises an error."""
-        with patch('backend.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class:
+        with patch('src.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class:
             # Set up the mock response parser
             mock_parser = mock_parser_class.return_value
             fallback_response = "I'm sorry, I couldn't provide a translation right now. Could you try asking in a different way?"
@@ -427,7 +427,7 @@ class TestTier2Processor:
             processor._generate_with_retries = AsyncMock(return_value=(None, error))
             
             # Mock the _get_tier1_processor method to avoid the actual import
-            processor._get_tier1_processor = MagicMock(side_effect=ImportError("No module named 'backend.ai.companion.tier1.tier1_processor'"))
+            processor._get_tier1_processor = MagicMock(side_effect=ImportError("No module named 'src.ai.companion.tier1.tier1_processor'"))
             
             # Process the request
             response = await processor.process(sample_request)
@@ -442,9 +442,9 @@ class TestTier2Processor:
     @pytest.mark.asyncio
     async def test_process_with_fallback_to_simpler_model(self, sample_request, sample_ollama_response, mock_context_manager):
         """Test processing a request with fallback to a simpler model."""
-        with patch('backend.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
-             patch('backend.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class, \
-             patch('backend.ai.companion.tier2.tier2_processor.get_config') as mock_get_config:
+        with patch('src.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
+             patch('src.ai.companion.tier2.tier2_processor.ResponseParser') as mock_parser_class, \
+             patch('src.ai.companion.tier2.tier2_processor.get_config') as mock_get_config:
 
             # Mock the configuration
             mock_get_config.return_value = {
@@ -581,9 +581,9 @@ class TestTier2Processor:
     @pytest.mark.asyncio
     async def test_graceful_degradation_to_tier1(self, sample_request):
         """Test the graceful degradation to Tier 1."""
-        with patch('backend.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
-             patch('backend.ai.companion.tier2.tier2_processor.get_config') as mock_get_config, \
-             patch('backend.ai.companion.tier2.tier2_processor.ProcessorFactory') as mock_factory_class:
+        with patch('src.ai.companion.tier2.tier2_processor.OllamaClient') as mock_client_class, \
+             patch('src.ai.companion.tier2.tier2_processor.get_config') as mock_get_config, \
+             patch('src.ai.companion.tier2.tier2_processor.ProcessorFactory') as mock_factory_class:
 
             # Mock the configuration
             mock_get_config.return_value = {

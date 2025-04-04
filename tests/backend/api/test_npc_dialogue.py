@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from datetime import datetime
 
-from backend.api import create_app
+from src.api import create_app
 
 
 @pytest.fixture

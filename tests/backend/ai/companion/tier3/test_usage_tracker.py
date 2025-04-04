@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch, MagicMock, AsyncMock
 
-from backend.ai.companion.tier3.usage_tracker import (
+from src.ai.companion.tier3.usage_tracker import (
     UsageQuota,
     UsageRecord,
     UsageTracker,

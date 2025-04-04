@@ -8,8 +8,8 @@ import pytest
 from unittest.mock import patch, mock_open, MagicMock
 
 # Import the class we will implement
-from backend.ai.companion.core.prompt.prompt_template_loader import PromptTemplateLoader
-from backend.ai.companion.core.models import IntentCategory
+from src.ai.companion.core.prompt.prompt_template_loader import PromptTemplateLoader
+from src.ai.companion.core.models import IntentCategory
 
 # Define test data paths
 TEST_TEMPLATES_DIR = os.path.join(os.getcwd(), "prompt_templates")

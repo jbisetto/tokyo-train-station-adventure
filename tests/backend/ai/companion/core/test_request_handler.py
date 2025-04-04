@@ -7,7 +7,7 @@ import uuid
 from unittest.mock import MagicMock, patch, Mock
 import logging
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     CompanionRequest,
     ClassifiedRequest,
     GameContext,
@@ -15,7 +15,7 @@ from backend.ai.companion.core.models import (
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.core.request_handler import RequestHandler
+from src.ai.companion.core.request_handler import RequestHandler
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ class TestRequestHandler:
     
     def test_initialization(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter):
         """Test that the RequestHandler can be initialized with the required components."""
-        from backend.ai.companion.core.request_handler import RequestHandler
+        from src.ai.companion.core.request_handler import RequestHandler
         
         handler = RequestHandler(
             intent_classifier=mock_intent_classifier,
@@ -84,7 +84,7 @@ class TestRequestHandler:
     @pytest.mark.asyncio
     async def test_handle_request_flow(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter, sample_game_context):
         """Test the complete request handling flow."""
-        from backend.ai.companion.core.request_handler import RequestHandler
+        from src.ai.companion.core.request_handler import RequestHandler
         
         # Create a request handler
         handler = RequestHandler(
@@ -121,8 +121,8 @@ class TestRequestHandler:
     @pytest.mark.asyncio
     async def test_handle_request_with_conversation_context(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter):
         """Test handling a request with conversation context."""
-        from backend.ai.companion.core.request_handler import RequestHandler
-        from backend.ai.companion.core.models import ConversationContext
+        from src.ai.companion.core.request_handler import RequestHandler
+        from src.ai.companion.core.models import ConversationContext
         
         # Create a request handler
         handler = RequestHandler(
@@ -152,7 +152,7 @@ class TestRequestHandler:
     @pytest.mark.asyncio
     async def test_handle_request_with_error(self, mock_intent_classifier, mock_processor_factory, mock_response_formatter):
         """Test handling a request when an error occurs."""
-        from backend.ai.companion.core.request_handler import RequestHandler
+        from src.ai.companion.core.request_handler import RequestHandler
         
         # Configure the processor to raise an exception
         processor = mock_processor_factory.get_processor.return_value

@@ -12,14 +12,14 @@ from dataclasses import replace
 import copy
 import uuid
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.core.conversation_manager import ConversationManager, ConversationState
-from backend.ai.companion.core.storage.sqlite import SQLiteConversationStorage
+from src.ai.companion.core.conversation_manager import ConversationManager, ConversationState
+from src.ai.companion.core.storage.sqlite import SQLiteConversationStorage
 
 
 @pytest.fixture

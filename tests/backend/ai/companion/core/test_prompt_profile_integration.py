@@ -8,17 +8,17 @@ from unittest.mock import patch, MagicMock
 import json
 from datetime import datetime
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest, 
     IntentCategory, 
     ComplexityLevel, 
     ProcessingTier,
     GameContext
 )
-from backend.ai.companion.core.npc.profile_loader import ProfileLoader
-from backend.ai.companion.core.npc.profile import NPCProfile, NPCProfileRegistry
-from backend.ai.companion.core.prompt.prompt_template_loader import PromptTemplateLoader
-from backend.ai.companion.core.prompt_manager import PromptManager
+from src.ai.companion.core.npc.profile_loader import ProfileLoader
+from src.ai.companion.core.npc.profile import NPCProfile, NPCProfileRegistry
+from src.ai.companion.core.prompt.prompt_template_loader import PromptTemplateLoader
+from src.ai.companion.core.prompt_manager import PromptManager
 
 
 class TestPromptProfileIntegration:
@@ -155,7 +155,7 @@ class TestPromptProfileIntegration:
         """Test that contextual prompt includes conversation history."""
         # Mock conversation manager
         from unittest.mock import AsyncMock
-        from backend.ai.companion.core.conversation_manager import ConversationState
+        from src.ai.companion.core.conversation_manager import ConversationState
         
         mock_conv_manager = AsyncMock()
         prompt_manager.conversation_manager = mock_conv_manager

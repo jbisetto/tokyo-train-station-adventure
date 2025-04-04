@@ -11,7 +11,7 @@ import json
 from unittest.mock import patch, mock_open
 from enum import Enum
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     IntentCategory,
     ComplexityLevel,
@@ -76,7 +76,7 @@ class TestTemplateSystem:
     
     def test_initialization(self):
         """Test that the TemplateSystem can be initialized."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem()
         
@@ -86,7 +86,7 @@ class TestTemplateSystem:
     
     def test_load_templates_from_file(self):
         """Test loading templates from a file."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         # Mock the open function to return a sample templates file
         mock_templates = json.dumps({
@@ -105,7 +105,7 @@ class TestTemplateSystem:
     
     def test_load_templates_from_dict(self, sample_templates):
         """Test loading templates from a dictionary."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -116,7 +116,7 @@ class TestTemplateSystem:
     
     def test_get_template_by_intent(self, sample_templates):
         """Test getting a template by intent."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -130,7 +130,7 @@ class TestTemplateSystem:
     
     def test_get_template_with_context(self, sample_templates):
         """Test getting a template with context consideration."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -152,7 +152,7 @@ class TestTemplateSystem:
     
     def test_get_template_fallback(self, sample_templates):
         """Test getting a fallback template for unknown intent."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -170,7 +170,7 @@ class TestTemplateSystem:
     
     def test_render_template(self, sample_templates):
         """Test rendering a template with variables."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -186,7 +186,7 @@ class TestTemplateSystem:
     
     def test_render_template_with_missing_variables(self, sample_templates):
         """Test rendering a template with missing variables."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -202,7 +202,7 @@ class TestTemplateSystem:
     
     def test_render_template_with_extra_variables(self, sample_templates):
         """Test rendering a template with extra variables."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -218,7 +218,7 @@ class TestTemplateSystem:
     
     def test_process_request(self, sample_classified_request, sample_templates):
         """Test processing a request with the template system."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -233,7 +233,7 @@ class TestTemplateSystem:
     
     def test_process_request_with_context(self, sample_classified_request, sample_templates):
         """Test processing a request with context."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -257,7 +257,7 @@ class TestTemplateSystem:
     
     def test_add_template(self, sample_templates):
         """Test adding a new template."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -272,7 +272,7 @@ class TestTemplateSystem:
     
     def test_remove_template(self, sample_templates):
         """Test removing a template."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         
@@ -292,7 +292,7 @@ class TestTemplateSystem:
     
     def test_save_templates(self, sample_templates, tmp_path):
         """Test saving templates to a file."""
-        from backend.ai.companion.tier1.template_system import TemplateSystem
+        from src.ai.companion.tier1.template_system import TemplateSystem
         
         template_system = TemplateSystem(templates=sample_templates)
         

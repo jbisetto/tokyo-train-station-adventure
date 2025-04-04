@@ -11,7 +11,7 @@ import os
 import json
 import time
 from unittest.mock import patch, MagicMock
-from backend.ai.companion.learning.learning_pace import LearningPaceAdapter, DEFAULT_LEARNING_PACE
+from src.ai.companion.learning.learning_pace import LearningPaceAdapter, DEFAULT_LEARNING_PACE
 
 
 @pytest.fixture

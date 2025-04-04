@@ -5,7 +5,7 @@ import yaml
 from unittest.mock import patch, mock_open
 import logging
 
-from backend.ai.companion.config import get_config
+from src.ai.companion.config import get_config
 
 
 class TestConfig(unittest.TestCase):
@@ -94,7 +94,7 @@ class TestConfig(unittest.TestCase):
                 path_with_test = "config/test_companion.yaml"
                 with patch("os.environ.get", return_value=path_with_test):
                     # Mock the loggers
-                    with patch("backend.ai.companion.config.logger") as mock_logger:
+                    with patch("src.ai.companion.config.logger") as mock_logger:
                         # Call get_config
                         get_config("test")
                         

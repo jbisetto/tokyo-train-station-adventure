@@ -10,15 +10,15 @@ import uuid
 from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime, timedelta
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.core.conversation_manager import ConversationManager, ConversationState
-from backend.ai.companion.core.storage.memory import InMemoryConversationStorage
+from src.ai.companion.core.conversation_manager import ConversationManager, ConversationState
+from src.ai.companion.core.storage.memory import InMemoryConversationStorage
 
 
 @pytest.fixture

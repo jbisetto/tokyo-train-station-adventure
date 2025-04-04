@@ -11,7 +11,7 @@ import tempfile
 import pytest_asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     IntentCategory,
     ComplexityLevel,
@@ -75,7 +75,7 @@ def sample_request():
 @pytest.fixture
 def mock_tokyo_knowledge_store():
     """Mock the TokyoKnowledgeStore."""
-    with patch('backend.ai.companion.core.vector.tokyo_knowledge_store.TokyoKnowledgeStore') as mock:
+    with patch('src.ai.companion.core.vector.tokyo_knowledge_store.TokyoKnowledgeStore') as mock:
         store_instance = MagicMock()
         
         # Mock the search method to return relevant results
@@ -116,8 +116,8 @@ class TestPromptManagerWithVectorStore:
     
     def test_initialization_with_vector_store(self, mock_tokyo_knowledge_store):
         """Test initializing the PromptManager with TokyoKnowledgeStore."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         # Create a prompt manager with a vector store
         prompt_manager = PromptManager(vector_store=mock_tokyo_knowledge_store)
@@ -128,8 +128,8 @@ class TestPromptManagerWithVectorStore:
     
     def test_initialization_with_knowledge_file(self, sample_knowledge_file, mock_tokyo_knowledge_store):
         """Test initializing the PromptManager with a knowledge base file."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         # Create a prompt manager with a knowledge base file
         prompt_manager = PromptManager(tokyo_knowledge_base_path=sample_knowledge_file)
@@ -140,7 +140,7 @@ class TestPromptManagerWithVectorStore:
     
     def test_create_prompt_with_game_context(self, mock_tokyo_knowledge_store, sample_request):
         """Test creating a prompt with game context."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         # Create a prompt manager with a vector store
         prompt_manager = PromptManager(vector_store=mock_tokyo_knowledge_store)
@@ -157,7 +157,7 @@ class TestPromptManagerWithVectorStore:
     
     def test_get_relevant_world_context(self, mock_tokyo_knowledge_store, sample_request):
         """Test getting relevant world context."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         # Create a prompt manager with a vector store
         prompt_manager = PromptManager(vector_store=mock_tokyo_knowledge_store)
@@ -175,7 +175,7 @@ class TestPromptManagerWithVectorStore:
     @pytest_asyncio.fixture
     async def mock_conversation_manager(self):
         """Mock the ConversationManager."""
-        with patch('backend.ai.companion.core.conversation_manager.ConversationManager') as mock:
+        with patch('src.ai.companion.core.conversation_manager.ConversationManager') as mock:
             manager_instance = AsyncMock()
             
             # Configure the context dictionary with entries
@@ -194,7 +194,7 @@ class TestPromptManagerWithVectorStore:
             manager_instance.get_or_create_context.side_effect = mock_get_context
             
             # Mock the detect_conversation_state method
-            from backend.ai.companion.core.conversation_manager import ConversationState
+            from src.ai.companion.core.conversation_manager import ConversationState
             manager_instance.detect_conversation_state.return_value = ConversationState.FOLLOW_UP
             
             # Mock the generate_contextual_prompt method with a proper async function
@@ -224,7 +224,7 @@ class TestPromptManagerWithVectorStore:
         sample_request
     ):
         """Test creating a contextual prompt with both conversation history and vector store."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         # Create a prompt manager with both vector store and conversation manager
         prompt_manager = PromptManager(
@@ -259,7 +259,7 @@ class TestPromptManagerWithVectorStore:
         sample_request
     ):
         """Test that world context is added before conversation history."""
-        from backend.ai.companion.core.prompt_manager import PromptManager
+        from src.ai.companion.core.prompt_manager import PromptManager
         
         # Create a prompt manager with both vector store and conversation manager
         prompt_manager = PromptManager(

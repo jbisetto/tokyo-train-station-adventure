@@ -12,7 +12,7 @@ import tempfile
 import pytest_asyncio
 from unittest.mock import patch, MagicMock, Mock
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest, 
     IntentCategory, 
     ComplexityLevel, 
@@ -133,7 +133,7 @@ class TestTokyoKnowledgeStore:
     
     def test_initialization_ephemeral(self, chroma_mock):
         """Test initializing with an ephemeral database."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
         
         # Create a store with ephemeral storage
         store = TokyoKnowledgeStore(persist_directory=None)
@@ -145,7 +145,7 @@ class TestTokyoKnowledgeStore:
     
     def test_initialization_persistent(self, chroma_mock):
         """Test initializing with a persistent database."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
         
         # Create a store with persistent storage
         store = TokyoKnowledgeStore(persist_directory="/tmp/chroma_test")
@@ -157,7 +157,7 @@ class TestTokyoKnowledgeStore:
     
     def test_load_knowledge_base_when_empty(self, chroma_mock, sample_knowledge_file):
         """Test loading the knowledge base when the collection is empty."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
         
         # Configure mock to show empty collection
         chroma_mock['collection'].count.return_value = 0
@@ -177,7 +177,7 @@ class TestTokyoKnowledgeStore:
     
     def test_load_knowledge_base_when_populated(self, chroma_mock, sample_knowledge_file):
         """Test loading the knowledge base when the collection is already populated."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
         
         # Configure mock to show populated collection
         chroma_mock['collection'].count.return_value = 3
@@ -191,7 +191,7 @@ class TestTokyoKnowledgeStore:
     
     def test_from_file_initialization(self, chroma_mock, sample_knowledge_file):
         """Test initializing from a knowledge base file."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
         
         # Configure mock to show empty collection initially
         chroma_mock['collection'].count.return_value = 0
@@ -204,7 +204,7 @@ class TestTokyoKnowledgeStore:
     
     def test_search(self, chroma_mock):
         """Test searching for relevant documents."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
         
         # Create a store
         store = TokyoKnowledgeStore()
@@ -221,7 +221,7 @@ class TestTokyoKnowledgeStore:
     
     def test_contextual_search(self, chroma_mock, sample_request):
         """Test searching with game context."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
         
         # Create a store
         store = TokyoKnowledgeStore()
@@ -272,7 +272,7 @@ class TestTokyoKnowledgeStore:
     
     def test_filtering_by_type(self, chroma_mock):
         """Test filtering search results by document type."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
         
         # Create a store
         store = TokyoKnowledgeStore()
@@ -286,7 +286,7 @@ class TestTokyoKnowledgeStore:
     
     def test_embeddings_created_when_empty(self, chroma_mock, sample_knowledge_file):
         """Test that embeddings are created when the store is empty."""
-        from backend.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
+        from src.ai.companion.core.vector.tokyo_knowledge_store import TokyoKnowledgeStore
         
         # First set count to 0 to indicate an empty collection
         chroma_mock['collection'].count.return_value = 0

@@ -2,8 +2,8 @@ import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 import pytest
 
-from backend.ai.companion.tier1.tier1_processor import Tier1Processor
-from backend.ai.companion.core.models import ClassifiedRequest, IntentCategory, ComplexityLevel, ProcessingTier
+from src.ai.companion.tier1.tier1_processor import Tier1Processor
+from src.ai.companion.core.models import ClassifiedRequest, IntentCategory, ComplexityLevel, ProcessingTier
 
 
 class TestTier1Processor(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestTier1Processor(unittest.TestCase):
 
     def setUp(self):
         # Create a mock for get_config
-        self.get_config_patcher = patch('backend.ai.companion.tier1.tier1_processor.get_config')
+        self.get_config_patcher = patch('src.ai.companion.tier1.tier1_processor.get_config')
         self.mock_get_config = self.get_config_patcher.start()
         
         # Mock config

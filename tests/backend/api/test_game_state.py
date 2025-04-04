@@ -6,8 +6,8 @@ import pytest
 from datetime import datetime, UTC
 from fastapi.testclient import TestClient
 
-from backend.api import create_app
-from backend.data.game_state import _game_states
+from src.api import create_app
+from src.data.game_state import _game_states
 
 
 @pytest.fixture

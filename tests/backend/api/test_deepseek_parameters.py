@@ -5,8 +5,8 @@ Tests for the DeepSeek engine parameters API.
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api import create_app
-from backend.data.deepseek_parameters import _deepseek_parameters
+from src.api import create_app
+from src.data.deepseek_parameters import _deepseek_parameters
 
 
 @pytest.fixture

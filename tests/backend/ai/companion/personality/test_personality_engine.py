@@ -7,9 +7,9 @@ import os
 import tempfile
 from unittest.mock import MagicMock, patch
 
-from backend.ai.companion.core.models import ClassifiedRequest, CompanionResponse, IntentCategory
-from backend.ai.companion.personality.engine import PersonalityEngine
-from backend.ai.companion.personality.config import PersonalityConfig
+from src.ai.companion.core.models import ClassifiedRequest, CompanionResponse, IntentCategory
+from src.ai.companion.personality.engine import PersonalityEngine
+from src.ai.companion.personality.config import PersonalityConfig
 
 
 class TestPersonalityEngine:

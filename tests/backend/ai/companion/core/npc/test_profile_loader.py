@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import patch, mock_open, MagicMock
 
 # Import the class we will implement
-from backend.ai.companion.core.npc.profile_loader import ProfileLoader
+from src.ai.companion.core.npc.profile_loader import ProfileLoader
 
 # Define test data paths
 TEST_PROFILES_DIR = os.path.join(os.getcwd(), "profiles")
@@ -248,7 +248,7 @@ class TestProfileLoader:
     def test_get_profile_converts_to_npcprofile_object(self):
         """Test that get_profile converts the profile to an NPCProfile object."""
         # Mock the NPCProfile.from_dict method specifically
-        with patch("backend.ai.companion.core.npc.profile.NPCProfile.from_dict") as mock_from_dict:
+        with patch("src.ai.companion.core.npc.profile.NPCProfile.from_dict") as mock_from_dict:
             # Create a mock return value
             mock_profile = MagicMock()
             mock_from_dict.return_value = mock_profile

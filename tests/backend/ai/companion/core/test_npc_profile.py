@@ -5,8 +5,8 @@ import pytest
 from typing import Dict, Any, List
 from unittest.mock import patch, MagicMock
 
-from backend.ai.companion.core.models import ClassifiedRequest, IntentCategory, ComplexityLevel, ProcessingTier, GameContext
-from backend.ai.companion.core.npc.profile import NPCProfile, NPCProfileRegistry
+from src.ai.companion.core.models import ClassifiedRequest, IntentCategory, ComplexityLevel, ProcessingTier, GameContext
+from src.ai.companion.core.npc.profile import NPCProfile, NPCProfileRegistry
 
 
 class TestNPCProfile:

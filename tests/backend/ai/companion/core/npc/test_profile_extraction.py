@@ -9,9 +9,9 @@ for Hachi the companion dog.
 import pytest
 from typing import Dict, Any
 
-from backend.ai.companion.core.response_formatter import ResponseFormatter
-from backend.ai.companion.core.npc.profile import NPCProfile
-from backend.ai.companion.core.npc.extraction import extract_companion_profile
+from src.ai.companion.core.response_formatter import ResponseFormatter
+from src.ai.companion.core.npc.profile import NPCProfile
+from src.ai.companion.core.npc.extraction import extract_companion_profile
 
 
 class TestProfileExtraction:

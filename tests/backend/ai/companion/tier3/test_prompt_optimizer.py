@@ -8,8 +8,8 @@ to create cost-effective prompts for Amazon Bedrock.
 import pytest
 from unittest.mock import patch
 
-from backend.ai.companion.core.models import CompanionRequest
-from backend.ai.companion.tier3.prompt_optimizer import (
+from src.ai.companion.core.models import CompanionRequest
+from src.ai.companion.tier3.prompt_optimizer import (
     PromptOptimizer, 
     get_system_prompt, 
     create_optimized_prompt,

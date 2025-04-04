@@ -2,8 +2,8 @@
 Example script to show the OpenAI conversation format in prompts.
 """
 
-from backend.ai.companion.core.conversation_manager import ConversationManager, ConversationState
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.conversation_manager import ConversationManager, ConversationState
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     IntentCategory,
     ComplexityLevel,

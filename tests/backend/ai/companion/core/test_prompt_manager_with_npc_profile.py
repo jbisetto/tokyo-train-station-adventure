@@ -8,9 +8,9 @@ to customize prompts based on the NPC's personality and characteristics.
 import pytest
 from unittest.mock import MagicMock, patch
 
-from backend.ai.companion.core.models import ClassifiedRequest, IntentCategory, ComplexityLevel, ProcessingTier
-from backend.ai.companion.core.prompt_manager import PromptManager
-from backend.ai.companion.core.npc.profile import NPCProfile, NPCProfileRegistry
+from src.ai.companion.core.models import ClassifiedRequest, IntentCategory, ComplexityLevel, ProcessingTier
+from src.ai.companion.core.prompt_manager import PromptManager
+from src.ai.companion.core.npc.profile import NPCProfile, NPCProfileRegistry
 
 
 class TestPromptManagerWithNPCProfile:

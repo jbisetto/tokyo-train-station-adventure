@@ -2,9 +2,9 @@ import logging
 import asyncio
 import uuid
 import pytest
-from backend.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
-from backend.ai.companion.config import get_config
-from backend.ai.companion.core.models import CompanionRequest
+from src.ai.companion.tier2.ollama_client import OllamaClient, OllamaError
+from src.ai.companion.config import get_config
+from src.ai.companion.core.models import CompanionRequest
 
 
 @pytest.fixture

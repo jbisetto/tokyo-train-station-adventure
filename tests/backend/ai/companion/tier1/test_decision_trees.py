@@ -10,7 +10,7 @@ import os
 import json
 from unittest.mock import patch, mock_open
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
     IntentCategory,
@@ -172,7 +172,7 @@ class TestDecisionTree:
     
     def test_initialization(self, sample_decision_tree):
         """Test that the DecisionTree can be initialized."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         
@@ -184,7 +184,7 @@ class TestDecisionTree:
     
     def test_get_node(self, sample_decision_tree):
         """Test getting a node from the tree."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         
@@ -199,7 +199,7 @@ class TestDecisionTree:
     
     def test_get_nonexistent_node(self, sample_decision_tree):
         """Test getting a nonexistent node from the tree."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         
@@ -209,7 +209,7 @@ class TestDecisionTree:
     
     def test_render_message(self, sample_decision_tree):
         """Test rendering a message with variables."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         
@@ -222,7 +222,7 @@ class TestDecisionTree:
     
     def test_get_transition(self, sample_decision_tree):
         """Test getting a transition from a node."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         
@@ -234,7 +234,7 @@ class TestDecisionTree:
     
     def test_get_default_transition(self, sample_decision_tree):
         """Test getting the default transition from a node."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         
@@ -246,7 +246,7 @@ class TestDecisionTree:
     
     def test_is_exit_node(self, sample_decision_tree):
         """Test checking if a node is an exit node."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         
@@ -262,7 +262,7 @@ class TestDecisionTreeNavigator:
     
     def test_initialization(self, sample_decision_tree, sample_conversation_state):
         """Test that the DecisionTreeNavigator can be initialized."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         navigator = DecisionTreeNavigator(tree, sample_conversation_state)
@@ -274,7 +274,7 @@ class TestDecisionTreeNavigator:
     
     def test_get_current_node(self, sample_decision_tree, sample_conversation_state):
         """Test getting the current node."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         navigator = DecisionTreeNavigator(tree, sample_conversation_state)
@@ -289,7 +289,7 @@ class TestDecisionTreeNavigator:
     
     def test_get_current_message(self, sample_decision_tree, sample_conversation_state):
         """Test getting the current message."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         navigator = DecisionTreeNavigator(tree, sample_conversation_state)
@@ -302,7 +302,7 @@ class TestDecisionTreeNavigator:
     
     def test_transition(self, sample_decision_tree, sample_conversation_state):
         """Test transitioning to the next node."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         navigator = DecisionTreeNavigator(tree, sample_conversation_state)
@@ -316,7 +316,7 @@ class TestDecisionTreeNavigator:
     
     def test_transition_with_response(self, sample_decision_tree, sample_conversation_state):
         """Test transitioning to the next node with a response."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         navigator = DecisionTreeNavigator(tree, sample_conversation_state)
@@ -331,7 +331,7 @@ class TestDecisionTreeNavigator:
     
     def test_update_variables(self, sample_decision_tree, sample_conversation_state):
         """Test updating variables in the state."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         navigator = DecisionTreeNavigator(tree, sample_conversation_state)
@@ -346,7 +346,7 @@ class TestDecisionTreeNavigator:
     
     def test_is_conversation_ended(self, sample_decision_tree, sample_conversation_state):
         """Test checking if the conversation has ended."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         navigator = DecisionTreeNavigator(tree, sample_conversation_state)
@@ -362,7 +362,7 @@ class TestDecisionTreeNavigator:
     
     def test_get_conversation_history(self, sample_decision_tree, sample_conversation_state):
         """Test getting the conversation history."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
+        from src.ai.companion.tier1.decision_trees import DecisionTreeNavigator, DecisionTree
         
         tree = DecisionTree(sample_decision_tree)
         navigator = DecisionTreeNavigator(tree, sample_conversation_state)
@@ -382,7 +382,7 @@ class TestDecisionTreeManager:
     
     def test_initialization(self, sample_decision_tree):
         """Test that the DecisionTreeManager can be initialized."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeManager
         
         manager = DecisionTreeManager()
         
@@ -393,7 +393,7 @@ class TestDecisionTreeManager:
     
     def test_load_tree_from_dict(self, sample_decision_tree):
         """Test loading a tree from a dictionary."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeManager
         
         manager = DecisionTreeManager()
         
@@ -406,7 +406,7 @@ class TestDecisionTreeManager:
     
     def test_load_tree_from_file(self, sample_decision_tree):
         """Test loading a tree from a file."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeManager
         
         manager = DecisionTreeManager()
         
@@ -423,7 +423,7 @@ class TestDecisionTreeManager:
     
     def test_get_tree(self, sample_decision_tree):
         """Test getting a tree by ID."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeManager
         
         manager = DecisionTreeManager()
         
@@ -440,7 +440,7 @@ class TestDecisionTreeManager:
     
     def test_get_nonexistent_tree(self):
         """Test getting a nonexistent tree."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeManager
         
         manager = DecisionTreeManager()
         
@@ -450,7 +450,7 @@ class TestDecisionTreeManager:
     
     def test_create_navigator(self, sample_decision_tree):
         """Test creating a navigator for a tree."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeManager
         
         manager = DecisionTreeManager()
         
@@ -467,7 +467,7 @@ class TestDecisionTreeManager:
     
     def test_create_navigator_with_state(self, sample_decision_tree, sample_conversation_state):
         """Test creating a navigator with an existing state."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeManager
         
         manager = DecisionTreeManager()
         
@@ -485,7 +485,7 @@ class TestDecisionTreeManager:
     
     def test_save_state(self, sample_decision_tree, sample_conversation_state, tmp_path):
         """Test saving a conversation state to a file."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeManager
         
         manager = DecisionTreeManager()
         
@@ -515,7 +515,7 @@ class TestDecisionTreeManager:
     
     def test_load_state(self, sample_conversation_state):
         """Test loading a conversation state from a file."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeManager
         
         manager = DecisionTreeManager()
         
@@ -538,7 +538,7 @@ class TestDecisionTreeProcessor:
     
     def test_initialization(self, sample_decision_tree):
         """Test that the DecisionTreeProcessor can be initialized."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
         
         manager = DecisionTreeManager()
         manager.load_tree(sample_decision_tree)
@@ -551,7 +551,7 @@ class TestDecisionTreeProcessor:
     
     def test_process_initial_request(self, sample_decision_tree):
         """Test processing an initial request."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
         
         manager = DecisionTreeManager()
         manager.load_tree(sample_decision_tree)
@@ -581,7 +581,7 @@ class TestDecisionTreeProcessor:
     
     def test_process_followup_request(self, sample_decision_tree, followup_conversation_state):
         """Test processing a followup request."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
         
         manager = DecisionTreeManager()
         manager.load_tree(sample_decision_tree)
@@ -613,7 +613,7 @@ class TestDecisionTreeProcessor:
     
     def test_determine_intent_from_request(self, sample_decision_tree):
         """Test determining the intent from a request."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
         
         manager = DecisionTreeManager()
         manager.load_tree(sample_decision_tree)
@@ -636,7 +636,7 @@ class TestDecisionTreeProcessor:
     
     def test_extract_entities_from_request(self, sample_decision_tree):
         """Test extracting entities from a request."""
-        from backend.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
+        from src.ai.companion.tier1.decision_trees import DecisionTreeProcessor, DecisionTreeManager
         
         manager = DecisionTreeManager()
         manager.load_tree(sample_decision_tree)

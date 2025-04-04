@@ -63,7 +63,7 @@ logging.config.dictConfig(logging_config)
 if __name__ == "__main__":
     # Run the server
     uvicorn.run(
-        "backend.api:create_app",
+        "src.api:create_app",
         host="0.0.0.0",
         port=8000,
         reload=True,

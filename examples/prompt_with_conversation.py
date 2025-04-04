@@ -16,15 +16,15 @@ logging.basicConfig(level=logging.DEBUG,
 parent_dir = Path(__file__).parent.parent
 sys.path.append(str(parent_dir))
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.core.prompt_manager import PromptManager
-from backend.ai.companion.core.conversation_manager import ConversationManager, ConversationState
-from backend.ai.companion.core.storage.memory import InMemoryConversationStorage
+from src.ai.companion.core.prompt_manager import PromptManager
+from src.ai.companion.core.conversation_manager import ConversationManager, ConversationState
+from src.ai.companion.core.storage.memory import InMemoryConversationStorage
 
 
 async def main():

@@ -11,7 +11,7 @@ import os
 import json
 import time
 from unittest.mock import patch, MagicMock
-from backend.ai.companion.learning.grammar_templates import GrammarTemplateManager, DEFAULT_GRAMMAR_TEMPLATES
+from src.ai.companion.learning.grammar_templates import GrammarTemplateManager, DEFAULT_GRAMMAR_TEMPLATES
 
 
 @pytest.fixture

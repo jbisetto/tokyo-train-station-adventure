@@ -18,20 +18,20 @@ repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     CompanionRequest, 
     GameContext, 
     ProcessingTier,
     ComplexityLevel,
     IntentCategory
 )
-from backend.ai.companion.core.request_handler import RequestHandler
-from backend.ai.companion.tier2.tier2_processor import Tier2Processor
-from backend.ai.companion.api.response_adapter import ResponseAdapter
-from backend.ai.companion.config import get_config
-from backend.ai.companion.core.intent_classifier import IntentClassifier
-from backend.ai.companion.core.processor_framework import ProcessorFactory
-from backend.ai.companion.core.response_formatter import ResponseFormatter
+from src.ai.companion.core.request_handler import RequestHandler
+from src.ai.companion.tier2.tier2_processor import Tier2Processor
+from src.ai.companion.api.response_adapter import ResponseAdapter
+from src.ai.companion.config import get_config
+from src.ai.companion.core.intent_classifier import IntentClassifier
+from src.ai.companion.core.processor_framework import ProcessorFactory
+from src.ai.companion.core.response_formatter import ResponseFormatter
 
 
 # Configure logging

@@ -6,14 +6,14 @@ import pytest
 import uuid
 from unittest.mock import MagicMock, patch
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     CompanionRequest,
     GameContext,
     IntentCategory,
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.config import TIER_CONFIG
+from src.ai.companion.config import TIER_CONFIG
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ class TestIntentClassifier:
     
     def test_initialization(self):
         """Test that the IntentClassifier can be initialized."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         classifier = IntentClassifier()
         
@@ -80,7 +80,7 @@ class TestIntentClassifier:
     
     def test_classify_vocabulary_request(self, vocabulary_request):
         """Test classification of a vocabulary request."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         classifier = IntentClassifier()
         
@@ -96,7 +96,7 @@ class TestIntentClassifier:
     
     def test_classify_grammar_request(self, grammar_request):
         """Test classification of a grammar request."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         classifier = IntentClassifier()
         
@@ -110,7 +110,7 @@ class TestIntentClassifier:
     
     def test_classify_direction_request(self, direction_request):
         """Test classification of a direction request."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         classifier = IntentClassifier()
         
@@ -124,7 +124,7 @@ class TestIntentClassifier:
     
     def test_classify_translation_request(self, translation_request):
         """Test classification of a translation request."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         classifier = IntentClassifier()
         
@@ -138,7 +138,7 @@ class TestIntentClassifier:
     
     def test_classify_hint_request(self, hint_request):
         """Test classification of a hint request."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         classifier = IntentClassifier()
         
@@ -152,7 +152,7 @@ class TestIntentClassifier:
     
     def test_classify_with_game_context(self, vocabulary_request, sample_game_context):
         """Test classification with game context."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         # Add game context to the request
         vocabulary_request.game_context = sample_game_context
@@ -170,7 +170,7 @@ class TestIntentClassifier:
     
     def test_complexity_determination(self):
         """Test that the classifier determines complexity correctly."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         classifier = IntentClassifier()
         
@@ -209,7 +209,7 @@ class TestIntentClassifier:
     
     def test_tier_selection(self):
         """Test that the classifier selects the appropriate tier based on complexity."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         classifier = IntentClassifier()
         
@@ -248,7 +248,7 @@ class TestIntentClassifier:
     
     def test_entity_extraction(self):
         """Test that the classifier extracts entities correctly."""
-        from backend.ai.companion.core.intent_classifier import IntentClassifier
+        from src.ai.companion.core.intent_classifier import IntentClassifier
         
         classifier = IntentClassifier()
         

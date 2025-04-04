@@ -9,7 +9,7 @@ import pytest
 import asyncio
 from unittest.mock import MagicMock, patch
 
-from backend.ai.companion.utils.retry import (
+from src.ai.companion.utils.retry import (
     RetryConfig,
     retry_async,
     retry_sync,

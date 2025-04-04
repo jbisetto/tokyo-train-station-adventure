@@ -10,7 +10,7 @@ import uuid
 from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
     ConversationContext,
@@ -18,10 +18,10 @@ from backend.ai.companion.core.models import (
     ComplexityLevel,
     ProcessingTier
 )
-from backend.ai.companion.core.request_handler import RequestHandler
-from backend.ai.companion.tier3.scenario_detection import ScenarioDetector, ScenarioType
-from backend.ai.companion.tier3.tier3_processor import Tier3Processor
-from backend.ai.companion.tier3.context_manager import ContextManager
+from src.ai.companion.core.request_handler import RequestHandler
+from src.ai.companion.tier3.scenario_detection import ScenarioDetector, ScenarioType
+from src.ai.companion.tier3.tier3_processor import Tier3Processor
+from src.ai.companion.tier3.context_manager import ContextManager
 
 
 @pytest.fixture
@@ -53,7 +53,7 @@ class TestScenarioDetectionIntegration:
     async def test_scenario_detection_with_tier3_processor(self, mock_context_manager, mock_bedrock_client):
         """Test that the scenario detection system works with the Tier3Processor."""
         # Create a Tier3Processor with our mocks
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
             processor = Tier3Processor(context_manager=mock_context_manager)
             
             # Create a request that should trigger the ticket purchase scenario
@@ -87,7 +87,7 @@ class TestScenarioDetectionIntegration:
     async def test_scenario_detection_with_request_handler(self, mock_context_manager, mock_bedrock_client):
         """Test that the scenario detection system works with the RequestHandler."""
         # Create a Tier3Processor with our mocks
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient', return_value=mock_bedrock_client):
             processor = Tier3Processor(context_manager=mock_context_manager)
             
             # Create mocks for the RequestHandler dependencies

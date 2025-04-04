@@ -8,7 +8,7 @@ to process and enhance responses from local language models.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     CompanionRequest,
     ClassifiedRequest,
     IntentCategory,
@@ -76,7 +76,7 @@ class TestResponseParser:
     
     def test_initialization(self):
         """Test that the ResponseParser can be initialized."""
-        from backend.ai.companion.tier2.response_parser import ResponseParser
+        from src.ai.companion.tier2.response_parser import ResponseParser
         
         parser = ResponseParser()
         
@@ -85,7 +85,7 @@ class TestResponseParser:
     
     def test_parse_response_basic(self, sample_request, sample_raw_response):
         """Test parsing a basic response."""
-        from backend.ai.companion.tier2.response_parser import ResponseParser
+        from src.ai.companion.tier2.response_parser import ResponseParser
         
         parser = ResponseParser()
         
@@ -104,7 +104,7 @@ class TestResponseParser:
     
     def test_parse_response_with_highlighting(self, sample_request, sample_raw_response):
         """Test parsing a response with highlighting."""
-        from backend.ai.companion.tier2.response_parser import ResponseParser
+        from src.ai.companion.tier2.response_parser import ResponseParser
         
         parser = ResponseParser()
         
@@ -116,7 +116,7 @@ class TestResponseParser:
     
     def test_parse_response_with_vocabulary(self, sample_request, sample_vocabulary_response):
         """Test parsing a vocabulary response."""
-        from backend.ai.companion.tier2.response_parser import ResponseParser
+        from src.ai.companion.tier2.response_parser import ResponseParser
         
         # Change the request type and intent
         sample_request.request_type = "vocabulary"
@@ -134,7 +134,7 @@ class TestResponseParser:
     
     def test_parse_response_with_formatting(self, sample_request, sample_raw_response):
         """Test parsing a response with formatting options."""
-        from backend.ai.companion.tier2.response_parser import ResponseParser
+        from src.ai.companion.tier2.response_parser import ResponseParser
         
         parser = ResponseParser()
         
@@ -150,7 +150,7 @@ class TestResponseParser:
     
     def test_parse_response_with_simplification(self, sample_request, sample_raw_response):
         """Test parsing a response with simplification."""
-        from backend.ai.companion.tier2.response_parser import ResponseParser
+        from src.ai.companion.tier2.response_parser import ResponseParser
         
         parser = ResponseParser()
         
@@ -169,7 +169,7 @@ class TestResponseParser:
     
     def test_parse_response_with_learning_cues(self, sample_request, sample_raw_response):
         """Test parsing a response with learning cues."""
-        from backend.ai.companion.tier2.response_parser import ResponseParser
+        from src.ai.companion.tier2.response_parser import ResponseParser
         
         parser = ResponseParser()
         

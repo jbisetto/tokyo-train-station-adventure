@@ -12,7 +12,7 @@ import time
 from unittest.mock import patch, MagicMock
 import signal
 
-from backend.ai.companion.utils.monitoring import ProcessorMonitor
+from src.ai.companion.utils.monitoring import ProcessorMonitor
 
 
 class TestProcessorMonitor:

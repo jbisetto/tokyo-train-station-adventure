@@ -6,7 +6,7 @@ import pytest
 import uuid
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from backend.ai.companion.core.models import (
+from src.ai.companion.core.models import (
     ClassifiedRequest,
     CompanionRequest,
     IntentCategory,
@@ -36,7 +36,7 @@ class TestProcessorInterface:
     
     def test_processor_interface(self):
         """Test that the processor interface can be implemented."""
-        from backend.ai.companion.core.processor_framework import Processor
+        from src.ai.companion.core.processor_framework import Processor
         
         # Create a concrete implementation of the abstract Processor class
         class ConcreteProcessor(Processor):
@@ -51,7 +51,7 @@ class TestProcessorInterface:
     
     def test_processor_process_method(self, sample_classified_request):
         """Test that the process method works as expected."""
-        from backend.ai.companion.core.processor_framework import Processor
+        from src.ai.companion.core.processor_framework import Processor
         
         # Create a concrete implementation of the abstract Processor class
         class ConcreteProcessor(Processor):
@@ -73,7 +73,7 @@ class TestTier1Processor:
     
     def test_tier1_processor_creation(self):
         """Test that a Tier1Processor can be created."""
-        from backend.ai.companion.tier1.tier1_processor import Tier1Processor
+        from src.ai.companion.tier1.tier1_processor import Tier1Processor
         
         processor = Tier1Processor()
         
@@ -83,11 +83,11 @@ class TestTier1Processor:
     @pytest.mark.asyncio
     async def test_tier1_processor_process(self, sample_classified_request, monkeypatch):
         """Test processing a request with the Tier1Processor."""
-        from backend.ai.companion.tier1.tier1_processor import Tier1Processor
+        from src.ai.companion.tier1.tier1_processor import Tier1Processor
     
         # Override get_config to ensure processor is enabled for this test
         monkeypatch.setattr(
-            'backend.ai.companion.tier1.tier1_processor.get_config',
+            'src.ai.companion.tier1.tier1_processor.get_config',
             lambda section, default: {"enabled": True, "default_model": "rule-based"} if section == 'tier1' else default
         )
         
@@ -109,11 +109,11 @@ class TestTier1Processor:
     @pytest.mark.asyncio
     async def test_tier1_processor_with_pattern_match(self, sample_classified_request, monkeypatch):
         """Test processing a request with pattern matching."""
-        from backend.ai.companion.tier1.tier1_processor import Tier1Processor
+        from src.ai.companion.tier1.tier1_processor import Tier1Processor
     
         # Override get_config to ensure processor is enabled for this test
         monkeypatch.setattr(
-            'backend.ai.companion.tier1.tier1_processor.get_config',
+            'src.ai.companion.tier1.tier1_processor.get_config',
             lambda section, default: {"enabled": True, "default_model": "rule-based"} if section == 'tier1' else default
         )
         
@@ -150,11 +150,11 @@ class TestTier1Processor:
     @pytest.mark.asyncio
     async def test_tier1_processor_with_decision_tree(self, sample_classified_request, monkeypatch):
         """Test processing a request with a decision tree."""
-        from backend.ai.companion.tier1.tier1_processor import Tier1Processor
+        from src.ai.companion.tier1.tier1_processor import Tier1Processor
     
         # Override get_config to ensure processor is enabled for this test
         monkeypatch.setattr(
-            'backend.ai.companion.tier1.tier1_processor.get_config',
+            'src.ai.companion.tier1.tier1_processor.get_config',
             lambda section, default: {"enabled": True, "default_model": "rule-based"} if section == 'tier1' else default
         )
         
@@ -202,9 +202,9 @@ class TestTier2Processor:
     
     def test_tier2_processor_creation(self):
         """Test that a Tier2Processor can be created."""
-        from backend.ai.companion.tier2.tier2_processor import Tier2Processor
+        from src.ai.companion.tier2.tier2_processor import Tier2Processor
         
-        with patch('backend.ai.companion.tier2.tier2_processor.OllamaClient'):
+        with patch('src.ai.companion.tier2.tier2_processor.OllamaClient'):
             processor = Tier2Processor()
             
             assert processor is not None
@@ -216,7 +216,7 @@ class TestTier2Processor:
     @pytest.mark.asyncio
     async def test_tier2_processor_process(self, sample_classified_request, monkeypatch):
         """Test processing a request with the Tier2Processor."""
-        from backend.ai.companion.tier2.tier2_processor import Tier2Processor
+        from src.ai.companion.tier2.tier2_processor import Tier2Processor
         
         # Create a fake Tier2Processor class with a mocked process method
         class MockTier2Processor(Tier2Processor):
@@ -224,7 +224,7 @@ class TestTier2Processor:
                 return "'Kippu' means 'ticket' in Japanese."
         
         # Create a processor with our mocked method
-        with patch('backend.ai.companion.tier2.tier2_processor.OllamaClient'):
+        with patch('src.ai.companion.tier2.tier2_processor.OllamaClient'):
             processor = MockTier2Processor()
             
             # Set the processing tier to TIER_2
@@ -242,9 +242,9 @@ class TestTier3Processor:
     
     def test_tier3_processor_creation(self):
         """Test that a Tier3Processor can be created."""
-        from backend.ai.companion.tier3.tier3_processor import Tier3Processor
+        from src.ai.companion.tier3.tier3_processor import Tier3Processor
         
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient'):
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient'):
             processor = Tier3Processor()
             
             assert processor is not None
@@ -256,10 +256,10 @@ class TestTier3Processor:
     @pytest.mark.asyncio
     async def test_tier3_processor_process(self, sample_classified_request, monkeypatch):
         """Test processing a request with the Tier3Processor."""
-        from backend.ai.companion.tier3.tier3_processor import Tier3Processor
+        from src.ai.companion.tier3.tier3_processor import Tier3Processor
         
         # Create a processor with mocked dependencies
-        with patch('backend.ai.companion.tier3.tier3_processor.BedrockClient') as mock_client_class:
+        with patch('src.ai.companion.tier3.tier3_processor.BedrockClient') as mock_client_class:
             # Set up the mock client
             mock_client = mock_client_class.return_value
             mock_client.generate = AsyncMock(return_value="'Kippu' means 'ticket' in Japanese.")
@@ -275,7 +275,7 @@ class TestTier3Processor:
             mock_scenario_detector = MagicMock()
             
             # Patch the ScenarioDetector class to return our mock
-            with patch('backend.ai.companion.tier3.tier3_processor.ScenarioDetector', return_value=mock_scenario_detector):
+            with patch('src.ai.companion.tier3.tier3_processor.ScenarioDetector', return_value=mock_scenario_detector):
                 # Create the processor
                 processor = Tier3Processor(
                     context_manager=mock_context_manager
@@ -303,7 +303,7 @@ class TestProcessorFactory:
     
     def test_processor_factory_creation(self):
         """Test that a ProcessorFactory can be created."""
-        from backend.ai.companion.core.processor_framework import ProcessorFactory
+        from src.ai.companion.core.processor_framework import ProcessorFactory
         
         factory = ProcessorFactory()
         
@@ -312,11 +312,11 @@ class TestProcessorFactory:
     
     def test_get_processor_tier1(self):
         """Test getting a Tier1Processor from the factory."""
-        from backend.ai.companion.core.processor_framework import ProcessorFactory
-        from backend.ai.companion.tier1.tier1_processor import Tier1Processor
+        from src.ai.companion.core.processor_framework import ProcessorFactory
+        from src.ai.companion.tier1.tier1_processor import Tier1Processor
         
         # Mock the config to enable tier1
-        with patch('backend.ai.companion.config.get_config') as mock_get_config:
+        with patch('src.ai.companion.config.get_config') as mock_get_config:
             mock_get_config.return_value = {'enabled': True}
             
             factory = ProcessorFactory()
@@ -328,12 +328,12 @@ class TestProcessorFactory:
     
     def test_get_processor_tier2(self):
         """Test getting a Tier2Processor from the factory."""
-        from backend.ai.companion.core.processor_framework import ProcessorFactory
-        from backend.ai.companion.tier2.tier2_processor import Tier2Processor
+        from src.ai.companion.core.processor_framework import ProcessorFactory
+        from src.ai.companion.tier2.tier2_processor import Tier2Processor
         
         # Mock both the config and OllamaClient
-        with patch('backend.ai.companion.config.get_config') as mock_get_config, \
-             patch('backend.ai.companion.tier2.tier2_processor.OllamaClient'):
+        with patch('src.ai.companion.config.get_config') as mock_get_config, \
+             patch('src.ai.companion.tier2.tier2_processor.OllamaClient'):
             mock_get_config.return_value = {'enabled': True}
             
             factory = ProcessorFactory()
@@ -345,12 +345,12 @@ class TestProcessorFactory:
     
     def test_get_processor_tier3(self):
         """Test getting a Tier3Processor from the factory."""
-        from backend.ai.companion.core.processor_framework import ProcessorFactory
-        from backend.ai.companion.tier3.tier3_processor import Tier3Processor
+        from src.ai.companion.core.processor_framework import ProcessorFactory
+        from src.ai.companion.tier3.tier3_processor import Tier3Processor
         
         # Mock both the config and BedrockClient
-        with patch('backend.ai.companion.config.get_config') as mock_get_config, \
-             patch('backend.ai.companion.tier3.tier3_processor.BedrockClient'):
+        with patch('src.ai.companion.config.get_config') as mock_get_config, \
+             patch('src.ai.companion.tier3.tier3_processor.BedrockClient'):
             mock_get_config.return_value = {'enabled': True}
             
             factory = ProcessorFactory()
@@ -362,7 +362,7 @@ class TestProcessorFactory:
     
     def test_get_processor_invalid_tier(self):
         """Test getting a processor for an invalid tier."""
-        from backend.ai.companion.core.processor_framework import ProcessorFactory
+        from src.ai.companion.core.processor_framework import ProcessorFactory
         
         factory = ProcessorFactory()
         
@@ -375,7 +375,7 @@ class TestProcessorFactory:
     
     def test_processor_factory_singleton(self):
         """Test that the ProcessorFactory is a singleton."""
-        from backend.ai.companion.core.processor_framework import ProcessorFactory
+        from src.ai.companion.core.processor_framework import ProcessorFactory
         
         factory1 = ProcessorFactory()
         factory2 = ProcessorFactory()
@@ -384,14 +384,14 @@ class TestProcessorFactory:
     
     def test_get_processor_disabled_tier(self):
         """Test getting a processor for a disabled tier raises a ValueError."""
-        from backend.ai.companion.core.processor_framework import ProcessorFactory
-        from backend.ai.companion.core.models import ProcessingTier
+        from src.ai.companion.core.processor_framework import ProcessorFactory
+        from src.ai.companion.core.models import ProcessingTier
 
         # Clear the factory cache to ensure we don't have any cached processors
         ProcessorFactory.clear_cache()
 
         # Use a patch for the config.get_config function
-        with patch('backend.ai.companion.config.get_config') as mock_get_config:
+        with patch('src.ai.companion.config.get_config') as mock_get_config:
             # Configure the mock to return disabled for tier1 section
             def mock_config_side_effect(section, default=None):
                 # The ProcessorFactory converts tier_1 to tier1 for config lookup
