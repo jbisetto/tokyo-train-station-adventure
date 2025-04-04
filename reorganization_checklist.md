@@ -48,13 +48,33 @@
 - [x] Move test_cache_dir to src if needed
   - [x] `mv test_cache_dir src/tests/`
 - [x] Consolidate test fixtures and configuration
-  - [X] Compare and merge `tests/fixtures` with `src/tests/fixtures` if needed
+  - [x] Compare and merge `tests/fixtures` with `src/tests/fixtures` if needed
   - [x] Compare and merge `tests/conftest.py` with `src/tests/conftest.py` if needed
   - [x] Move unique test scripts: `mv tests/example_prompt.py src/tests/` and others as needed
-- [ ] Move testing utilities
-  - [ ] `mv run_tests.sh src/`
-  - [ ] `mv pytest.ini src/`
-  - [ ] `mv tests/run_all_tests.sh src/tests/`
+- [x] Move testing utilities
+  - [x] `mv run_tests.sh src/`
+  - [x] `mv pytest.ini src/`
+  - [x] `mv tests/run_all_tests.sh src/tests/`
+- [ ] Migrate all test files from tests/ to src/tests/
+  - [ ] Create all necessary subdirectories in src/tests/ to match appropriate source code structure:
+    - [ ] `mkdir -p src/tests/src/ai/companion/{core,tier1,tier2,tier3,integration,learning,personality,utils,vector}`
+    - [ ] `mkdir -p src/tests/src/api`
+    - [ ] `mkdir -p src/tests/integration/{tier2,tier3}`
+    - [ ] `mkdir -p src/tests/data/player_history`
+  - [ ] Copy all test files, transforming "backend" to "src" in the directory structure:
+    - [ ] `rsync -av --include="*/" --include="*.py" --exclude="*" tests/backend/ src/tests/src/`
+    - [ ] `rsync -av --include="*/" --include="*.py" --exclude="*" tests/data/ src/tests/data/`
+  - [ ] Update src/run_tests.sh to point to src/tests/:
+    - [ ] Change `python3 -m pytest tests/ -v` to `python3 -m pytest src/tests/ -v`
+  - [ ] Update src/pytest.ini to use the new tests location:
+    - [ ] Change `testpaths = ../tests` to `testpaths = tests`
+  - [ ] Update src/tests/run_all_tests.sh to use the new path structure (change backend/ references to src/)
+  - [ ] Run tests from new location to verify everything works:
+    - [ ] `cd src && ./run_tests.sh`
+    - [ ] Fix any path-related issues that arise
+  - [ ] Update imports in test files: 
+    - [ ] Find all imports referencing 'backend': `grep -r "from backend" --include="*.py" src/tests/`
+    - [ ] Update these imports to reference 'src' instead
 - [ ] Remove redundant root tests directory: `rm -rf tests` (after ensuring all content is safely moved)
 
 ## Step 5: Consolidate Configuration
