@@ -6,11 +6,11 @@ echo "                TOKYO TRAIN STATION ADVENTURE TESTS                  "
 echo "===================================================================="
 
 # Set Python path to include the repository root
-export PYTHONPATH="${PYTHONPATH}:$(cd ../ && pwd)"
+export PYTHONPATH="${PYTHONPATH}:$(cd ../../ && pwd)"
 echo "PYTHONPATH set to: $PYTHONPATH"
 
-# Change to the script directory
-cd "$(dirname "$0")"
+# Change to the tests directory
+cd "$(dirname "$0")/../../tests"
 
 # Run unit tests
 echo "===================================================================="
