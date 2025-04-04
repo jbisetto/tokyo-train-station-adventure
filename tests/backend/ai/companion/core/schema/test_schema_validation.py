@@ -9,7 +9,7 @@ import jsonschema
 from jsonschema import validate
 
 # Define paths
-SCHEMA_DIR = os.path.join(os.getcwd(), "schemas")
+SCHEMA_DIR = os.path.join(os.getcwd(), "src/data/schemas")
 PROFILES_DIR = os.path.join(os.getcwd(), "src/data/profiles")
 TEMPLATES_DIR = os.path.join(os.getcwd(), "src/data/prompt_templates")
 
