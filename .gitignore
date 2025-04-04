@@ -70,3 +70,4 @@ Thumbs.db
 docs/design/system/rest/ 
 *.log
 /data/player_history
+backend.log.*
