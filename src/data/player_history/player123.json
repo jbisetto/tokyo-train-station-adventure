@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "timestamp": "2025-04-04T02:19:08.671796",
+      "timestamp": "2025-04-04T13:51:23.620637",
       "user_query": "What does 切符 mean?",
       "assistant_response": "Hachi: That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa).",
       "session_id": "session456",
@@ -13,7 +13,7 @@
       }
     },
     {
-      "timestamp": "2025-04-04T02:25:24.625632",
+      "timestamp": "2025-04-04T13:51:48.199827",
       "user_query": "What does 切符 mean?",
       "assistant_response": "Hachi: That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa).",
       "session_id": "session456",
@@ -25,153 +25,9 @@
       }
     },
     {
-      "timestamp": "2025-04-04T02:28:46.932549",
+      "timestamp": "2025-04-04T13:51:53.807880",
       "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: I'm so happy to help you with this! That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa). Feel free to ask if you have any other questions!",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T12:29:04.477795",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: You're doing an excellent job with your Japanese studies! That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa).",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T12:32:59.374538",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: It's nice to see you learning Japanese. That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa). *tilts head*",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T12:33:46.546137",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: I'm so happy to help you with this! That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa). I'm here to help!",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T13:11:10.389856",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa). Is there anything else you'd like to know?",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T13:29:20.850054",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa). *attentive ears*",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T13:43:24.501265",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa). I'm here to help!",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T13:44:54.424334",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: It's wonderful to see you learning Japanese! That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa). *tilts head*",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T13:46:30.505675",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: That's a good question. That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa).",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T13:48:35.381774",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: You're doing an excellent job with your Japanese studies! That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa).",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T13:48:50.465066",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa).",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T13:49:07.799820",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: That's a good question. That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa).",
-      "session_id": "session456",
-      "metadata": {
-        "location": "ticket_machine_area",
-        "request_type": "vocabulary",
-        "language": "english",
-        "processing_tier": "tier_1"
-      }
-    },
-    {
-      "timestamp": "2025-04-04T13:50:37.206657",
-      "user_query": "What does 切符 mean?",
-      "assistant_response": "Hachi: You're doing well with your Japanese studies. That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa).",
+      "assistant_response": "Hachi: I'm so happy to help you with this! That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa). *attentive ears* Feel free to ask if you have any other questions!",
       "session_id": "session456",
       "metadata": {
         "location": "ticket_machine_area",
