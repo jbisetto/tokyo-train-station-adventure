@@ -11,7 +11,7 @@ from jsonschema import validate
 # Define paths
 SCHEMA_DIR = os.path.join(os.getcwd(), "schemas")
 PROFILES_DIR = os.path.join(os.getcwd(), "src/data/profiles")
-TEMPLATES_DIR = os.path.join(os.getcwd(), "prompt_templates")
+TEMPLATES_DIR = os.path.join(os.getcwd(), "src/data/prompt_templates")
 
 # Load schemas
 def load_schema(schema_name):

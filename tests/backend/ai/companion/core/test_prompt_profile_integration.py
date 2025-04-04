@@ -32,7 +32,7 @@ class TestPromptProfileIntegration:
     @pytest.fixture
     def templates_dir(self):
         """Fixture for templates directory path."""
-        return os.path.join(os.getcwd(), "prompt_templates")
+        return os.path.join(os.getcwd(), "src/data/prompt_templates")
     
     @pytest.fixture
     def profile_loader(self, profiles_dir):
