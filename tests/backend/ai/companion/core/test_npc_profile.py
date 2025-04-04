@@ -165,12 +165,14 @@ class TestNPCProfile:
         """Test formatting a response using the profile."""
         response = "The ticket machines are located near the entrance."
         
-        formatted_response = sample_profile.format_response(response, sample_request, emotion="happy")
-        
-        assert response in formatted_response
-        assert sample_profile.name in formatted_response
-        # Should include an emotion expression
-        assert any(expr in formatted_response for expr in sample_profile.emotion_expressions["happy"])
+        # Patch random.random to ensure consistent behavior
+        with patch('random.random', return_value=0.6):  # This ensures emotion expression is added at the end
+            formatted_response = sample_profile.format_response(response, sample_request, emotion="happy")
+            
+            assert response in formatted_response
+            assert sample_profile.name in formatted_response
+            # Should include an emotion expression
+            assert any(expr in formatted_response for expr in sample_profile.emotion_expressions["happy"])
     
     def test_get_common_phrase(self, sample_profile):
         """Test getting a common phrase from the profile."""

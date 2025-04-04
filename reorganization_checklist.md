@@ -5,7 +5,7 @@
 - [x] Commit current state before making any changes (`git add . && git commit -m "Save state before reorganization"`)
 
 ## Step 2: Rename Backend to Src
-- [ ] First run tests to verify current state: `./run_tests.sh`
+- [x] First run tests to verify current state: `./run_tests.sh`
 - [ ] Rename the backend directory to src: `mv backend src`
 - [ ] Update main imports in root-level files that might reference backend
   - [ ] `grep -r "from backend" --include="*.py" .` to find references
