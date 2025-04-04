@@ -54,7 +54,7 @@ Current project structure:
 ```
 tokyo-train-station-adventure/
 ├── frontend/                         # Phaser.js frontend (in development)
-├── backend/                          # Python backend 
+├── src/                              # Main source code directory 
 │   ├── ai/                           # AI components (fully implemented)
 │   │   └── companion/                # Companion dog AI
 │   │       └── core/                 # Core AI components
@@ -64,12 +64,24 @@ tokyo-train-station-adventure/
 │   ├── api/                          # API endpoints (mock implementations)
 │   │   └── routers/                  # API routes for game functionality
 │   ├── data/                         # Data access layer (in-memory implementations)
+│   │   ├── profiles/                 # Player profiles data
+│   │   ├── prompt_templates/         # Templates for AI prompts
+│   │   ├── schemas/                  # JSON schemas for validation
+│   │   ├── player_history/           # Player interaction history
+│   │   └── usage/                    # Usage statistics
 │   ├── game_core/                    # Game mechanics (planned implementation)
-│   └── domain/                       # Domain models and business logic (planned)
-└── docs/                             # Project documentation
-    ├── design/                       # Design documents
-    ├── pm/                           # Project management docs
-    └── ui/                           # UI documentation
+│   ├── domain/                       # Domain models and business logic (planned)
+│   ├── config/                       # Configuration files
+│   ├── docs/                         # Project documentation
+│   │   ├── design/                   # Design documents
+│   │   ├── pm/                       # Project management docs
+│   │   └── ui/                       # UI documentation
+│   ├── tests/                        # Test suite
+│   │   ├── fixtures/                 # Test fixtures
+│   │   ├── unit/                     # Unit tests
+│   │   └── integration/              # Integration tests
+│   └── main.py                       # Application entry point
+└── tokyo-py/                         # Python virtual environment
 ```
 
 **Implementation Notes:**
@@ -159,7 +171,7 @@ Optional for full development:
 
 3. Start the backend server:
    ```bash
-   python -m backend.main
+   python -m src.main
    ```
 
 4. Access the API documentation at http://localhost:8000/api/docs
@@ -173,33 +185,33 @@ The project follows a Test-Driven Development (TDD) approach, with comprehensive
 You can run all tests using the provided script:
 
 ```bash
-cd tests
-./run_all_tests.sh
+cd src
+./run_tests.sh
 ```
 
 Or run specific test categories:
 
 ```bash
 # Run unit tests for a specific module
-python -m pytest tests/backend/ai/companion/core -v
+python -m pytest src/tests/ai/companion/core -v
 
 # Run tier1 tests
-python -m pytest tests/backend/ai/companion/tier1 -v
+python -m pytest src/tests/ai/companion/tier1 -v
 
 # Run tier2 tests
-python -m pytest tests/backend/ai/companion/tier2 -v
+python -m pytest src/tests/ai/companion/tier2 -v
 
 # Run tier3 tests
-python -m pytest tests/backend/ai/companion/tier3 -v
+python -m pytest src/tests/ai/companion/tier3 -v
 
 # Run API tests
-python -m pytest tests/backend/api -v
+python -m pytest src/tests/api -v
 
 # Run DeepSeek parameters test
-python -m pytest tests/backend/api/test_deepseek_parameters.py
+python -m pytest src/tests/api/test_deepseek_parameters.py
 
 # Run vector database tests
-python -m pytest tests/backend/ai/companion/core/vector/
+python -m pytest src/tests/ai/companion/core/vector/
 ```
 
 ### Integration Tests
@@ -208,38 +220,27 @@ The project includes integration tests for different tiers of the AI system:
 
 ```bash
 # Run tier2 integration tests (Ollama with DeepSeek-R1)
-cd tests/backend/integration/tier2
+cd src/tests/integration/tier2
 ./run_tests.sh
 
 # Run tier3 integration tests (AWS Bedrock)
-python -m pytest tests/backend/integration/tier3 -v
+python -m pytest src/tests/integration/tier3 -v
 ```
 
-For more detailed testing information, see the [Testing README](tests/README.md).
+For more detailed testing information, see the [Testing README](src/docs/testing.md).
 
 ### AI Companion Simulator
 
-To test the AI companion functionality without running the full game, you can use the Gradio-based simulator:
+An AI companion simulator for testing the functionality without running the full game is planned for recreation. This will allow testing of:
 
-```bash
-# Install Gradio if you haven't already
-pip install gradio httpx python-dotenv
+- Various conversation patterns and contextual awareness
+- The effectiveness of topic guardrails
+- Japanese language responses
+- AI behavior in isolation
 
-# Run the companion simulator
-cd simulator
-python app.py
-```
+The simulator will provide options to configure different game contexts such as player location, current quest, and request type, giving you control over the testing environment.
 
-The simulator provides a web interface to interact with the AI companion directly. This allows you to:
-
-- Test various conversation patterns and contextual awareness
-- Evaluate the effectiveness of topic guardrails
-- Test Japanese language responses
-- Debug AI behavior in isolation
-
-The simulator provides options to configure different game contexts such as player location, current quest, and request type, giving you control over the testing environment.
-
-For more information, see the [Simulator README](simulator/README.md).
+For more information, see the documentation at `src/docs/simulator.md` (coming soon).
 
 ## License
 
