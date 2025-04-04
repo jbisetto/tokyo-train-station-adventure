@@ -6,34 +6,34 @@
 
 ## Step 2: Rename Backend to Src
 - [x] First run tests to verify current state: `./run_tests.sh`
-- [ ] Rename the backend directory to src: `mv backend src`
-- [ ] Update main imports in root-level files that might reference backend
-  - [ ] `grep -r "from backend" --include="*.py" .` to find references
-  - [ ] `grep -r "import backend" --include="*.py" .` to find additional references
-  - [ ] Update these critical imports to use 'src' instead
-- [ ] Run tests after renaming to ensure basic functionality still works: `./run_tests.sh`
-- [ ] Commit this initial change: `git add . && git commit -m "Rename backend directory to src"`
+- [x] Rename the backend directory to src: `mv backend src`
+- [x] Update main imports in root-level files that might reference backend
+  - [x] `grep -r "from backend" --include="*.py" .` to find references
+  - [x] `grep -r "import backend" --include="*.py" .` to find additional references
+  - [x] Update these critical imports to use 'src' instead
+- [x] Run tests after renaming to ensure basic functionality still works: `./run_tests.sh`
+- [x] Commit this initial change: `git add . && git commit -m "Rename backend directory to src"`
 
 ## Step 3: Consolidate Data Directories
-- [ ] Create necessary subdirectories in src/data if they don't exist
-  - [ ] `mkdir -p src/data/profiles`
-  - [ ] `mkdir -p src/data/prompt_templates`
-  - [ ] `mkdir -p src/data/schemas`
-  - [ ] `mkdir -p src/data/player_history`
-  - [ ] `mkdir -p src/data/usage`
-- [ ] Move profile data to src
-  - [ ] `mv profiles/* src/data/profiles/`
-  - [ ] Remove empty profiles directory: `rmdir profiles`
-- [ ] Move prompt templates to src
-  - [ ] `mv prompt_templates/* src/data/prompt_templates/`
-  - [ ] Remove empty prompt_templates directory: `rmdir prompt_templates`
-- [ ] Move schemas to src
-  - [ ] `mv schemas/* src/data/schemas/`
-  - [ ] Remove empty schemas directory: `rmdir schemas`
-- [ ] Move data directory contents to src
-  - [ ] `mv data/player_history/* src/data/player_history/`
-  - [ ] `mv data/usage/* src/data/usage/`
-  - [ ] Remove empty data directory: `rmdir data/player_history && rmdir data/usage && rmdir data`
+- [x] Create necessary subdirectories in src/data if they don't exist
+  - [x] `mkdir -p src/data/profiles`
+  - [x] `mkdir -p src/data/prompt_templates`
+  - [x] `mkdir -p src/data/schemas`
+  - [x] `mkdir -p src/data/player_history`
+  - [x] `mkdir -p src/data/usage`
+- [x] Move profile data to src
+  - [x] `mv profiles/* src/data/profiles/`
+  - [x] Remove empty profiles directory: `rmdir profiles`
+- [x] Move prompt templates to src
+  - [x] `mv prompt_templates/* src/data/prompt_templates/`
+  - [x] Remove empty prompt_templates directory: `rmdir prompt_templates`
+- [x] Move schemas to src
+  - [x] `mv schemas/* src/data/schemas/`
+  - [x] Remove empty schemas directory: `rmdir schemas`
+- [x] Move data directory contents to src
+  - [x] `mv data/player_history/* src/data/player_history/`
+  - [x] `mv data/usage/* src/data/usage/`
+  - [x] Remove empty data directory: `rmdir data/player_history && rmdir data/usage && rmdir data`
 
 ## Step 4: Consolidate Tests
 - [ ] Create necessary subdirectories in src/tests if they don't exist
