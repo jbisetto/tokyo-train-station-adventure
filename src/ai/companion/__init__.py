@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 # Import core components for easier access
 # These imports will be uncommented as we implement each component
-from src.ai.companion.core.request_handler import RequestHandler
-from src.ai.companion.core.intent_classifier import IntentClassifier
-from src.ai.companion.core.processor_framework import ProcessorFactory
-from src.ai.companion.core.response_formatter import ResponseFormatter
-from src.ai.companion.core.models import CompanionResponse, IntentCategory, ProcessingTier
-from src.ai.companion.core.player_history_manager import PlayerHistoryManager
+from .core.request_handler import RequestHandler
+from .core.intent_classifier import IntentClassifier
+from .core.processor_framework import ProcessorFactory
+from .core.response_formatter import ResponseFormatter
+from .core.models import CompanionResponse, IntentCategory, ProcessingTier
+from .core.player_history_manager import PlayerHistoryManager
 
 # Initialize the player history manager (singleton)
 player_history_manager = PlayerHistoryManager()

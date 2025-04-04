@@ -17,6 +17,9 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
+# Define log file path in src directory
+log_file_path = os.path.join(current_dir, "backend.log")
+
 # Configure logging
 logging_config = {
     "version": 1,
@@ -42,7 +45,7 @@ logging_config = {
             "class": "logging.handlers.RotatingFileHandler",
             "level": "DEBUG",
             "formatter": "detailed",
-            "filename": "backend.log",
+            "filename": log_file_path,
             "maxBytes": 10485760,  # 10MB
             "backupCount": 5
         }
