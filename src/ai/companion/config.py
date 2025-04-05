@@ -80,6 +80,19 @@ LOGGING_CONFIG = {
 # Path to the companion.yaml configuration file
 CONFIG_FILE_PATH = os.environ.get('COMPANION_CONFIG', 'config/companion.yaml')
 
+def set_config_path(path: str) -> None:
+    """
+    Set the path to the companion.yaml configuration file.
+    
+    Args:
+        path: The path to the configuration file
+    """
+    global CONFIG_FILE_PATH
+    CONFIG_FILE_PATH = path
+    # Also set the environment variable so other modules can find it
+    os.environ['COMPANION_CONFIG'] = path
+    logger.info(f"Configuration path set to: {path}")
+
 def get_config(section: str, default: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
     """
     Get configuration for the specified section from companion.yaml.
@@ -92,7 +105,8 @@ def get_config(section: str, default: Dict[str, Any] = None) -> Optional[Dict[st
         Configuration dictionary or default if not found
     """
     try:
-        config_path = os.environ.get('COMPANION_CONFIG', 'config/companion.yaml')
+        # Use the global CONFIG_FILE_PATH if not overridden by env var
+        config_path = os.environ.get('COMPANION_CONFIG', CONFIG_FILE_PATH)
         
         if not os.path.exists(config_path):
             logger.warning(f"Configuration file {config_path} not found, using defaults")

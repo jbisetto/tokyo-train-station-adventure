@@ -1,5 +1,5 @@
 general:
-  data_dir: data
+  data_dir: src/data
   log_level: DEBUG
 retry:
   backoff_factor: 2.0
@@ -66,4 +66,4 @@ tier3:
     enabled: true
     hourly_request_limit: 100
     monthly_cost_limit: 50.0
-    storage_path: data/usage/bedrock_usage.json
+    storage_path: src/data/usage/bedrock_usage.json
