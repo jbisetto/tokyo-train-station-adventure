@@ -39,7 +39,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
-test_cache_dir/
+src/tests/test_cache_dir/
 
 # Environments
 .env
@@ -67,7 +67,8 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific ignores
-docs/design/system/rest/ 
+src/docs/design/system/rest/ 
 *.log
-/data/player_history
+src/data/player_history/*.json
+src/backend.log.*
 backend.log.*
