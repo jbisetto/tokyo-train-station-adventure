@@ -129,6 +129,7 @@
 ## Step 10: Update File References
 - [x] Check for hardcoded file paths that may need updating
   - [x] Already addressed as needed during earlier steps
+  - [x] Updated PlayerHistoryManager to use src/data/player_history instead of data/player_history
   - [x] Test suite passes, confirming file paths are working properly
 - [x] Look for file operations: `grep -r "open(" --include="*.py" src/`
 - [x] Look for path operations: `grep -r "os.path" --include="*.py" src/`
@@ -139,6 +140,8 @@
 - [x] Run tests to ensure they pass: `cd src && python -m pytest`
 - [x] Verify the application starts correctly: `cd src && python main.py`
 - [x] Check for any runtime errors related to missing files or incorrect paths
+- [x] Add automatic cleanup for test-generated files
+  - [x] Added fixture to clean up player history files after tests
 - [x] Test simulator functionality (to be recreated later)
 - [x] Test any examples to ensure they still work (to be recreated as needed)
 

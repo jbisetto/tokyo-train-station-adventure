@@ -17,7 +17,7 @@ class PlayerHistoryManager:
     Manages player conversation histories across multiple sessions.
     """
     
-    def __init__(self, storage_dir: str = "data/player_history"):
+    def __init__(self, storage_dir: str = "src/data/player_history"):
         """
         Initialize the player history manager.
         

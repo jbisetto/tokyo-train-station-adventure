@@ -35,6 +35,18 @@
         "language": "english",
         "processing_tier": "tier_1"
       }
+    },
+    {
+      "timestamp": "2025-04-04T23:31:15.161123",
+      "user_query": "What does 切符 mean?",
+      "assistant_response": "Hachi: It's wonderful to see you learning Japanese! That word means 'hello' in Japanese. In Japanese: こんにちは (konnichiwa). *sits attentively*",
+      "session_id": "session456",
+      "metadata": {
+        "location": "ticket_machine_area",
+        "request_type": "vocabulary",
+        "language": "english",
+        "processing_tier": "tier_1"
+      }
     }
   ]
 }

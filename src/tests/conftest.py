@@ -8,7 +8,9 @@ import pytest
 import sys
 import os
 import yaml
+import shutil
 from pathlib import Path
+import logging
 
 # Add the project root to the Python path to allow imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -65,4 +67,39 @@ def mock_config_path():
     if original_path:
         os.environ['COMPANION_CONFIG'] = original_path
     else:
-        os.environ.pop('COMPANION_CONFIG', None) 
+        os.environ.pop('COMPANION_CONFIG', None)
+
+@pytest.fixture(autouse=True)
+def cleanup_player_history():
+    """Clean up player history files created during tests.
+    
+    This fixture runs automatically for all tests and cleans up any player
+    history files that were created during testing.
+    """
+    logger = logging.getLogger("test.cleanup")
+    
+    # Define the test player history directory
+    player_history_dir = "src/data/player_history"
+    
+    # Get list of files before the test
+    existing_files = set()
+    if os.path.exists(player_history_dir):
+        existing_files = set(f for f in os.listdir(player_history_dir) if f.endswith('.json'))
+    
+    # Run the test
+    yield
+    
+    # After the test, clean up any new files that were created
+    if os.path.exists(player_history_dir):
+        # Find new files created during the test
+        current_files = set(f for f in os.listdir(player_history_dir) if f.endswith('.json'))
+        new_files = current_files - existing_files
+        
+        # Remove new files
+        for file_name in new_files:
+            file_path = os.path.join(player_history_dir, file_name)
+            try:
+                os.remove(file_path)
+                logger.info(f"Removed test player history file: {file_path}")
+            except Exception as e:
+                logger.error(f"Failed to remove {file_path}: {e}") 
